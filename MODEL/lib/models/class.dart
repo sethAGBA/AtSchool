@@ -4,6 +4,7 @@ class Class {
   final String? titulaire;
   final double? fraisEcole;
   final double? fraisCotisationParallele;
+  final String? level;
   // Seuils de passage personnalisés par classe
   final double seuilFelicitations;
   final double seuilEncouragements;
@@ -18,6 +19,7 @@ class Class {
     this.titulaire,
     this.fraisEcole,
     this.fraisCotisationParallele,
+    this.level,
     this.seuilFelicitations = 16.0,
     this.seuilEncouragements = 14.0,
     this.seuilAdmission = 12.0,
@@ -33,6 +35,7 @@ class Class {
       'titulaire': titulaire,
       'fraisEcole': fraisEcole,
       'fraisCotisationParallele': fraisCotisationParallele,
+      'level': level,
       'seuilFelicitations': seuilFelicitations,
       'seuilEncouragements': seuilEncouragements,
       'seuilAdmission': seuilAdmission,
@@ -53,6 +56,7 @@ class Class {
       fraisCotisationParallele: map['fraisCotisationParallele'] != null
           ? (map['fraisCotisationParallele'] as num).toDouble()
           : null,
+      level: map['level']?.toString(),
       seuilFelicitations: (map['seuilFelicitations'] as num?)?.toDouble() ?? 16.0,
       seuilEncouragements: (map['seuilEncouragements'] as num?)?.toDouble() ?? 14.0,
       seuilAdmission: (map['seuilAdmission'] as num?)?.toDouble() ?? 12.0,
@@ -68,6 +72,7 @@ class Class {
     titulaire: '',
     fraisEcole: 0,
     fraisCotisationParallele: 0,
+    level: '',
     seuilFelicitations: 16.0,
     seuilEncouragements: 14.0,
     seuilAdmission: 12.0,

@@ -1,4 +1,4 @@
-package com.example.atschool
+package com.ecolix.atschool
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -191,6 +191,7 @@ class _StaffPageState extends State<StaffPage> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
+                    SizedBox(width: 16),
                   ],
                 ),
               ),
@@ -816,7 +817,8 @@ class _StaffPageState extends State<StaffPage> with TickerProviderStateMixin {
           final confirm = await showDangerConfirmDialog(
             context,
             title: 'Supprimer ce membre ?',
-            message: '“${staff.name}” sera supprimé. Cette action est irréversible.',
+            message:
+                '“${staff.name}” sera supprimé. Cette action est irréversible.',
           );
           if (confirm == true) {
             try {
@@ -1305,18 +1307,15 @@ class _StaffPageState extends State<StaffPage> with TickerProviderStateMixin {
             if (staff != null && staff.id.isNotEmpty) {
               final existingAssignments = await _dbService
                   .getTeacherAssignmentsForTeacher(
-                staff.id,
-                academicYear: currentYear,
-              );
-              final courseById = {
-                for (final c in allCourses) c.id: c,
-              };
+                    staff.id,
+                    academicYear: currentYear,
+                  );
+              final courseById = {for (final c in allCourses) c.id: c};
               assignmentDrafts = existingAssignments
                   .map(
                     (a) => _TeacherAssignmentDraft(
                       courseId: a.courseId,
-                      courseName:
-                          courseById[a.courseId]?.name ?? a.courseId,
+                      courseName: courseById[a.courseId]?.name ?? a.courseId,
                       className: a.className,
                       academicYear: a.academicYear,
                     ),
@@ -1998,7 +1997,8 @@ class _StaffPageState extends State<StaffPage> with TickerProviderStateMixin {
                                     DropdownButtonFormField<String>(
                                       value: selectedAssignmentClassKey,
                                       decoration: InputDecoration(
-                                        labelText: 'Classe (${currentAcademicYear.isEmpty ? 'année en cours' : currentAcademicYear})',
+                                        labelText:
+                                            'Classe (${currentAcademicYear.isEmpty ? 'année en cours' : currentAcademicYear})',
                                       ),
                                       items: allClasses
                                           .map(
@@ -2019,15 +2019,16 @@ class _StaffPageState extends State<StaffPage> with TickerProviderStateMixin {
                                     SizedBox(height: 12),
                                     DropdownButtonFormField<Course>(
                                       value: selectedAssignmentCourse,
-                                      decoration:
-                                          InputDecoration(labelText: 'Matière'),
+                                      decoration: InputDecoration(
+                                        labelText: 'Matière',
+                                      ),
                                       items: allCourses
                                           .map(
                                             (course) =>
                                                 DropdownMenuItem<Course>(
-                                              value: course,
-                                              child: Text(course.name),
-                                            ),
+                                                  value: course,
+                                                  child: Text(course.name),
+                                                ),
                                           )
                                           .toList(),
                                       onChanged: (value) {
@@ -2044,14 +2045,18 @@ class _StaffPageState extends State<StaffPage> with TickerProviderStateMixin {
                                         label: Text('Ajouter l\'affectation'),
                                         onPressed: () {
                                           final messenger =
-                                              ScaffoldMessenger.of(this.context);
+                                              ScaffoldMessenger.of(
+                                                this.context,
+                                              );
                                           debugPrint(
                                             '[StaffPage] Add assignment click: classKey=$selectedAssignmentClassKey course=${selectedAssignmentCourse?.id}',
                                           );
                                           final clsKey =
                                               selectedAssignmentClassKey;
-                                          final course = selectedAssignmentCourse;
-                                          if (clsKey == null || course == null) {
+                                          final course =
+                                              selectedAssignmentCourse;
+                                          if (clsKey == null ||
+                                              course == null) {
                                             messenger.showSnackBar(
                                               SnackBar(
                                                 content: Text(
@@ -2134,8 +2139,7 @@ class _StaffPageState extends State<StaffPage> with TickerProviderStateMixin {
                                                   onPressed: () {
                                                     showDialog<bool>(
                                                       context: context,
-                                                      builder: (ctx) =>
-                                                          AlertDialog(
+                                                      builder: (ctx) => AlertDialog(
                                                         title: const Text(
                                                           'Supprimer l\'affectation ?',
                                                         ),
@@ -2977,9 +2981,9 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
       await _loadAll();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
     }
   }
 
@@ -3010,9 +3014,9 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
       await OpenFile.open(filePath);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Impossible d’ouvrir: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Impossible d’ouvrir: $e')));
     }
   }
 
@@ -3142,8 +3146,9 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
         startDate: start.toIso8601String(),
         endDate: end.toIso8601String(),
         status: status,
-        reason:
-            reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : null,
+        reason: reasonCtrl.text.trim().isNotEmpty
+            ? reasonCtrl.text.trim()
+            : null,
         recordedBy: by,
       );
     } else {
@@ -3154,8 +3159,9 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
         startDate: start.toIso8601String(),
         endDate: end.toIso8601String(),
         status: status,
-        reason:
-            reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : null,
+        reason: reasonCtrl.text.trim().isNotEmpty
+            ? reasonCtrl.text.trim()
+            : null,
         recordedBy: by,
       );
     }
@@ -3184,8 +3190,10 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
       final day = (e['dayOfWeek'] ?? '').toString();
       final start = (e['startTime'] ?? '').toString();
       final end = (e['endTime'] ?? '').toString();
-      final minutes =
-          (_timeToMinutes(end) - _timeToMinutes(start)).clamp(0, 24 * 60);
+      final minutes = (_timeToMinutes(end) - _timeToMinutes(start)).clamp(
+        0,
+        24 * 60,
+      );
       m[day] = (m[day] ?? 0) + minutes;
     }
     return m;
@@ -3226,20 +3234,20 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
                     backgroundColor: const Color(0xFF6366F1),
                     backgroundImage:
                         _staff.photoPath != null && _staff.photoPath!.isNotEmpty
-                            ? FileImage(File(_staff.photoPath!))
-                            : null,
+                        ? FileImage(File(_staff.photoPath!))
+                        : null,
                     child:
                         (_staff.photoPath == null || _staff.photoPath!.isEmpty)
-                            ? Text(
-                                _staff.name.trim().isNotEmpty
-                                    ? _staff.name.trim()[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : null,
+                        ? Text(
+                            _staff.name.trim().isNotEmpty
+                                ? _staff.name.trim()[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -3257,9 +3265,8 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
                         Text(
                           '${_staff.typeRole} • ${_staff.role.isNotEmpty ? _staff.role : '—'}',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withOpacity(
-                              0.7,
-                            ),
+                            color: theme.textTheme.bodySmall?.color
+                                ?.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -3329,9 +3336,7 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
               ),
             ),
           ),
-          Expanded(
-            child: Text(value.isNotEmpty ? value : '-'),
-          ),
+          Expanded(child: Text(value.isNotEmpty ? value : '-')),
         ],
       ),
     );
@@ -3403,7 +3408,9 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
           _kv('Type contrat', (_staff.contractType ?? '').toString(), theme),
           _kv(
             'Salaire base',
-            _staff.baseSalary == null ? '' : _staff.baseSalary!.toStringAsFixed(0),
+            _staff.baseSalary == null
+                ? ''
+                : _staff.baseSalary!.toStringAsFixed(0),
             theme,
           ),
           _kv(
@@ -3474,7 +3481,10 @@ class _StaffDetailsDialogState extends State<_StaffDetailsDialog>
                       itemBuilder: (_) => const [
                         PopupMenuItem(value: 'open', child: Text('Ouvrir')),
                         PopupMenuItem(value: 'rename', child: Text('Renommer')),
-                        PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Supprimer'),
+                        ),
                       ],
                     ),
                   );

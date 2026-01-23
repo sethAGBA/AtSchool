@@ -4,10 +4,10 @@ plugins {
     application
 }
 
-group = "com.example.atschool"
+group = "com.ecolix.app"
 version = "1.0.0"
 application {
-    mainClass.set("com.example.atschool.ApplicationKt")
+    mainClass.set("com.ecolix.atschool.ApplicationKt")
     
     val isDevelopment: Boolean = project.ext.has("development")
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")

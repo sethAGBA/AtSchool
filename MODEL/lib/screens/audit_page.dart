@@ -1,13 +1,17 @@
+import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:school_manager/services/database_service.dart';
 import 'package:school_manager/models/student.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter/services.dart';
-
+import 'package:school_manager/screens/students/student_profile_page.dart';
+import 'package:school_manager/screens/students/class_details_page.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
 
 class AuditPage extends StatefulWidget {
   const AuditPage({Key? key}) : super(key: key);
@@ -19,10 +23,12 @@ class AuditPage extends StatefulWidget {
 class _AuditPageState extends State<AuditPage> {
   final DatabaseService _db = DatabaseService();
   final TextEditingController _searchUser = TextEditingController();
+  final TextEditingController _entitySearch = TextEditingController();
   String? _selectedCategory;
   String? _selectedUser; // Filtre par utilisateur exact
   String _sortOrder = 'desc'; // 'desc' (Plus récent) ou 'asc' (Plus ancien)
   String? _statusFilter; // null: tous, 'success', 'failure'
+  String? _entityQuery; // Filtre par entité (id élève, id paiement, etc.)
   DateTime? _selectedDate; // Filtre par date (journée)
   String? _quickRange; // 'today' | 'week' | 'month'
   bool _loading = true;
@@ -152,37 +158,39 @@ class _AuditPageState extends State<AuditPage> {
     // Fallback: transformer "insert_payment" -> "insert payment" puis remplacer quelques mots
     final base = action.replaceAll('_', ' ');
     final tokens = base.split(' ');
-    final fr = tokens.map((t) {
-      switch (t) {
-        case 'insert':
-          return 'ajout';
-        case 'update':
-          return 'mise à jour';
-        case 'delete':
-          return 'suppression';
-        case 'cancel':
-          return 'annulation';
-        case 'payment':
-          return 'paiement';
-        case 'student':
-          return 'élève';
-        case 'staff':
-          return 'personnel';
-        case 'class':
-          return 'classe';
-        case 'course':
-        case 'subject':
-          return 'matière';
-        case 'grade':
-          return 'note';
-        case 'success':
-          return 'réussite';
-        case 'failed':
-          return 'échec';
-        default:
-          return t;
-      }
-    }).join(' ');
+    final fr = tokens
+        .map((t) {
+          switch (t) {
+            case 'insert':
+              return 'ajout';
+            case 'update':
+              return 'mise à jour';
+            case 'delete':
+              return 'suppression';
+            case 'cancel':
+              return 'annulation';
+            case 'payment':
+              return 'paiement';
+            case 'student':
+              return 'élève';
+            case 'staff':
+              return 'personnel';
+            case 'class':
+              return 'classe';
+            case 'course':
+            case 'subject':
+              return 'matière';
+            case 'grade':
+              return 'note';
+            case 'success':
+              return 'réussite';
+            case 'failed':
+              return 'échec';
+            default:
+              return t;
+          }
+        })
+        .join(' ');
     // Capitaliser la première lettre
     return fr.isEmpty ? '' : fr[0].toUpperCase() + fr.substring(1);
   }
@@ -246,11 +254,17 @@ class _AuditPageState extends State<AuditPage> {
         _searchQuery = _searchUser.text.trim().toLowerCase();
       });
     });
+    _entitySearch.addListener(() {
+      setState(() {
+        _entityQuery = _entitySearch.text.trim().toLowerCase();
+      });
+    });
   }
 
   @override
   void dispose() {
     _searchUser.dispose();
+    _entitySearch.dispose();
     super.dispose();
   }
 
@@ -277,10 +291,9 @@ class _AuditPageState extends State<AuditPage> {
     } catch (_) {}
     final usernames = <String>{
       for (final r in users)
-        if ((r['username'] as String?) != null) (r['username'] as String)
-    }.toList()
-      ..sort();
-    final map = <String, String>{ for (final s in students) s.id: s.name };
+        if ((r['username'] as String?) != null) (r['username'] as String),
+    }.toList()..sort();
+    final map = <String, String>{for (final s in students) s.id: s.name};
     if (!mounted) return;
     setState(() {
       _logs = logs;
@@ -300,14 +313,21 @@ class _AuditPageState extends State<AuditPage> {
       return;
     }
     final rows = [
-      ['horodatage', 'utilisateur', 'catégorie', 'action', 'succès', 'détails']
+      ['horodatage', 'utilisateur', 'catégorie', 'action', 'succès', 'détails'],
     ];
     for (final l in filtered) {
       final String catKey = (l['category'] ?? '').toString();
       final String catDisplay = _categoryLabels[catKey] ?? catKey;
-      final String actionDisplay = _displayAction((l['action'] ?? '').toString());
-      final String successDisplay = ((l['success'] ?? 1) == 1) ? 'vrai' : 'faux';
-      final String detailsDisplay = _frDetails((l['details'] ?? '').toString(), catKey).replaceAll('\n', ' ');
+      final String actionDisplay = _displayAction(
+        (l['action'] ?? '').toString(),
+      );
+      final String successDisplay = ((l['success'] ?? 1) == 1)
+          ? 'vrai'
+          : 'faux';
+      final String detailsDisplay = _frDetails(
+        (l['details'] ?? '').toString(),
+        catKey,
+      ).replaceAll('\n', ' ');
       rows.add([
         _fmtTs((l['timestamp'] ?? '').toString()),
         l['username'] ?? '',
@@ -318,9 +338,10 @@ class _AuditPageState extends State<AuditPage> {
       ]);
     }
     final csv = rows
-        .map((r) => r
-            .map((c) => '"${c.toString().replaceAll('"', '""')}"')
-            .join(','))
+        .map(
+          (r) =>
+              r.map((c) => '"${c.toString().replaceAll('"', '""')}"').join(','),
+        )
         .join('\n');
     try {
       final dir = await FilePicker.platform.getDirectoryPath();
@@ -335,9 +356,9 @@ class _AuditPageState extends State<AuditPage> {
       await OpenFile.open(file.path);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur export CSV: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur export CSV: $e')));
     }
   }
 
@@ -358,7 +379,7 @@ class _AuditPageState extends State<AuditPage> {
                 spacing: 8,
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
+                children: [
                   // Raccourcis de période
                   Wrap(
                     spacing: 6,
@@ -457,7 +478,8 @@ class _AuditPageState extends State<AuditPage> {
                         child: Text('Tous les utilisateurs'),
                       ),
                       ..._usernames.map(
-                        (u) => DropdownMenuItem<String?>(value: u, child: Text(u)),
+                        (u) =>
+                            DropdownMenuItem<String?>(value: u, child: Text(u)),
                       ),
                     ],
                     onChanged: (v) {
@@ -469,9 +491,18 @@ class _AuditPageState extends State<AuditPage> {
                   DropdownButton<String?>(
                     value: _statusFilter,
                     items: const [
-                      DropdownMenuItem<String?>(value: null, child: Text('Tous les statuts')),
-                      DropdownMenuItem<String?>(value: 'success', child: Text('Succès')),
-                      DropdownMenuItem<String?>(value: 'failure', child: Text('Échec')),
+                      DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Tous les statuts'),
+                      ),
+                      DropdownMenuItem<String?>(
+                        value: 'success',
+                        child: Text('Succès'),
+                      ),
+                      DropdownMenuItem<String?>(
+                        value: 'failure',
+                        child: Text('Échec'),
+                      ),
                     ],
                     onChanged: (v) => setState(() => _statusFilter = v),
                   ),
@@ -479,8 +510,14 @@ class _AuditPageState extends State<AuditPage> {
                   DropdownButton<String>(
                     value: _sortOrder,
                     items: const [
-                      DropdownMenuItem<String>(value: 'desc', child: Text('Plus récent')),
-                      DropdownMenuItem<String>(value: 'asc', child: Text('Plus ancien')),
+                      DropdownMenuItem<String>(
+                        value: 'desc',
+                        child: Text('Plus récent'),
+                      ),
+                      DropdownMenuItem<String>(
+                        value: 'asc',
+                        child: Text('Plus ancien'),
+                      ),
                     ],
                     onChanged: (v) => setState(() => _sortOrder = v ?? 'desc'),
                   ),
@@ -493,23 +530,81 @@ class _AuditPageState extends State<AuditPage> {
                   ElevatedButton.icon(
                     onPressed: _exportCsv,
                     icon: const Icon(Icons.table_chart, color: Colors.white),
-                    label: const Text('Exporter CSV', style: TextStyle(color: Colors.white)),
+                    label: const Text(
+                      'Exporter CSV',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  /*
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _exportPdf,
+                    icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+                    label: const Text(
+                      'Exporter PDF',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE53E3E),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  */
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _showPurgeDialog,
+                    icon: const Icon(Icons.delete_sweep, color: Colors.white),
+                    label: const Text(
+                      'Purger',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[700],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                   ElevatedButton.icon(
                     onPressed: _load,
                     icon: const Icon(Icons.refresh, color: Colors.white),
-                    label: const Text('Actualiser', style: TextStyle(color: Colors.white)),
+                    label: const Text(
+                      'Actualiser',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3B82F6),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ],
@@ -614,7 +709,8 @@ class _AuditPageState extends State<AuditPage> {
                           'Consultez, filtrez et exportez les journaux d\'activité.',
                           style: TextStyle(
                             fontSize: isDesktop ? 16 : 14,
-                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                            color: theme.textTheme.bodyMedium?.color
+                                ?.withOpacity(0.7),
                             height: 1.5,
                           ),
                         ),
@@ -730,16 +826,12 @@ class _AuditPageState extends State<AuditPage> {
             child: Text(
               subtitle,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color:
-                    theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
               ),
               textAlign: TextAlign.center,
             ),
           ),
-          if (action != null) ...[
-            const SizedBox(height: 12),
-            action,
-          ],
+          if (action != null) ...[const SizedBox(height: 12), action],
         ],
       ),
     );
@@ -779,11 +871,16 @@ class _AuditPageState extends State<AuditPage> {
         final ts = (l['timestamp'] ?? '').toString();
         final dt = DateTime.tryParse(ts);
         if (dt == null) return false;
-        return dt.isAfter(start.subtract(const Duration(milliseconds: 1))) && dt.isBefore(end);
+        return dt.isAfter(start.subtract(const Duration(milliseconds: 1))) &&
+            dt.isBefore(end);
       });
     }
     if (_selectedDate != null) {
-      final target = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day);
+      final target = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+      );
       iter = iter.where((l) {
         final ts = (l['timestamp'] ?? '').toString();
         final dt = DateTime.tryParse(ts);
@@ -808,6 +905,21 @@ class _AuditPageState extends State<AuditPage> {
             u.contains(_searchQuery);
       });
     }
+    if (_entityQuery != null && _entityQuery!.isNotEmpty) {
+      iter = iter.where((l) {
+        final details = (l['details'] ?? '').toString().toLowerCase();
+        // Recherche exacte ou partielle de l'ID d'entité dans les détails
+        return details.contains('id=$_entityQuery') ||
+            details.contains('élève=$_entityQuery') ||
+            details.contains('student=$_entityQuery') ||
+            details.contains('payment=$_entityQuery') ||
+            details.contains('classe=$_entityQuery') ||
+            details.contains('class=$_entityQuery') ||
+            details.contains('staff=$_entityQuery') ||
+            // Fallback: si l'ID est seul dans la chaîne
+            details.contains(_entityQuery!);
+      });
+    }
     final list = iter.toList();
     int cmp(Map<String, dynamic> a, Map<String, dynamic> b) {
       final sa = (a['timestamp'] ?? '').toString();
@@ -822,6 +934,7 @@ class _AuditPageState extends State<AuditPage> {
       }
       return _sortOrder == 'desc' ? -c : c;
     }
+
     list.sort(cmp);
     return list;
   }
@@ -842,7 +955,10 @@ class _AuditPageState extends State<AuditPage> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  Widget _buildGroupedByDayList(BuildContext context, List<Map<String, dynamic>> logs) {
+  Widget _buildGroupedByDayList(
+    BuildContext context,
+    List<Map<String, dynamic>> logs,
+  ) {
     // Grouper par jour (date sans heure)
     final Map<DateTime, List<Map<String, dynamic>>> groups = {};
     for (final l in logs) {
@@ -873,16 +989,21 @@ class _AuditPageState extends State<AuditPage> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   labelFor(d),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -899,10 +1020,12 @@ class _AuditPageState extends State<AuditPage> {
         return _sortOrder == 'desc' ? -c : c;
       });
       for (final l in items) {
-        children.add(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: _buildActionCard(context, l),
-        ));
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: _buildActionCard(context, l),
+          ),
+        );
       }
     }
 
@@ -998,7 +1121,8 @@ class _AuditPageState extends State<AuditPage> {
     }
   }
 
-  Widget _chip(BuildContext context, {
+  Widget _chip(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required Color color,
@@ -1045,7 +1169,9 @@ class _AuditPageState extends State<AuditPage> {
         : int.tryParse((l['id'] ?? '').toString());
     final bool isExpanded = id != null && _expandedLogs.contains(id);
 
-    final Color statusColor = ok ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final Color statusColor = ok
+        ? const Color(0xFF10B981)
+        : const Color(0xFFEF4444);
     final IconData statusIcon = ok ? Icons.check_circle : Icons.error;
 
     return Container(
@@ -1095,39 +1221,52 @@ class _AuditPageState extends State<AuditPage> {
           ),
           const SizedBox(height: 10),
           // Affichage spécifique: mise à jour de note (avant -> après)
-          Builder(builder: (context) {
-            final actionKey = (l['action'] ?? '').toString();
-            if (actionKey != 'update_grade') return const SizedBox.shrink();
-            double? before;
-            double? after;
-            final ro = RegExp(r'value_old=([0-9]+(?:\.[0-9]+)?)').firstMatch(rawDetails);
-            final rn = RegExp(r'value_new=([0-9]+(?:\.[0-9]+)?)').firstMatch(rawDetails);
-            if (ro != null) before = double.tryParse(ro.group(1)!);
-            if (rn != null) after = double.tryParse(rn.group(1)!);
-            if (before == null && after == null) return const SizedBox.shrink();
-            final bool improved = (before != null && after != null) ? after! > before! : false;
-            final Color deltaColor = improved ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-            final IconData deltaIcon = improved ? Icons.trending_up : Icons.trending_down;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  Icon(deltaIcon, size: 18, color: deltaColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Note: ' +
-                        (before != null ? before!.toStringAsFixed(2) : '-') +
-                        ' → ' +
-                        (after != null ? after!.toStringAsFixed(2) : '-'),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: deltaColor,
-                        ),
-                  ),
-                ],
-              ),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final actionKey = (l['action'] ?? '').toString();
+              if (actionKey != 'update_grade') return const SizedBox.shrink();
+              double? before;
+              double? after;
+              final ro = RegExp(
+                r'value_old=([0-9]+(?:\.[0-9]+)?)',
+              ).firstMatch(rawDetails);
+              final rn = RegExp(
+                r'value_new=([0-9]+(?:\.[0-9]+)?)',
+              ).firstMatch(rawDetails);
+              if (ro != null) before = double.tryParse(ro.group(1)!);
+              if (rn != null) after = double.tryParse(rn.group(1)!);
+              if (before == null && after == null)
+                return const SizedBox.shrink();
+              final bool improved = (before != null && after != null)
+                  ? after! > before!
+                  : false;
+              final Color deltaColor = improved
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFFEF4444);
+              final IconData deltaIcon = improved
+                  ? Icons.trending_up
+                  : Icons.trending_down;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(deltaIcon, size: 18, color: deltaColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Note: ' +
+                          (before != null ? before!.toStringAsFixed(2) : '-') +
+                          ' → ' +
+                          (after != null ? after!.toStringAsFixed(2) : '-'),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: deltaColor,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
 
           Wrap(
             spacing: 8,
@@ -1151,97 +1290,449 @@ class _AuditPageState extends State<AuditPage> {
                   context,
                   icon: Icons.access_time,
                   label: ts,
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8) ?? Colors.grey,
+                  color:
+                      theme.textTheme.bodyMedium?.color?.withOpacity(0.8) ??
+                      Colors.grey,
                 ),
             ],
           ),
           if (details.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Builder(builder: (context) {
-              final bool lengthy = details.length > 160 || details.contains('\n');
-              final String shown = (!lengthy || isExpanded)
-                  ? details
-                  : (details.substring(0, 160) + '…');
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    shown,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
+            Builder(
+              builder: (context) {
+                final bool lengthy =
+                    details.length > 160 || details.contains('\n');
+                final String shown = (!lengthy || isExpanded)
+                    ? details
+                    : (details.substring(0, 160) + '…');
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      shown,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                          0.9,
+                        ),
+                      ),
                     ),
-                  ),
-                  if (lengthy)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: id == null
-                            ? null
-                            : () => setState(() {
+                    // Liens rapides si des entités sont détectées
+                    _buildEntityLinks(context, rawDetails, catKey),
+                    if (lengthy)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: id == null
+                              ? null
+                              : () => setState(() {
                                   if (_expandedLogs.contains(id)) {
                                     _expandedLogs.remove(id);
                                   } else {
                                     _expandedLogs.add(id);
                                   }
                                 }),
-                        child: Text(
-                          isExpanded ? 'Réduire' : 'Afficher plus',
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
+                          child: Text(
+                            isExpanded ? 'Réduire' : 'Afficher plus',
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: details),
+                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Détails copiés')),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.copy_all, size: 16),
+                          label: const Text('Copier les détails'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final buffer = StringBuffer()
+                              ..writeln('Action: ' + actionTitle)
+                              ..writeln('Catégorie: ' + catDisplay);
+                            if (user.isNotEmpty)
+                              buffer.writeln('Utilisateur: ' + user);
+                            if (ts.isNotEmpty) buffer.writeln('Date: ' + ts);
+                            if (details.isNotEmpty)
+                              buffer.writeln('Détails: ' + details);
+                            await Clipboard.setData(
+                              ClipboardData(text: buffer.toString()),
+                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Informations copiées'),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.content_copy, size: 16),
+                          label: const Text('Copier tout'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: details));
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Détails copiés')),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.copy_all, size: 16),
-                        label: const Text('Copier les détails'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final buffer = StringBuffer()
-                            ..writeln('Action: ' + actionTitle)
-                            ..writeln('Catégorie: ' + catDisplay);
-                          if (user.isNotEmpty) buffer.writeln('Utilisateur: ' + user);
-                          if (ts.isNotEmpty) buffer.writeln('Date: ' + ts);
-                          if (details.isNotEmpty) buffer.writeln('Détails: ' + details);
-                          await Clipboard.setData(ClipboardData(text: buffer.toString()));
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Informations copiées')),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.content_copy, size: 16),
-                        label: const Text('Copier tout'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            }),
+                  ],
+                );
+              },
+            ),
           ],
         ],
       ),
     );
+  }
+
+  Widget _buildEntityLinks(
+    BuildContext context,
+    String rawDetails,
+    String category,
+  ) {
+    final List<Widget> links = [];
+
+    // Détection élèveId ou studentId ou élève=
+    final studentMatch = RegExp(
+      r'(?:studentId|student|élève|id)=([^,\s]+)',
+    ).firstMatch(rawDetails);
+    if (studentMatch != null &&
+        (category == 'student' ||
+            category == 'payment' ||
+            category == 'report_card' ||
+            category == 'grade')) {
+      final id = studentMatch.group(1)!;
+      links.add(
+        _linkChip(
+          context,
+          icon: Icons.person_search,
+          label: 'Voir Profil Élève',
+          onTap: () async {
+            final student = await _db.getStudentById(id);
+            if (student != null) {
+              showDialog(
+                context: context,
+                builder: (context) => StudentProfilePage(student: student),
+              );
+            } else {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Élève non trouvé')));
+            }
+          },
+        ),
+      );
+    }
+
+    // Détection classe= ou classId=
+    final classMatch = RegExp(
+      r'(?:classId|class|classe)=([^,\s]+)',
+    ).firstMatch(rawDetails);
+    final yearMatch = RegExp(
+      r'(?:year|année)=([^,\s]+)',
+    ).firstMatch(rawDetails);
+
+    if (classMatch != null) {
+      final className = classMatch.group(1)!;
+      final year = yearMatch?.group(1);
+
+      links.add(
+        _linkChip(
+          context,
+          icon: Icons.class_,
+          label: 'Détails Classe',
+          onTap: () async {
+            // Tenter de trouver la classe avec l'année si dispo, sinon n'importe laquelle
+            final classe = await _db.getClassByName(
+              className,
+              academicYear: year,
+            );
+            if (classe != null) {
+              final stds = await _db.getStudents(
+                className: classe.name,
+                academicYear: classe.academicYear,
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ClassDetailsPage(classe: classe, students: stds),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Classe non trouvée')),
+              );
+            }
+          },
+        ),
+      );
+    }
+
+    if (links.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(spacing: 8, runSpacing: 8, children: links),
+    );
+  }
+
+  Widget _linkChip(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.primary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportPdf() async {
+    final filtered = _filteredLogs();
+    if (filtered.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Aucune donnée à exporter')));
+      return;
+    }
+
+    final pdf = pw.Document();
+    final fontData = await rootBundle.load(
+      "assets/fonts/nunito/Nunito-Regular.ttf",
+    );
+    final fontBoldData = await rootBundle.load(
+      "assets/fonts/nunito/Nunito-Bold.ttf",
+    );
+    final ttf = pw.Font.ttf(fontData);
+    final ttfBold = pw.Font.ttf(fontBoldData);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Journal d\'Audit - Rapport',
+                    style: pw.TextStyle(font: ttfBold, fontSize: 18),
+                  ),
+                  pw.Text(
+                    DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+                    style: pw.TextStyle(font: ttf, fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Filtres appliqués : ${_selectedCategory ?? 'Toutes catégories'}, ${_selectedUser ?? 'Tous utilisateurs'}, ${_statusFilter ?? 'Tous statuts'}',
+              style: pw.TextStyle(
+                font: ttf,
+                fontSize: 10,
+                color: PdfColors.grey700,
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300),
+              children: [
+                pw.TableRow(
+                  decoration: pw.BoxDecoration(color: PdfColors.grey200),
+                  children: [
+                    _pdfCell('Date', ttfBold, isHeader: true),
+                    _pdfCell('Utilisateur', ttfBold, isHeader: true),
+                    _pdfCell('Catégorie', ttfBold, isHeader: true),
+                    _pdfCell('Action', ttfBold, isHeader: true),
+                    _pdfCell('Détails', ttfBold, isHeader: true),
+                    _pdfCell('Statut', ttfBold, isHeader: true),
+                  ],
+                ),
+                ...filtered.map((l) {
+                  final ok = (l['success'] ?? 1) == 1;
+                  return pw.TableRow(
+                    children: [
+                      _pdfCell(_fmtTs(l['timestamp']?.toString()), ttf),
+                      _pdfCell(l['username']?.toString() ?? '', ttf),
+                      _pdfCell(
+                        _categoryLabels[l['category']] ?? l['category'] ?? '',
+                        ttf,
+                      ),
+                      _pdfCell(_displayAction(l['action']?.toString()), ttf),
+                      _pdfCell(
+                        _frDetails(
+                          l['details']?.toString(),
+                          l['category']?.toString(),
+                        ),
+                        ttf,
+                      ),
+                      _pdfCell(
+                        ok ? 'Succès' : 'Échec',
+                        ttf,
+                        color: ok ? PdfColors.green700 : PdfColors.red700,
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ];
+        },
+      ),
+    );
+
+    final bytes = await pdf.save();
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(
+      '${dir.path}/audit_log_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
+    await file.writeAsBytes(bytes);
+    await OpenFile.open(file.path);
+  }
+
+  pw.Widget _pdfCell(
+    String text,
+    pw.Font font, {
+    bool isHeader = false,
+    PdfColor? color,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          font: font,
+          fontSize: isHeader ? 9 : 8,
+          color: color ?? PdfColors.black,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showPurgeDialog() async {
+    int days = 30;
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retention Policy (Purger les logs)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Conserver les logs des derniers X jours et supprimer le reste.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int>(
+              value: days,
+              decoration: const InputDecoration(
+                labelText: 'Période de rétention',
+              ),
+              items: const [
+                DropdownMenuItem(value: 7, child: Text('7 jours')),
+                DropdownMenuItem(value: 30, child: Text('30 jours')),
+                DropdownMenuItem(value: 60, child: Text('60 jours')),
+                DropdownMenuItem(value: 90, child: Text('90 jours')),
+                DropdownMenuItem(value: 180, child: Text('180 jours')),
+              ],
+              onChanged: (v) {
+                if (v != null) days = v;
+              },
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Note : Cette action est irréversible.',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Purger maintenant'),
+          ),
+        ],
+      ),
+    );
+
+    if (res == true) {
+      final count = await _db.deleteOldAuditLogs(days);
+      _load();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$count logs supprimés (plus vieux que $days jours)'),
+        ),
+      );
+    }
   }
 }

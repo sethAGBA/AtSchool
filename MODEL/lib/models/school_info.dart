@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SchoolInfo {
   final String name;
   final String address;
+  final String? bp;
   final String director;
   final String? logoPath;
   final String? flagPath; // Photo/drapeau du pays
@@ -18,10 +19,19 @@ class SchoolInfo {
   final String? educationDirection;
   final String? inspection;
   final String? paymentsAdminRole; // 'directeur' ou 'proviseur' (pour reçus)
+  final String? directorPrimary;
+  final String? directorCollege;
+  final String? directorLycee;
+  final String? directorUniversity;
+  final String? civilityPrimary;
+  final String? civilityCollege;
+  final String? civilityLycee;
+  final String? civilityUniversity;
 
   SchoolInfo({
     required this.name,
     required this.address,
+    this.bp,
     required this.director,
     this.logoPath,
     this.flagPath,
@@ -35,12 +45,21 @@ class SchoolInfo {
     this.educationDirection,
     this.inspection,
     this.paymentsAdminRole,
+    this.directorPrimary,
+    this.directorCollege,
+    this.directorLycee,
+    this.directorUniversity,
+    this.civilityPrimary,
+    this.civilityCollege,
+    this.civilityLycee,
+    this.civilityUniversity,
   });
 
   factory SchoolInfo.fromMap(Map<String, dynamic> map) {
     return SchoolInfo(
       name: map['name'] ?? '',
       address: map['address'] ?? '',
+      bp: map['bp'],
       director: map['director'] ?? '',
       logoPath: map['logoPath'],
       flagPath: map['flagPath'],
@@ -54,6 +73,14 @@ class SchoolInfo {
       educationDirection: map['educationDirection'],
       inspection: map['inspection'],
       paymentsAdminRole: map['paymentsAdminRole'],
+      directorPrimary: map['directorPrimary'],
+      directorCollege: map['directorCollege'],
+      directorLycee: map['directorLycee'],
+      directorUniversity: map['directorUniversity'],
+      civilityPrimary: map['civilityPrimary'],
+      civilityCollege: map['civilityCollege'],
+      civilityLycee: map['civilityLycee'],
+      civilityUniversity: map['civilityUniversity'],
     );
   }
 
@@ -61,6 +88,7 @@ class SchoolInfo {
     return {
       'name': name,
       'address': address,
+      'bp': bp,
       'director': director,
       'logoPath': logoPath,
       'flagPath': flagPath,
@@ -74,6 +102,14 @@ class SchoolInfo {
       'educationDirection': educationDirection,
       'inspection': inspection,
       'paymentsAdminRole': paymentsAdminRole,
+      'directorPrimary': directorPrimary,
+      'directorCollege': directorCollege,
+      'directorLycee': directorLycee,
+      'directorUniversity': directorUniversity,
+      'civilityPrimary': civilityPrimary,
+      'civilityCollege': civilityCollege,
+      'civilityLycee': civilityLycee,
+      'civilityUniversity': civilityUniversity,
     };
   }
 }
@@ -88,7 +124,16 @@ Future<SchoolInfo> loadSchoolInfo() async {
     schoolInfo = SchoolInfo(
       name: prefs.getString('school_name') ?? '',
       address: prefs.getString('school_address') ?? '',
+      bp: prefs.getString('school_bp'),
       director: prefs.getString('school_director') ?? '',
+      directorPrimary: prefs.getString('school_director_primary'),
+      directorCollege: prefs.getString('school_director_college'),
+      directorLycee: prefs.getString('school_director_lycee'),
+      directorUniversity: prefs.getString('school_director_university'),
+      civilityPrimary: prefs.getString('school_civility_primary'),
+      civilityCollege: prefs.getString('school_civility_college'),
+      civilityLycee: prefs.getString('school_civility_lycee'),
+      civilityUniversity: prefs.getString('school_civility_university'),
       logoPath: prefs.getString('school_logo'),
       flagPath: prefs.getString('school_flag'),
       telephone: prefs.getString('school_phone'),
@@ -116,7 +161,16 @@ Future<SchoolInfo> loadSchoolInfo() async {
       final merged = SchoolInfo(
         name: schoolInfo.name,
         address: schoolInfo.address,
+        bp: schoolInfo.bp,
         director: schoolInfo.director,
+        directorPrimary: schoolInfo.directorPrimary,
+        directorCollege: schoolInfo.directorCollege,
+        directorLycee: schoolInfo.directorLycee,
+        directorUniversity: schoolInfo.directorUniversity,
+        civilityPrimary: schoolInfo.civilityPrimary,
+        civilityCollege: schoolInfo.civilityCollege,
+        civilityLycee: schoolInfo.civilityLycee,
+        civilityUniversity: schoolInfo.civilityUniversity,
         logoPath: prefLogo,
         flagPath: schoolInfo.flagPath,
         telephone: schoolInfo.telephone,

@@ -1,4 +1,4 @@
-package com.example.atschool
+package com.ecolix.atschool
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport

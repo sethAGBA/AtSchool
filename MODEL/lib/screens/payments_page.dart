@@ -332,8 +332,8 @@ class _PaymentsPageState extends State<PaymentsPage>
   List<PaymentScheduleInstallment> _defaultScheduleInstallments(
     String classAcademicYear,
   ) {
-    final startYear = _academicYearStartYear(classAcademicYear) ??
-        DateTime.now().year;
+    final startYear =
+        _academicYearStartYear(classAcademicYear) ?? DateTime.now().year;
     // Default: 3 trimesters, due 15 Oct / 15 Jan / 15 Apr
     return [
       PaymentScheduleInstallment(
@@ -422,30 +422,32 @@ class _PaymentsPageState extends State<PaymentsPage>
 
   Future<void> _showRemindersDialog(ThemeData theme) async {
     final baseRows = _rowsForBaseFilters();
-    final reminders = baseRows
-        .map((row) {
-          final student = row['student'] as Student;
-          final totalPaid = _payments
-              .where((p) => p.studentId == student.id && !p.isCancelled)
-              .fold<double>(0.0, (s, p) => s + p.amount);
-          final totalDue = _adjustedTotalDueForStudent(student);
-          final expectedPaid = _expectedPaidByDate(student, DateTime.now());
-          final arrears = expectedPaid - totalPaid;
-          return {
-            'student': student,
-            'payment': row['payment'],
-            'classe': _classesByName[student.className],
-            'totalPaid': totalPaid,
-            'totalDue': totalDue,
-            'expectedPaid': expectedPaid,
-            'arrears': arrears > 0 ? arrears : 0.0,
-          };
-        })
-        .where((r) => ((r['arrears'] as double?) ?? 0.0) > 0)
-        .toList()
-      ..sort(
-        (a, b) => (b['arrears'] as double).compareTo(a['arrears'] as double),
-      );
+    final reminders =
+        baseRows
+            .map((row) {
+              final student = row['student'] as Student;
+              final totalPaid = _payments
+                  .where((p) => p.studentId == student.id && !p.isCancelled)
+                  .fold<double>(0.0, (s, p) => s + p.amount);
+              final totalDue = _adjustedTotalDueForStudent(student);
+              final expectedPaid = _expectedPaidByDate(student, DateTime.now());
+              final arrears = expectedPaid - totalPaid;
+              return {
+                'student': student,
+                'payment': row['payment'],
+                'classe': _classesByName[student.className],
+                'totalPaid': totalPaid,
+                'totalDue': totalDue,
+                'expectedPaid': expectedPaid,
+                'arrears': arrears > 0 ? arrears : 0.0,
+              };
+            })
+            .where((r) => ((r['arrears'] as double?) ?? 0.0) > 0)
+            .toList()
+          ..sort(
+            (a, b) =>
+                (b['arrears'] as double).compareTo(a['arrears'] as double),
+          );
 
     await showDialog<void>(
       context: context,
@@ -466,7 +468,8 @@ class _PaymentsPageState extends State<PaymentsPage>
                       final r = reminders[i];
                       final student = r['student'] as Student;
                       final arrears = (r['arrears'] as double?) ?? 0.0;
-                      final expectedPaid = (r['expectedPaid'] as double?) ?? 0.0;
+                      final expectedPaid =
+                          (r['expectedPaid'] as double?) ?? 0.0;
                       final totalPaid = (r['totalPaid'] as double?) ?? 0.0;
                       return ListTile(
                         title: Text(
@@ -506,13 +509,15 @@ class _PaymentsPageState extends State<PaymentsPage>
                         );
                         return;
                       }
-                      final dirPath = await FilePicker.platform.getDirectoryPath(
-                        dialogTitle: 'Choisir un dossier de sauvegarde',
-                      );
+                      final dirPath = await FilePicker.platform
+                          .getDirectoryPath(
+                            dialogTitle: 'Choisir un dossier de sauvegarde',
+                          );
                       if (dirPath == null) return;
-                      final bytes = await PdfService.generatePaymentRemindersPdf(
-                        rows: reminders,
-                      );
+                      final bytes =
+                          await PdfService.generatePaymentRemindersPdf(
+                            rows: reminders,
+                          );
                       final file = File(
                         '$dirPath/relances_paiements_${DateTime.now().millisecondsSinceEpoch}.pdf',
                       );
@@ -551,7 +556,9 @@ class _PaymentsPageState extends State<PaymentsPage>
         return _defaultScheduleInstallments(effectiveYear);
       }
       final decoded = _globalScheduleRule?.decodeInstallments() ?? const [];
-      return decoded.isNotEmpty ? decoded : _defaultScheduleInstallments(effectiveYear);
+      return decoded.isNotEmpty
+          ? decoded
+          : _defaultScheduleInstallments(effectiveYear);
     }
 
     List<PaymentScheduleInstallment> installments = currentInstallments();
@@ -586,7 +593,8 @@ class _PaymentsPageState extends State<PaymentsPage>
     }
 
     void genMensuel() {
-      final startYear = _academicYearStartYear(effectiveYear) ?? DateTime.now().year;
+      final startYear =
+          _academicYearStartYear(effectiveYear) ?? DateTime.now().year;
       // Oct -> Jul (10 échéances)
       final months = <int>[10, 11, 12, 1, 2, 3, 4, 5, 6, 7];
       final fraction = 1 / months.length;
@@ -610,202 +618,213 @@ class _PaymentsPageState extends State<PaymentsPage>
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-          title: const Text('Échéancier'),
-          content: SizedBox(
-            width: 900,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
+              title: const Text('Échéancier'),
+              content: SizedBox(
+                width: 900,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: Text(
-                        'Année: $effectiveYear',
-                        style: TextStyle(color: theme.textTheme.bodyMedium?.color),
-                      ),
-                    ),
-                    if (selectedClass != null)
-                      Row(
-                        children: [
-                          const Text('Spécifique à la classe'),
-                          Switch(
-                            value: forClass,
-                            onChanged: (v) {
-                              setStateDialog(() {
-                                forClass = v;
-                                installments = currentInstallments();
-                                rebuildControllers();
-                              });
-                            },
-                          ),
-                          if (forClass)
-                            Text(
-                              selectedClass,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Année: $effectiveYear',
+                            style: TextStyle(
+                              color: theme.textTheme.bodyMedium?.color,
                             ),
-                        ],
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => setStateDialog(() => genTrimestriel()),
-                      child: const Text('Générer trimestriel'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => setStateDialog(() => genMensuel()),
-                      child: const Text('Générer mensuel'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () {
-                        setStateDialog(() {
-                          installments = [];
-                          rebuildControllers();
-                        });
-                      },
-                      child: const Text('Vider'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (installments.isEmpty)
-                  const Text('Aucune échéance (utilise le défaut).')
-                else
-                  SizedBox(
-                    height: 320,
-                    child: ListView.builder(
-                      itemCount: installments.length,
-                      itemBuilder: (context, i) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
+                          ),
+                        ),
+                        if (selectedClass != null)
+                          Row(
                             children: [
-                              Expanded(
-                                flex: 3,
-                                child: TextField(
-                                  controller: labelCtrls[i],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Libellé',
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                flex: 2,
-                                child: TextField(
-                                  controller: dateCtrls[i],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Échéance (dd/MM/yyyy)',
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                flex: 2,
-                                child: TextField(
-                                  controller: pctCtrls[i],
-                                  decoration: const InputDecoration(
-                                    labelText: '%',
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                  ),
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: () {
+                              const Text('Spécifique à la classe'),
+                              Switch(
+                                value: forClass,
+                                onChanged: (v) {
                                   setStateDialog(() {
-                                    installments.removeAt(i);
+                                    forClass = v;
+                                    installments = currentInstallments();
                                     rebuildControllers();
                                   });
                                 },
-                                icon: const Icon(Icons.delete_outline),
                               ),
+                              if (forClass)
+                                Text(
+                                  selectedClass,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                             ],
                           ),
-                        );
-                      },
+                      ],
                     ),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fermer'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (!SafeModeService.instance.isActionAllowed()) {
-                  showSnackBar(
-                    this.context,
-                    SafeModeService.instance.getBlockedActionMessage(),
-                    isError: true,
-                  );
-                  return;
-                }
-
-                final cleaned = <Map<String, dynamic>>[];
-                double sumFrac = 0.0;
-                for (int i = 0; i < labelCtrls.length; i++) {
-                  final label = labelCtrls[i].text.trim();
-                  final dateRaw = dateCtrls[i].text.trim();
-                  final pctRaw = pctCtrls[i].text.trim().replaceAll(',', '.');
-                  final pct = double.tryParse(pctRaw);
-                  final due = _parseAnyDate(dateRaw);
-                  if (label.isEmpty || due == null || pct == null || pct <= 0) {
-                    continue;
-                  }
-                  final frac = pct / 100.0;
-                  sumFrac += frac;
-                  cleaned.add({
-                    'label': label,
-                    'dueDate': due.toIso8601String(),
-                    'fraction': frac,
-                  });
-                }
-                if (cleaned.isNotEmpty && sumFrac > 0) {
-                  // Normalize if user entered >100%
-                  if (sumFrac > 1.0) {
-                    for (final m in cleaned) {
-                      m['fraction'] = (m['fraction'] as double) / sumFrac;
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () =>
+                              setStateDialog(() => genTrimestriel()),
+                          child: const Text('Générer trimestriel'),
+                        ),
+                        OutlinedButton(
+                          onPressed: () => setStateDialog(() => genMensuel()),
+                          child: const Text('Générer mensuel'),
+                        ),
+                        OutlinedButton(
+                          onPressed: () {
+                            setStateDialog(() {
+                              installments = [];
+                              rebuildControllers();
+                            });
+                          },
+                          child: const Text('Vider'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (installments.isEmpty)
+                      const Text('Aucune échéance (utilise le défaut).')
+                    else
+                      SizedBox(
+                        height: 320,
+                        child: ListView.builder(
+                          itemCount: installments.length,
+                          itemBuilder: (context, i) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextField(
+                                      controller: labelCtrls[i],
+                                      decoration: const InputDecoration(
+                                        labelText: 'Libellé',
+                                        border: OutlineInputBorder(),
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextField(
+                                      controller: dateCtrls[i],
+                                      decoration: const InputDecoration(
+                                        labelText: 'Échéance (dd/MM/yyyy)',
+                                        border: OutlineInputBorder(),
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextField(
+                                      controller: pctCtrls[i],
+                                      decoration: const InputDecoration(
+                                        labelText: '%',
+                                        border: OutlineInputBorder(),
+                                        isDense: true,
+                                      ),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    onPressed: () {
+                                      setStateDialog(() {
+                                        installments.removeAt(i);
+                                        rebuildControllers();
+                                      });
+                                    },
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Fermer'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!SafeModeService.instance.isActionAllowed()) {
+                      showSnackBar(
+                        this.context,
+                        SafeModeService.instance.getBlockedActionMessage(),
+                        isError: true,
+                      );
+                      return;
                     }
-                  }
-                }
 
-                String? by;
-                try {
-                  final user = await AuthService.instance.getCurrentUser();
-                  by = user?.displayName ?? user?.username;
-                } catch (_) {}
+                    final cleaned = <Map<String, dynamic>>[];
+                    double sumFrac = 0.0;
+                    for (int i = 0; i < labelCtrls.length; i++) {
+                      final label = labelCtrls[i].text.trim();
+                      final dateRaw = dateCtrls[i].text.trim();
+                      final pctRaw = pctCtrls[i].text.trim().replaceAll(
+                        ',',
+                        '.',
+                      );
+                      final pct = double.tryParse(pctRaw);
+                      final due = _parseAnyDate(dateRaw);
+                      if (label.isEmpty ||
+                          due == null ||
+                          pct == null ||
+                          pct <= 0) {
+                        continue;
+                      }
+                      final frac = pct / 100.0;
+                      sumFrac += frac;
+                      cleaned.add({
+                        'label': label,
+                        'dueDate': due.toIso8601String(),
+                        'fraction': frac,
+                      });
+                    }
+                    if (cleaned.isNotEmpty && sumFrac > 0) {
+                      // Normalize if user entered >100%
+                      if (sumFrac > 1.0) {
+                        for (final m in cleaned) {
+                          m['fraction'] = (m['fraction'] as double) / sumFrac;
+                        }
+                      }
+                    }
 
-                await _dbService.setPaymentScheduleRule(
-                  classAcademicYear: effectiveYear,
-                  className: forClass ? selectedClass : null,
-                  scheduleJson: jsonEncode(cleaned),
-                  updatedBy: by,
-                );
-                if (!mounted) return;
-                showSnackBar(this.context, 'Échéancier enregistré');
-                await _fetchPayments();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Enregistrer'),
-            ),
-          ],
-        );
+                    String? by;
+                    try {
+                      final user = await AuthService.instance.getCurrentUser();
+                      by = user?.displayName ?? user?.username;
+                    } catch (_) {}
+
+                    await _dbService.setPaymentScheduleRule(
+                      classAcademicYear: effectiveYear,
+                      className: forClass ? selectedClass : null,
+                      scheduleJson: jsonEncode(cleaned),
+                      updatedBy: by,
+                    );
+                    if (!mounted) return;
+                    showSnackBar(this.context, 'Échéancier enregistré');
+                    await _fetchPayments();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Enregistrer'),
+                ),
+              ],
+            );
           },
         );
       },
@@ -992,6 +1011,21 @@ class _PaymentsPageState extends State<PaymentsPage>
             children: [
               Row(
                 children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.payments,
+                      color: Colors.white,
+                      size: isDesktop ? 32 : 24,
+                    ),
+                  ),
+                  SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1217,8 +1251,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                                   child: Text(
                                     'Toutes les années',
                                     style: TextStyle(
-                                      color:
-                                          theme.textTheme.bodyMedium?.color,
+                                      color: theme.textTheme.bodyMedium?.color,
                                     ),
                                   ),
                                 ),
@@ -1227,8 +1260,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                                   child: Text(
                                     'Année courante ($currentYear)',
                                     style: TextStyle(
-                                      color:
-                                          theme.textTheme.bodyMedium?.color,
+                                      color: theme.textTheme.bodyMedium?.color,
                                     ),
                                   ),
                                 ),
@@ -1241,7 +1273,9 @@ class _PaymentsPageState extends State<PaymentsPage>
                                           y,
                                           style: TextStyle(
                                             color: theme
-                                                .textTheme.bodyMedium?.color,
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.color,
                                           ),
                                         ),
                                       ),
@@ -1371,10 +1405,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                           onPressed: showCancelledTab
                               ? null
                               : () => _exportToExcel(theme),
-                          icon: const Icon(
-                            Icons.grid_on,
-                            color: Colors.white,
-                          ),
+                          icon: const Icon(Icons.grid_on, color: Colors.white),
                           label: const Text('Exporter Excel'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF10B981),
@@ -1701,12 +1732,13 @@ class _PaymentsPageState extends State<PaymentsPage>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (isPaid
-                            ? Color(0xFF10B981)
-                            : (arrears > 0
-                                  ? Color(0xFFF59E0B)
-                                  : Color(0xFFEF4444)))
-                        .withOpacity(0.3),
+                    color:
+                        (isPaid
+                                ? Color(0xFF10B981)
+                                : (arrears > 0
+                                      ? Color(0xFFF59E0B)
+                                      : Color(0xFFEF4444)))
+                            .withOpacity(0.3),
                     blurRadius: 4,
                     offset: Offset(0, 2),
                   ),
@@ -2302,8 +2334,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                               labelText: 'Motif',
                               hintText: 'Ex: bourse, réduction, etc.',
                               isTextArea: true,
-                              validator: (v) =>
-                                  (v == null || v.trim().isEmpty)
+                              validator: (v) => (v == null || v.trim().isEmpty)
                                   ? 'Motif requis'
                                   : null,
                             ),
@@ -2794,7 +2825,10 @@ class _PaymentsPageState extends State<PaymentsPage>
                           }
                         },
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
                           onPressed: () async {
                             if (!SafeModeService.instance.isActionAllowed()) {
                               showSnackBar(
@@ -2832,7 +2866,9 @@ class _PaymentsPageState extends State<PaymentsPage>
                             );
                             if (ok != true) return;
                             if (a.id != null) {
-                              await _dbService.deletePaymentAttachment(id: a.id!);
+                              await _dbService.deletePaymentAttachment(
+                                id: a.id!,
+                              );
                             }
                             try {
                               final f = File(a.filePath);
@@ -3054,8 +3090,9 @@ class _PaymentsPageState extends State<PaymentsPage>
         final totalDue = _adjustedTotalDueForStudent(student);
         final expectedPaid = _expectedPaidByDate(student, DateTime.now());
         final arrears = expectedPaid - totalPaid;
-        final double remaining =
-            (totalDue - totalPaid) > 0 ? (totalDue - totalPaid) : 0.0;
+        final double remaining = (totalDue - totalPaid) > 0
+            ? (totalDue - totalPaid)
+            : 0.0;
         String statut;
         if (totalDue > 0 && totalPaid >= totalDue) {
           statut = 'Payé';
@@ -3160,7 +3197,9 @@ class _PaymentsPageState extends State<PaymentsPage>
             .where((pay) => pay.studentId == student.id && !pay.isCancelled)
             .fold<double>(0, (sum, pay) => sum + pay.amount);
         final totalDue = _adjustedTotalDueForStudent(student);
-        final remaining = (totalDue - totalPaid) > 0 ? (totalDue - totalPaid) : 0.0;
+        final remaining = (totalDue - totalPaid) > 0
+            ? (totalDue - totalPaid)
+            : 0.0;
 
         String statut;
         if (totalDue > 0 && totalPaid >= totalDue) {

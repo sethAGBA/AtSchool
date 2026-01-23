@@ -7,6 +7,35 @@ import 'package:school_manager/services/signature_assignment_service.dart';
 class SignaturePdfService {
   final SignatureAssignmentService _assignmentService = SignatureAssignmentService();
 
+  String _adminRoleLabel(String role) {
+    switch (role) {
+      case 'directeur_primaire':
+        return 'Directeur (Primaire)';
+      case 'directeur_college':
+        return 'Directeur (Collège)';
+      case 'directeur_lycee':
+        return 'Directeur (Lycée)';
+      case 'directeur_universite':
+        return 'Directeur (Université)';
+      case 'proviseur':
+        return 'Proviseur';
+      case 'directeur':
+        return 'Directeur';
+      default:
+        return 'Directeur';
+    }
+  }
+
+  Future<Signature?> _resolveAdminSignature(String adminRole) async {
+    if (adminRole == 'proviseur') {
+      return _assignmentService.getProviseurSignature();
+    }
+    if (adminRole == 'directeur') {
+      return _assignmentService.getDirecteurSignature();
+    }
+    return _assignmentService.getDefaultSignatureByRole(adminRole);
+  }
+
   /// Récupère les signatures pour un bulletin
   Future<Map<String, Signature?>> getSignaturesForBulletin({
     required String className,
@@ -16,9 +45,7 @@ class SignaturePdfService {
     try {
       final futures = await Future.wait([
         _assignmentService.getTitulaireSignature(className),
-        adminRole == 'proviseur'
-            ? _assignmentService.getProviseurSignature()
-            : _assignmentService.getDirecteurSignature(),
+        _resolveAdminSignature(adminRole),
         _assignmentService.getDirecteurCachet(),
       ]);
 
@@ -41,9 +68,7 @@ class SignaturePdfService {
   Future<Map<String, Signature?>> getSignaturesForReceipt({String adminRole = 'directeur'}) async {
     try {
       final futures = await Future.wait([
-        adminRole == 'proviseur'
-            ? _assignmentService.getProviseurSignature()
-            : _assignmentService.getDirecteurSignature(),
+        _resolveAdminSignature(adminRole),
         _assignmentService.getDirecteurCachet(),
       ]);
 
@@ -298,7 +323,7 @@ class SignaturePdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  adminRole == 'proviseur' ? 'Proviseur(e) :' : 'Directeur(ice) :',
+                  '${_adminRoleLabel(adminRole)} :',
                   style: pw.TextStyle(
                     font: timesBold,
                     color: mainColor,

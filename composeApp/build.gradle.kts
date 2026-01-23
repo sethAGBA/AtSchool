@@ -58,6 +58,12 @@ kotlin {
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(projects.shared)
+            implementation(libs.kotlinx.datetime)
+            
+            // Voyager Navigation
+            implementation("cafe.adriel.voyager:voyager-navigator:1.1.0-beta03")
+            implementation("cafe.adriel.voyager:voyager-screenmodel:1.1.0-beta03")
+            implementation("cafe.adriel.voyager:voyager-transitions:1.1.0-beta03")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -70,11 +76,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.example.atschool"
+    namespace = "com.ecolix.app"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.example.atschool"
+        applicationId = "com.ecolix.app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -102,11 +108,11 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.example.atschool.MainKt"
+        mainClass = "com.ecolix.atschool.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.example.atschool"
+            packageName = "com.ecolix.app"
             packageVersion = "1.0.0"
         }
     }

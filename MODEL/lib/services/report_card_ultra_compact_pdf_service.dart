@@ -15,7 +15,6 @@ import 'package:school_manager/services/database_service.dart';
 import 'package:school_manager/services/safe_mode_service.dart';
 import 'package:school_manager/services/signature_pdf_service.dart';
 
-
 class ReportCardUltraCompactPdfService {
   /// Vérifie si l'action est autorisée (non bloquée par le mode coffre fort)
   static void _checkSafeMode() {
@@ -88,6 +87,44 @@ class ReportCardUltraCompactPdfService {
     return dateString;
   }
 
+  static String _resolveDirectorForLevel(SchoolInfo schoolInfo, String niveau) {
+    final n = niveau.trim().toLowerCase();
+    String? candidate;
+    if (n.contains('primaire') || n.contains('maternelle')) {
+      candidate = schoolInfo.directorPrimary;
+    } else if (n.contains('coll')) {
+      candidate = schoolInfo.directorCollege;
+    } else if (n.contains('lyc')) {
+      candidate = schoolInfo.directorLycee;
+    } else if (n.contains('univ')) {
+      candidate = schoolInfo.directorUniversity;
+    }
+    final resolved = candidate?.trim();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
+    return schoolInfo.director.trim();
+  }
+
+  static String _resolveAdminRoleForLevel(
+    SchoolInfo schoolInfo,
+    String niveau,
+  ) {
+    final bool isComplexe =
+        (schoolInfo.directorPrimary?.trim().isNotEmpty ?? false) ||
+        (schoolInfo.directorCollege?.trim().isNotEmpty ?? false) ||
+        (schoolInfo.directorLycee?.trim().isNotEmpty ?? false) ||
+        (schoolInfo.directorUniversity?.trim().isNotEmpty ?? false);
+    final n = niveau.trim().toLowerCase();
+    if (isComplexe) {
+      if (n.contains('primaire') || n.contains('maternelle')) {
+        return 'directeur_primaire';
+      }
+      if (n.contains('coll')) return 'directeur_college';
+      if (n.contains('lyc')) return 'directeur_lycee';
+      if (n.contains('univ')) return 'directeur_universite';
+    }
+    return n.contains('lyc') ? 'proviseur' : 'directeur';
+  }
+
   static String _autoConduiteText({
     required int attendanceInjustifiee,
     required int retards,
@@ -108,9 +145,10 @@ class ReportCardUltraCompactPdfService {
   }
 
   static String _autoAppreciationGeneraleText(double average) {
-    if (average >= 16.0) return 'Excellent travail';
-    if (average >= 14.0) return 'Très bon dans l\'ensemble';
-    if (average >= 12.0) return 'Bon dans l\'ensemble';
+    if (average >= 19.0) return 'Excellent travail';
+    if (average >= 16.0) return 'Très bien';
+    if (average >= 14.0) return 'Bien';
+    if (average >= 12.0) return 'Assez Bien';
     if (average >= 10.0) return 'Passable';
     return 'Insuffisant';
   }
@@ -171,12 +209,12 @@ class ReportCardUltraCompactPdfService {
     final tableHeaderText = PdfColors.white;
     final tableRowAlt = PdfColors.blue50;
     final resolvedFooterNote = footerNote.trim();
-    final resolvedCivility =
-        adminCivility.trim().isNotEmpty ? adminCivility.trim() : 'M.';
-    final resolvedAverage =
-        (moyenneAnnuelle != null && moyenneAnnuelle > 0.0)
-            ? moyenneAnnuelle
-            : moyenneGenerale;
+    final resolvedCivility = adminCivility.trim().isNotEmpty
+        ? adminCivility.trim()
+        : 'M.';
+    final resolvedAverage = (moyenneAnnuelle != null && moyenneAnnuelle > 0.0)
+        ? moyenneAnnuelle
+        : moyenneGenerale;
     final autoConduite = _autoConduiteText(
       attendanceInjustifiee: attendanceInjustifiee,
       retards: retards,
@@ -194,11 +232,13 @@ class ReportCardUltraCompactPdfService {
     final resolvedEncouragement = pointsADevelopper.trim().isNotEmpty
         ? pointsADevelopper
         : _autoEncouragementText(resolvedAverage);
-    final resolvedAssiduiteConduite =
-        conduite.trim().isNotEmpty ? conduite : '';
-    final directorName = schoolInfo.director.trim();
-    final directorDisplay =
-        directorName.isNotEmpty ? '$resolvedCivility $directorName' : '';
+    final resolvedAssiduiteConduite = conduite.trim().isNotEmpty
+        ? conduite
+        : '';
+    final directorName = _resolveDirectorForLevel(schoolInfo, niveau);
+    final directorDisplay = directorName.isNotEmpty
+        ? '$resolvedCivility $directorName'
+        : '';
     // Charger catégories et matières de la classe pour permettre un groupement par catégories
     final DatabaseService _db = DatabaseService();
     final List<Category> _pdfCategories = await _db.getCategories();
@@ -211,6 +251,13 @@ class ReportCardUltraCompactPdfService {
       academicYear: academicYear,
       term: selectedTerm,
     );
+
+    // Récupérer la liste officielle des élèves de la classe pour filtrer les calculs
+    final List<Student> currentClassStudents = await _db
+        .getStudentsByClassAndClassYear(student.className, academicYear);
+    final Set<String> classStudentIds = currentClassStudents
+        .map((s) => s.id)
+        .toSet();
     // Charger coefficients de matière au niveau de la classe; fallback sur appreciations (archive incluse)
     Map<String, double> subjectWeights = await _db.getClassSubjectCoefficients(
       student.className,
@@ -252,9 +299,9 @@ class ReportCardUltraCompactPdfService {
       // Accumulate annual (inchangé)
       for (final g in gradesForTerm.where(
         (g) =>
+            classStudentIds.contains(g.studentId) &&
             (g.type == 'Devoir' || g.type == 'Composition') &&
-            g.value != null &&
-            g.value != 0,
+            g.value != null,
       )) {
         if (g.maxValue > 0 && g.coefficient > 0) {
           nAnnualByStudent[g.studentId] =
@@ -265,12 +312,9 @@ class ReportCardUltraCompactPdfService {
         }
       }
       // Classement pondéré par coefficients de matières
-      final Set<String> studentIds = gradesForTerm
-          .map((g) => g.studentId)
-          .toSet();
       final List<double> avgs = [];
       double myAvg = 0.0;
-      for (final sid in studentIds) {
+      for (final sid in classStudentIds) {
         double sumPoints = 0.0;
         double sumWeights = 0.0;
         for (final subject in subjects) {
@@ -280,8 +324,7 @@ class ReportCardUltraCompactPdfService {
                     g.studentId == sid &&
                     g.subject == subject &&
                     (g.type == 'Devoir' || g.type == 'Composition') &&
-                    g.value != null &&
-                    g.value != 0,
+                    g.value != null,
               )
               .toList();
           if (sg.isEmpty) continue;
@@ -336,12 +379,12 @@ class ReportCardUltraCompactPdfService {
     final sexe = student.gender;
     // Pré-charger les signatures/images pour ce bulletin
     final signaturePdfService = SignaturePdfService();
-    final bool isLycee = (niveau.toLowerCase().contains('lycée'));
+    final String adminRole = _resolveAdminRoleForLevel(schoolInfo, niveau);
     final Map<String, Signature?> _bulletinSignatures =
         await signaturePdfService.getSignaturesForBulletin(
           className: student.className,
           titulaire: titulaire,
-          adminRole: isLycee ? 'proviseur' : 'directeur',
+          adminRole: adminRole,
         );
     // ---
     final PdfPageFormat _pageFormat = isLandscape
@@ -1024,7 +1067,8 @@ class ReportCardUltraCompactPdfService {
                                 text: 'Date et lieu de naissance : ',
                               ),
                               pw.TextSpan(
-                                text: _formatDate(student.dateOfBirth) +
+                                text:
+                                    _formatDate(student.dateOfBirth) +
                                     (student.placeOfBirth != null &&
                                             student.placeOfBirth!
                                                 .trim()
@@ -1052,10 +1096,9 @@ class ReportCardUltraCompactPdfService {
                             children: [
                               const pw.TextSpan(text: 'Statut : '),
                               pw.TextSpan(
-                                text:
-                                    student.status.isNotEmpty
-                                        ? student.status
-                                        : '-',
+                                text: student.status.isNotEmpty
+                                    ? student.status
+                                    : '-',
                                 style: pw.TextStyle(
                                   font: timesBold,
                                   color: mainColor,
@@ -1136,139 +1179,162 @@ class ReportCardUltraCompactPdfService {
               pw.Widget buildTableForSubjects(
                 List<String> names, {
                 bool showTotals = false,
+                bool showHeader = true,
               }) {
                 double sumCoefficients = 0.0;
                 double sumPointsEleve = 0.0;
                 double sumPointsClasse = 0.0;
 
                 final List<pw.TableRow> rows = [];
-                rows.add(
-                  pw.TableRow(
-                    decoration: pw.BoxDecoration(color: tableHeaderBg),
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Disciplines',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                if (showHeader) {
+                  rows.add(
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(color: tableHeaderBg),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Disciplines',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Sur',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Sur',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Dev',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Dev',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Comp',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Comp',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Coef',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Coef',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Moy Gen',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Moy.Gen',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Moy Gen Clas',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Moy.Gen Cl.',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Moy Clas',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Moy.Cl',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Professeur(s)',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Prof.',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          'Observations du Professeur',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            color: tableHeaderText,
-                            fontSize: 9,
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2),
+                          child: pw.Text(
+                            'Obs. Prof.',
+                            style: pw.TextStyle(
+                              font: timesBold,
+                              color: tableHeaderText,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                            maxLines: 1,
+                            overflow: pw.TextOverflow.clip,
                           ),
-                          textAlign: pw.TextAlign.center,
                         ),
-                      ),
-                    ],
-                  ),
-                );
+                      ],
+                    ),
+                  );
+                }
 
                 for (final subject in names) {
                   final subjectGrades = grades
@@ -1633,19 +1699,101 @@ class ReportCardUltraCompactPdfService {
                 );
               }
 
-              final List<String> flatSubjects = [];
-              if (hasCategories) {
-                for (final entry in grouped.entries) {
-                  flatSubjects.addAll(entry.value);
-                }
-              } else {
-                flatSubjects.addAll(subjects);
+              if (!hasCategories) {
+                return <pw.Widget>[
+                  buildTableForSubjects(subjects, showTotals: false),
+                  pw.SizedBox(height: 6),
+                  buildGlobalTotals(),
+                ];
               }
-              return <pw.Widget>[
-                buildTableForSubjects(flatSubjects, showTotals: false),
-                pw.SizedBox(height: 6),
-                buildGlobalTotals(),
-              ];
+
+              final List<String?> orderedKeys = [];
+              for (final cat in _pdfCategories) {
+                if (grouped.containsKey(cat.id)) orderedKeys.add(cat.id);
+              }
+              if (grouped.containsKey(null)) orderedKeys.add(null);
+
+              final List<pw.Widget> sections = [];
+              bool headerShown = false;
+              for (final key in orderedKeys) {
+                final bool isUncat = key == null;
+                final String label = isUncat
+                    ? 'Matières non classées'
+                    : 'Matières ' +
+                          _pdfCategories
+                              .firstWhere(
+                                (c) => c.id == key,
+                                orElse: () => Category.empty(),
+                              )
+                              .name
+                              .toLowerCase();
+                final PdfColor badge = isUncat
+                    ? PdfColors.blueGrey
+                    : PdfColor.fromHex(
+                        _pdfCategories
+                            .firstWhere(
+                              (c) => c.id == key,
+                              orElse: () => Category.empty(),
+                            )
+                            .color
+                            .replaceFirst('#', ''),
+                      );
+                sections.add(
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    margin: const pw.EdgeInsets.only(bottom: 4),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.grey50,
+                      borderRadius: pw.BorderRadius.circular(6),
+                      border: pw.Border.all(color: PdfColors.grey300),
+                    ),
+                    child: pw.Row(
+                      children: [
+                        pw.Container(
+                          width: 6,
+                          height: 12,
+                          decoration: pw.BoxDecoration(
+                            color: badge,
+                            borderRadius: pw.BorderRadius.circular(3),
+                          ),
+                        ),
+                        pw.SizedBox(width: 6),
+                        pw.Text(
+                          label,
+                          style: pw.TextStyle(
+                            font: timesBold,
+                            color: secondaryColor,
+                            fontSize: 8,
+                          ),
+                        ),
+                        pw.Spacer(),
+                        pw.Text(
+                          '${grouped[key]!.length} matière(s)',
+                          style: pw.TextStyle(
+                            font: times,
+                            color: secondaryColor,
+                            fontSize: 7.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+                sections.add(
+                  buildTableForSubjects(
+                    grouped[key]!,
+                    showTotals: false,
+                    showHeader: !headerShown,
+                  ),
+                );
+                headerShown = true;
+                sections.add(pw.SizedBox(height: 4));
+              }
+              sections.add(buildGlobalTotals());
+              return sections;
             }()),
             pw.SizedBox(height: spacing),
             // Synthèse : tableau des moyennes par période
@@ -2358,5 +2506,4 @@ class ReportCardUltraCompactPdfService {
     );
     return pdf.save();
   }
-
 }

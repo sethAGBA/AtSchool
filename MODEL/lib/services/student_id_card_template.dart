@@ -25,10 +25,10 @@ class StudentIdCardTemplate {
     pw.Font fontBold;
     try {
       final regularData = await rootBundle.load(
-        'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Regular.ttf',
+        'assets/fonts/nunito/Nunito-Regular.ttf',
       );
       final boldData = await rootBundle.load(
-        'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Bold.ttf',
+        'assets/fonts/nunito/Nunito-Bold.ttf',
       );
       fontRegular = pw.Font.ttf(regularData);
       fontBold = pw.Font.ttf(boldData);

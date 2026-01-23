@@ -187,12 +187,18 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
     }
     if (pwd != confirm) {
       if (!mounted) return;
-      showSnackBar(context, 'Les mots de passe ne correspondent pas.',
-          isError: true);
+      showSnackBar(
+        context,
+        'Les mots de passe ne correspondent pas.',
+        isError: true,
+      );
       return;
     }
 
-    await AuthService.instance.updateUser(username: user.username, newPassword: pwd);
+    await AuthService.instance.updateUser(
+      username: user.username,
+      newPassword: pwd,
+    );
     if (!mounted) return;
     showSnackBar(context, 'Mot de passe mis à jour');
   }
@@ -230,13 +236,13 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                     return ListTile(
                       dense: true,
                       leading: Icon(
-                        success ? Icons.check_circle_outline : Icons.error_outline,
+                        success
+                            ? Icons.check_circle_outline
+                            : Icons.error_outline,
                         color: success ? Colors.green : Colors.red,
                       ),
                       title: Text('$cat - $act'),
-                      subtitle: Text(
-                        '${fmtTs(ts)}\n$det',
-                      ),
+                      subtitle: Text('${fmtTs(ts)}\n$det'),
                       isThreeLine: true,
                     );
                   },
@@ -262,6 +268,7 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
       final s = ts.replaceFirst('T', ' ');
       return s.length >= 16 ? s.substring(0, 16) : s;
     }
+
     bool isSessionActive(UserSession s) {
       if ((s.logoutAt ?? '').trim().isNotEmpty) return false;
       final last = DateTime.tryParse(s.lastSeenAt);
@@ -292,14 +299,13 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                         color: active ? Colors.green : Colors.grey,
                         size: 14,
                       ),
-                      title: Text(
-                        'Login: ${fmtTs(s.loginAt)}',
-                      ),
+                      title: Text('Login: ${fmtTs(s.loginAt)}'),
                       subtitle: Text(
                         'Dernière activité: ${fmtTs(s.lastSeenAt)}'
                         '${(s.logoutAt ?? '').trim().isEmpty ? '' : '\nLogout: ${fmtTs(s.logoutAt!)}'}',
                       ),
-                      trailing: (s.id != null && (s.logoutAt ?? '').trim().isEmpty)
+                      trailing:
+                          (s.id != null && (s.logoutAt ?? '').trim().isEmpty)
                           ? TextButton(
                               onPressed: () async {
                                 if (!_ensureWriteAllowed()) return;
@@ -337,7 +343,9 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
         context: context,
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, setStateSB) => AlertDialog(
-            title: Text(existing == null ? 'Nouveau groupe' : 'Modifier groupe'),
+            title: Text(
+              existing == null ? 'Nouveau groupe' : 'Modifier groupe',
+            ),
             content: SizedBox(
               width: 640,
               child: SingleChildScrollView(
@@ -446,7 +454,9 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                     final g = _permissionGroups[i];
                     return ListTile(
                       title: Text(g.name),
-                      subtitle: Text('${g.decodePermissions().length} permission(s)'),
+                      subtitle: Text(
+                        '${g.decodePermissions().length} permission(s)',
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -461,7 +471,10 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                           ),
                           IconButton(
                             tooltip: 'Supprimer',
-                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
                             onPressed: () async {
                               if (g.id == null) return;
                               if (!_ensureWriteAllowed()) return;
@@ -472,7 +485,9 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                                     'Supprimer “${g.name}” ? Cette action est irréversible.',
                               );
                               if (confirm == true) {
-                                await DatabaseService().deletePermissionGroup(g.id!);
+                                await DatabaseService().deletePermissionGroup(
+                                  g.id!,
+                                );
                                 await _load();
                                 if (!mounted) return;
                                 Navigator.pop(ctx);
@@ -519,6 +534,7 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
       final s = ts.replaceFirst('T', ' ');
       return s.length >= 16 ? s.substring(0, 16) : s;
     }
+
     bool isActive(UserSession s) {
       if ((s.logoutAt ?? '').trim().isNotEmpty) return false;
       final last = DateTime.tryParse(s.lastSeenAt);
@@ -550,8 +566,11 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                         size: 14,
                       ),
                       title: Text('${s.username} - Login: ${fmtTs(s.loginAt)}'),
-                      subtitle: Text('Dernière activité: ${fmtTs(s.lastSeenAt)}'),
-                      trailing: (s.id != null && (s.logoutAt ?? '').trim().isEmpty)
+                      subtitle: Text(
+                        'Dernière activité: ${fmtTs(s.lastSeenAt)}',
+                      ),
+                      trailing:
+                          (s.id != null && (s.logoutAt ?? '').trim().isEmpty)
                           ? TextButton(
                               onPressed: () async {
                                 if (!_ensureWriteAllowed()) return;
@@ -756,8 +775,9 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                             .where((g) => g.id == id)
                             .toList();
                         if (group.isNotEmpty) {
-                          selectedPerms =
-                              Set<String>.from(group.first.decodePermissions());
+                          selectedPerms = Set<String>.from(
+                            group.first.decodePermissions(),
+                          );
                         }
                       });
                     },
@@ -1205,8 +1225,9 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                             .where((g) => g.id == id)
                             .toList();
                         if (group.isNotEmpty) {
-                          selectedPerms =
-                              Set<String>.from(group.first.decodePermissions());
+                          selectedPerms = Set<String>.from(
+                            group.first.decodePermissions(),
+                          );
                         }
                       });
                     },
@@ -1319,7 +1340,7 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
       ),
     );
 
-      if (ok == true) {
+    if (ok == true) {
       final displayName = displayNameCtrl.text.trim();
       final newPwd = passwordCtrl.text.trim();
       final confirm = passwordConfirmCtrl.text.trim();
@@ -1857,7 +1878,10 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                     if (canManage) ...[
                       PopupMenuButton<String>(
                         tooltip: 'Actions',
-                        icon: Icon(Icons.more_vert, color: theme.iconTheme.color),
+                        icon: Icon(
+                          Icons.more_vert,
+                          color: theme.iconTheme.color,
+                        ),
                         onSelected: (value) async {
                           final isMe = _current?.username == u.username;
                           if (value == 'edit') {
@@ -1882,7 +1906,9 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                             }
                             String? by;
                             try {
-                              by = (_current?.displayName.trim().isNotEmpty == true)
+                              by =
+                                  (_current?.displayName.trim().isNotEmpty ==
+                                      true)
                                   ? _current!.displayName
                                   : _current?.username;
                             } catch (_) {}
@@ -1896,7 +1922,9 @@ class _UsersManagementPageState extends State<UsersManagementPage> {
                             if (!_ensureWriteAllowed()) return;
                             String? by;
                             try {
-                              by = (_current?.displayName.trim().isNotEmpty == true)
+                              by =
+                                  (_current?.displayName.trim().isNotEmpty ==
+                                      true)
                                   ? _current!.displayName
                                   : _current?.username;
                             } catch (_) {}

@@ -28,6 +28,7 @@ import 'screens/signatures_page.dart';
 import 'screens/library/library_page.dart';
 import 'screens/discipline/discipline_page.dart';
 import 'services/safe_mode_service.dart';
+import 'screens/statistiques/statistics_page.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 const List<String> kFontFallback = [
@@ -170,7 +171,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           navigatorKey: appNavigatorKey,
           scaffoldMessengerKey: rootScaffoldMessengerKey,
           theme: ThemeData(
-            fontFamily: 'Roboto',
+            fontFamily: 'Nunito',
             primarySwatch: Colors.blue,
             scaffoldBackgroundColor: Colors.white,
             textTheme: (() {
@@ -185,7 +186,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             iconTheme: IconThemeData(color: Colors.grey[800]),
           ),
           darkTheme: ThemeData(
-            fontFamily: 'Roboto',
+            fontFamily: 'Nunito',
             primarySwatch: Colors.blue,
             scaffoldBackgroundColor: Colors.grey[900],
             textTheme: (() {
@@ -263,6 +264,13 @@ class _SchoolDashboardState extends State<SchoolDashboard>
   Set<String>? _permissions;
   bool _licenseActive = false;
   bool _allLicensesConsumed = false;
+  bool _isSidebarCollapsed = false;
+
+  void _toggleSidebar() {
+    setState(() {
+      _isSidebarCollapsed = !_isSidebarCollapsed;
+    });
+  }
 
   @override
   void initState() {
@@ -293,6 +301,7 @@ class _SchoolDashboardState extends State<SchoolDashboard>
       const SignaturesPage(),
       const LibraryPage(),
       const DisciplinePage(),
+      const StatisticsPage(),
     ];
     _pagePermissions = [
       'view_dashboard',
@@ -311,6 +320,7 @@ class _SchoolDashboardState extends State<SchoolDashboard>
       'view_signatures',
       'view_library',
       'view_discipline',
+      'view_statistics',
     ];
     _loadCurrentRole();
     _initLicenseListener();
@@ -394,9 +404,10 @@ class _SchoolDashboardState extends State<SchoolDashboard>
                 isDarkMode: widget.isDarkMode,
                 onThemeToggle: widget.onThemeToggle,
                 animationController: _animationController,
-                currentRole: _role,
                 currentPermissions: _permissions,
                 allowedIndices: allowedIndices,
+                isCollapsed: _isSidebarCollapsed,
+                onToggleCollapse: _toggleSidebar,
               ),
               Expanded(
                 child: hasAnyAccess

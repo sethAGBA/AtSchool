@@ -7,9 +7,8 @@ import 'package:school_manager/models/course.dart';
 import 'package:school_manager/services/database_service.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
@@ -54,6 +53,28 @@ class _StatisticsModalState extends State<StatisticsModal> {
     return '$lastName $firstName';
   }
 
+  static double _computeWeightedAverageOn20(List<Grade> grades) {
+    double total = 0.0;
+    double totalCoeff = 0.0;
+    for (final g in grades) {
+      if (g.maxValue > 0 && g.coefficient > 0) {
+        total += ((g.value / g.maxValue) * 20) * g.coefficient;
+        totalCoeff += g.coefficient;
+      }
+    }
+    return totalCoeff > 0 ? (total / totalCoeff) : 0.0;
+  }
+
+  static double _sumCoefficients(List<Grade> grades) {
+    double totalCoeff = 0.0;
+    for (final g in grades) {
+      if (g.maxValue > 0 && g.coefficient > 0) {
+        totalCoeff += g.coefficient;
+      }
+    }
+    return totalCoeff;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -82,29 +103,43 @@ class _StatisticsModalState extends State<StatisticsModal> {
         .toList();
     stats['student_count'] = classStudents.length;
 
+    final Map<String, double> subjectWeightsById = await widget.dbService
+        .getClassCourseCoefficientsById(
+          widget.className!,
+          widget.academicYear!,
+        );
+    final Map<String, double> subjectWeightsByName = await widget.dbService
+        .getClassSubjectCoefficients(widget.className!, widget.academicYear!);
+
     // Calculate general average for each student
     List<Map<String, dynamic>> studentAverages = [];
     for (var student in classStudents) {
-      double totalPoints = 0;
-      double totalCoefficients = 0;
-      final studentGrades = widget.grades.where(
-        (g) => g.studentId == student.id && g.term == widget.term,
-      );
-
-      for (var grade in studentGrades) {
-        if (grade.value > 0 && grade.maxValue > 0 && grade.coefficient > 0) {
-          totalPoints +=
-              (grade.value / grade.maxValue) * 20 * grade.coefficient;
-          totalCoefficients += grade.coefficient;
+      final studentGrades = widget.grades
+          .where((g) => g.studentId == student.id && g.term == widget.term)
+          .toList();
+      final Map<String, List<Grade>> bySubject = {};
+      for (final g in studentGrades) {
+        final key = g.subjectId.trim().isNotEmpty ? g.subjectId : g.subject;
+        bySubject.putIfAbsent(key, () => []).add(g);
+      }
+      double sumPoints = 0.0;
+      double sumWeights = 0.0;
+      bySubject.forEach((_, list) {
+        final average = _computeWeightedAverageOn20(list);
+        final subjectId = list.first.subjectId.trim();
+        final subjectName = list.first.subject;
+        double? weight = subjectId.isNotEmpty
+            ? subjectWeightsById[subjectId]
+            : null;
+        weight ??= subjectWeightsByName[subjectName];
+        weight ??= _sumCoefficients(list);
+        if (weight > 0) {
+          sumPoints += average * weight;
+          sumWeights += weight;
         }
-      }
-
-      if (totalCoefficients > 0) {
-        studentAverages.add({
-          'student': student,
-          'average': totalPoints / totalCoefficients,
-        });
-      }
+      });
+      final average = sumWeights > 0 ? (sumPoints / sumWeights) : 0.0;
+      studentAverages.add({'student': student, 'average': average});
     }
 
     // Classement par mérite (avec ex æquo)
@@ -152,25 +187,17 @@ class _StatisticsModalState extends State<StatisticsModal> {
         final subjectGrades = widget.grades.where(
           (g) =>
               g.studentId == student.id &&
-              g.subject == subject.name &&
+              (g.subjectId.trim().isNotEmpty
+                  ? g.subjectId == subject.id
+                  : g.subject == subject.name) &&
               g.term == widget.term,
         );
-        double totalPoints = 0;
-        double totalCoefficients = 0;
-
-        for (var grade in subjectGrades) {
-          if (grade.value > 0 && grade.maxValue > 0 && grade.coefficient > 0) {
-            totalPoints +=
-                (grade.value / grade.maxValue) * 20 * grade.coefficient;
-            totalCoefficients += grade.coefficient;
-          }
-        }
-
-        if (totalCoefficients > 0) {
-          double studentSubjectAverage = totalPoints / totalCoefficients;
-          totalSubjectAverage += studentSubjectAverage;
+        final subjectList = subjectGrades.toList();
+        final double subjectAverage = _computeWeightedAverageOn20(subjectList);
+        if (_sumCoefficients(subjectList) > 0) {
+          totalSubjectAverage += subjectAverage;
           studentCountForSubject++;
-          if (studentSubjectAverage >= 10) {
+          if (subjectAverage >= 10) {
             studentsWithAverage++;
           }
         }
@@ -190,7 +217,10 @@ class _StatisticsModalState extends State<StatisticsModal> {
 
     // Nombre d'élèves par tranche de notes
     stats['excellent_students'] = studentAverages
-        .where((s) => s['average'] >= 16)
+        .where((s) => s['average'] >= 19)
+        .length;
+    stats['tres_bien_students'] = studentAverages
+        .where((s) => s['average'] >= 16 && s['average'] < 19)
         .length;
     stats['bien_students'] = studentAverages
         .where((s) => s['average'] >= 14 && s['average'] < 16)
@@ -204,6 +234,45 @@ class _StatisticsModalState extends State<StatisticsModal> {
     stats['insuffisant_students'] = studentAverages
         .where((s) => s['average'] < 10)
         .length;
+
+    // --- New: Global Class Success Rate, Gender & Status Breakdown ---
+    int globalAdmis = studentAverages
+        .where((s) => (s['average'] as double) >= 10)
+        .length;
+    stats['global_success_rate'] = studentAverages.isNotEmpty
+        ? (globalAdmis / studentAverages.length) * 100
+        : 0.0;
+
+    final genderBreakdown = <String, Map<String, int>>{};
+    final statusBreakdown = <String, Map<String, int>>{};
+
+    for (var entry in studentAverages) {
+      final s = entry['student'] as Student;
+      final avg = entry['average'] as double;
+      final isPassing = avg >= 10;
+      final gender = (s.gender.trim().isEmpty ? 'M' : s.gender.trim())
+          .toUpperCase();
+      final status = (s.status.trim().isEmpty ? 'Nouveau' : s.status.trim());
+
+      // Gender Tracking
+      genderBreakdown.putIfAbsent(gender, () => {'success': 0, 'total': 0});
+      genderBreakdown[gender]!['total'] =
+          genderBreakdown[gender]!['total']! + 1;
+      if (isPassing)
+        genderBreakdown[gender]!['success'] =
+            genderBreakdown[gender]!['success']! + 1;
+
+      // Status Tracking
+      statusBreakdown.putIfAbsent(status, () => {'success': 0, 'total': 0});
+      statusBreakdown[status]!['total'] =
+          statusBreakdown[status]!['total']! + 1;
+      if (isPassing)
+        statusBreakdown[status]!['success'] =
+            statusBreakdown[status]!['success']! + 1;
+    }
+    stats['gender_breakdown'] = genderBreakdown;
+    stats['status_breakdown'] = statusBreakdown;
+    // -----------------------------------------------------------------
 
     setState(() => isLoading = false);
   }
@@ -264,10 +333,49 @@ class _StatisticsModalState extends State<StatisticsModal> {
               stats['student_count'].toString(),
               Icons.people,
             ),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    "Effectif",
+                    stats['student_count'].toString(),
+                    Icons.people,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    "Taux Réussite",
+                    "${(stats['global_success_rate'] as double).toStringAsFixed(1)}%",
+                    Icons.check_circle,
+                    color: (stats['global_success_rate'] as double) >= 50
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+              ],
+            ),
             _buildDivider(),
             _buildRankingSection(),
             _buildDivider(),
             _buildSubjectStatsSection(),
+            const SizedBox(height: 12),
+            _buildClassAverageBarChart(),
+            _buildDivider(),
+            _buildModernBreakdownSection(
+              title: "Réussite par Genre",
+              icon: Icons.wc,
+              data: stats['gender_breakdown'],
+              color: Colors.indigo,
+            ),
+            _buildDivider(),
+            _buildModernBreakdownSection(
+              title: "Réussite par Statut",
+              icon: Icons.badge_outlined,
+              data: stats['status_breakdown'],
+              color: Colors.teal,
+            ),
             _buildDivider(),
             _buildGradeDistributionSection(),
             _buildDivider(),
@@ -323,6 +431,14 @@ class _StatisticsModalState extends State<StatisticsModal> {
     ]);
     sheetObject.appendRow([]);
 
+    sheetObject.appendRow([
+      TextCellValue('Taux de réussite global'),
+      TextCellValue(
+        '${(stats['global_success_rate'] as double).toStringAsFixed(1)}%',
+      ),
+    ]);
+    sheetObject.appendRow([]);
+
     // Ranking
     sheetObject.appendRow([TextCellValue('Classement par mérite')]);
     sheetObject.appendRow([
@@ -366,8 +482,12 @@ class _StatisticsModalState extends State<StatisticsModal> {
     // Grade Distribution
     sheetObject.appendRow([TextCellValue('Répartition des notes')]);
     sheetObject.appendRow([
-      TextCellValue('Excellent (>= 16)'),
+      TextCellValue('Excellent (>= 19)'),
       IntCellValue(stats['excellent_students']),
+    ]);
+    sheetObject.appendRow([
+      TextCellValue('Très Bien (16-19)'),
+      IntCellValue(stats['tres_bien_students']),
     ]);
     sheetObject.appendRow([
       TextCellValue('Bien (14-16)'),
@@ -385,6 +505,36 @@ class _StatisticsModalState extends State<StatisticsModal> {
       TextCellValue('Insuffisant (< 10)'),
       IntCellValue(stats['insuffisant_students']),
     ]);
+    sheetObject.appendRow([]);
+
+    // Success Breakdowns
+    sheetObject.appendRow([TextCellValue('Réussite détaillée')]);
+    sheetObject.appendRow([TextCellValue('Par Sexe')]);
+    final Map<String, dynamic> genderStats = stats['gender_breakdown'];
+    genderStats.forEach((key, value) {
+      final success = (value['success'] as num).toDouble();
+      final total = (value['total'] as num).toDouble();
+      final successRate = total > 0 ? (success / total) * 100 : 0.0;
+      sheetObject.appendRow([
+        TextCellValue(key),
+        IntCellValue(value['total'] as int),
+        TextCellValue('${successRate.toStringAsFixed(1)}%'),
+      ]);
+    });
+    sheetObject.appendRow([]);
+
+    sheetObject.appendRow([TextCellValue('Par Statut')]);
+    final Map<String, dynamic> statusStats = stats['status_breakdown'];
+    statusStats.forEach((key, value) {
+      final success = (value['success'] as num).toDouble();
+      final total = (value['total'] as num).toDouble();
+      final successRate = total > 0 ? (success / total) * 100 : 0.0;
+      sheetObject.appendRow([
+        TextCellValue(key),
+        IntCellValue(value['total'] as int),
+        TextCellValue('${successRate.toStringAsFixed(1)}%'),
+      ]);
+    });
     sheetObject.appendRow([]);
 
     // Top/Bottom 3
@@ -422,10 +572,10 @@ class _StatisticsModalState extends State<StatisticsModal> {
 
     final pdf = pw.Document();
     final regularData = await rootBundle.load(
-      'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Regular.ttf',
+      'assets/fonts/nunito/Nunito-Regular.ttf',
     );
     final boldData = await rootBundle.load(
-      'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Bold.ttf',
+      'assets/fonts/nunito/Nunito-Bold.ttf',
     );
     final symbolsData = await rootBundle.load(
       'assets/fonts/NotoSansSymbols2/NotoSansSymbols2-Regular.ttf',
@@ -521,6 +671,25 @@ class _StatisticsModalState extends State<StatisticsModal> {
             ),
             pw.SizedBox(height: 8),
 
+            // Global KPI
+            pw.Row(
+              children: [
+                pw.Text(
+                  'Taux de réussite global: ',
+                  style: pw.TextStyle(font: timesBold, fontSize: 12),
+                ),
+                pw.Text(
+                  '${(stats['global_success_rate'] as double).toStringAsFixed(1)}%',
+                  style: pw.TextStyle(
+                    font: timesBold,
+                    fontSize: 12,
+                    color: accent,
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 16),
+
             // Ranking
             pw.Text(
               'Classement par mérite',
@@ -576,17 +745,117 @@ class _StatisticsModalState extends State<StatisticsModal> {
             ),
             pw.SizedBox(height: 16),
 
-            // Grade Distribution
             pw.Text(
               'Répartition des notes',
               style: pw.TextStyle(font: timesBold, fontSize: 14, color: accent),
             ),
             pw.SizedBox(height: 6),
-            pw.Text('Excellent (>= 16): ${stats['excellent_students']}'),
+            pw.Text('Excellent (>= 19): ${stats['excellent_students']}'),
+            pw.Text('Très Bien (16-19): ${stats['tres_bien_students']}'),
             pw.Text('Bien (14-16): ${stats['bien_students']}'),
             pw.Text('Assez Bien (12-14): ${stats['assez_bien_students']}'),
             pw.Text('Passable (10-12): ${stats['passable_students']}'),
             pw.Text('Insuffisant (< 10): ${stats['insuffisant_students']}'),
+            pw.Table.fromTextArray(
+              headerDecoration: pw.BoxDecoration(color: light),
+              headers: ['Tranche', 'Nombre d\'élèves'],
+              data: [
+                ['Excellent (>= 19)', stats['excellent_students'].toString()],
+                ['Très Bien (16-19)', stats['tres_bien_students'].toString()],
+                ['Bien (14-16)', stats['bien_students'].toString()],
+                ['Assez Bien (12-14)', stats['assez_bien_students'].toString()],
+                ['Passable (10-12)', stats['passable_students'].toString()],
+                [
+                  'Insuffisant (< 10)',
+                  stats['insuffisant_students'].toString(),
+                ],
+              ],
+            ),
+            pw.SizedBox(height: 16),
+
+            // Breakdowns
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Réussite par Genre',
+                        style: pw.TextStyle(
+                          font: timesBold,
+                          fontSize: 12,
+                          color: accent,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Table.fromTextArray(
+                        headerDecoration: pw.BoxDecoration(color: light),
+                        headers: ['Genre', 'Eff.', 'Réussite'],
+                        data:
+                            (stats['gender_breakdown'] as Map<String, dynamic>)
+                                .entries
+                                .map((e) {
+                                  final success = (e.value['success'] as num)
+                                      .toDouble();
+                                  final total = (e.value['total'] as num)
+                                      .toDouble();
+                                  final rate = total > 0
+                                      ? (success / total) * 100
+                                      : 0.0;
+                                  return [
+                                    e.key,
+                                    e.value['total'].toString(),
+                                    '${rate.toStringAsFixed(1)}%',
+                                  ];
+                                })
+                                .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(width: 20),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Réussite par Statut',
+                        style: pw.TextStyle(
+                          font: timesBold,
+                          fontSize: 12,
+                          color: accent,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Table.fromTextArray(
+                        headerDecoration: pw.BoxDecoration(color: light),
+                        headers: ['Statut', 'Eff.', 'Réussite'],
+                        data:
+                            (stats['status_breakdown'] as Map<String, dynamic>)
+                                .entries
+                                .map((e) {
+                                  final success = (e.value['success'] as num)
+                                      .toDouble();
+                                  final total = (e.value['total'] as num)
+                                      .toDouble();
+                                  final rate = total > 0
+                                      ? (success / total) * 100
+                                      : 0.0;
+                                  return [
+                                    e.key,
+                                    e.value['total'].toString(),
+                                    '${rate.toStringAsFixed(1)}%',
+                                  ];
+                                })
+                                .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             pw.SizedBox(height: 16),
 
             // Top/Bottom 3
@@ -713,12 +982,23 @@ class _StatisticsModalState extends State<StatisticsModal> {
   }
 
   Widget _buildGradeDistributionSection() {
+    // Let's use the stats as they are calculated in _loadStats:
+    final int total = stats['student_count'] ?? 0;
+    if (total == 0) return const SizedBox.shrink();
+
+    // Re-calculating counts for the 6-bin format if necessary, or just using the 5 bins.
+    // Actually, in StatisticsModal._loadStats, I have:
+    // excellent (>= 19), bien (15 -16), assez bien (12-14), passable (10-12), insuffisant (< 10).
+    // To match GradesPage's labels exactly, I might need to split 'insuffisant'.
+    // But since this is a summary from averages, let's keep it consistent with what's already there or slightly adapt.
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: const [
             Icon(Icons.pie_chart, color: Colors.green),
+            Icon(Icons.bar_chart, color: Colors.green),
             SizedBox(width: 8),
             Text(
               "Répartition des notes",
@@ -728,8 +1008,14 @@ class _StatisticsModalState extends State<StatisticsModal> {
         ),
         const SizedBox(height: 10),
         _buildStatCard(
-          "Excellent (>= 16)",
+          "Excellent (>= 19)",
           stats['excellent_students'].toString(),
+          Icons.star,
+          color: Colors.amber,
+        ),
+        _buildStatCard(
+          "Très Bien (16-18)",
+          stats['tres_bien_students'].toString(),
           Icons.star,
           color: Colors.amber,
         ),
@@ -756,6 +1042,106 @@ class _StatisticsModalState extends State<StatisticsModal> {
           stats['insuffisant_students'].toString(),
           Icons.warning,
           color: Colors.red,
+        ),
+        const SizedBox(height: 20),
+        Container(
+          height: 180,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildBar(
+                context,
+                "Exc.",
+                stats['excellent_students'],
+                total,
+                Colors.purple,
+              ),
+              _buildBar(
+                context,
+                "T.Bien",
+                stats['tres_bien_students'],
+                total,
+                Colors.teal,
+              ),
+              _buildBar(
+                context,
+                "Bien",
+                stats['bien_students'],
+                total,
+                Colors.green,
+              ),
+              _buildBar(
+                context,
+                "A.Bien",
+                stats['assez_bien_students'],
+                total,
+                Colors.lightGreen,
+              ),
+              _buildBar(
+                context,
+                "Pass.",
+                stats['passable_students'],
+                total,
+                Colors.orange,
+              ),
+              _buildBar(
+                context,
+                "Ins.",
+                stats['insuffisant_students'],
+                total,
+                Colors.red,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBar(
+    BuildContext context,
+    String label,
+    int count,
+    int total,
+    Color color,
+  ) {
+    final double ratio = total > 0 ? count / total : 0.0;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(
+          count.toString(),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: 30,
+          height: (ratio * 120).clamp(2.0, 120.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [color, color.withOpacity(0.6)],
+            ),
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.15),
+                blurRadius: 4,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -803,32 +1189,216 @@ class _StatisticsModalState extends State<StatisticsModal> {
     );
   }
 
+  Widget _buildClassAverageBarChart() {
+    final Map<String, double> classAverage = stats['class_average_by_subject'];
+    if (classAverage.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Icon(Icons.legend_toggle, color: Colors.blueAccent),
+            SizedBox(width: 8),
+            Text(
+              "Moyennes de Classe par Matière",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: widget.subjects.map((subject) {
+              final avg = classAverage[subject.name] ?? 0.0;
+              final color = avg >= 10 ? Colors.blueAccent : Colors.orangeAccent;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      avg.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 24,
+                      height: (avg / 20 * 120).clamp(2.0, 120.0),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [color, color.withOpacity(0.6)],
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withOpacity(0.15),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 50,
+                      child: Text(
+                        subject.name.length > 8
+                            ? '${subject.name.substring(0, 6)}..'
+                            : subject.name,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModernBreakdownSection({
+    required String title,
+    required IconData icon,
+    required Map<String, Map<String, int>> data,
+    required Color color,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...data.entries.map((e) {
+          final label = e.key;
+          final success = e.value['success'] ?? 0;
+          final total = e.value['total'] ?? 1;
+          final rate = (success / total) * 100;
+          final statusColor = rate >= 50 ? Colors.green : Colors.red;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      '${rate.toStringAsFixed(1)}% ($success/$total)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: rate / 100,
+                    minHeight: 8,
+                    backgroundColor: statusColor.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
   Widget _buildStatCard(
     String title,
     String value,
     IconData icon, {
     Color color = Colors.blue,
   }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 16),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: color.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const Spacer(),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 18, color: Colors.blue),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -28,6 +28,8 @@ import 'package:school_manager/utils/academic_year.dart';
 import 'package:school_manager/utils/snackbar.dart';
 import 'package:open_file/open_file.dart';
 import 'package:school_manager/services/auth_service.dart';
+import 'package:school_manager/services/report_card_custom_export_service.dart';
+import 'package:school_manager/services/class_synthesis_pdf_service.dart';
 import 'package:school_manager/screens/students/re_enrollment_dialog.dart';
 import 'package:school_manager/services/safe_mode_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -61,6 +63,13 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
   late TextEditingController _seuilAvertissementController;
   late TextEditingController _seuilConditionsController;
   late TextEditingController _seuilRedoublementController;
+  final List<String> _levels = const [
+    'Primaire',
+    'Collège',
+    'Lycée',
+    'Université',
+  ];
+  late String _selectedLevel;
   late List<Student> _students;
   final DatabaseService _dbService = DatabaseService();
   final _formKey = GlobalKey<FormState>();
@@ -133,7 +142,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
   }
 
   String _displayStudentName(Student student) {
-    final lastName = student.lastName.trim();
+    final lastName = student.lastName.trim().toUpperCase();
     final firstName = student.firstName.trim();
     if (lastName.isEmpty) return firstName;
     if (firstName.isEmpty) return lastName;
@@ -160,6 +169,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     _fraisCotisationParalleleController = TextEditingController(
       text: widget.classe.fraisCotisationParallele?.toString() ?? '',
     );
+    _selectedLevel = (widget.classe.level?.trim().isNotEmpty ?? false)
+        ? widget.classe.level!.trim()
+        : 'Primaire';
     _searchController = TextEditingController();
     // Initialisation des contrôleurs pour les seuils de passage
     _seuilFelicitationsController = TextEditingController(
@@ -339,6 +351,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       final updatedClass = Class(
         name: _nameController.text,
         academicYear: _yearController.text,
+        level: _selectedLevel,
         titulaire: _titulaireController.text,
         fraisEcole: _fraisEcoleController.text.isNotEmpty
             ? double.tryParse(_fraisEcoleController.text)
@@ -386,6 +399,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
         _fraisEcoleController.text = cls.fraisEcole?.toString() ?? '';
         _fraisCotisationParalleleController.text =
             cls.fraisCotisationParallele?.toString() ?? '';
+        _selectedLevel = (cls.level?.trim().isNotEmpty ?? false)
+            ? cls.level!.trim()
+            : 'Primaire';
         // Mise à jour des seuils de passage
         _seuilFelicitationsController.text = cls.seuilFelicitations.toString();
         _seuilEncouragementsController.text = cls.seuilEncouragements
@@ -563,6 +579,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       final newClass = Class(
         name: uniqueName,
         academicYear: targetYear,
+        level: _selectedLevel,
         titulaire: _titulaireController.text,
         fraisEcole: _fraisEcoleController.text.isNotEmpty
             ? double.tryParse(_fraisEcoleController.text)
@@ -770,9 +787,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       if (!mounted) return;
       _showModernSnackBar('Élève restauré.');
     } catch (e) {
-      debugPrint(
-        '[ClassDetailsPage] restore error: id=${student.id} error=$e',
-      );
+      debugPrint('[ClassDetailsPage] restore error: id=${student.id} error=$e');
       if (!mounted) return;
       _showModernSnackBar('Erreur: $e', isError: true);
     }
@@ -876,11 +891,12 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) {
-          final keys = allClasses
-              .map((c) => '${c.name}:::${c.academicYear}')
-              .toSet()
-              .toList()
-            ..sort();
+          final keys =
+              allClasses
+                  .map((c) => '${c.name}:::${c.academicYear}')
+                  .toSet()
+                  .toList()
+                ..sort();
           return AlertDialog(
             title: const Text('Changer classe/année'),
             content: Column(
@@ -897,8 +913,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                   ),
                   items: keys.map((k) {
                     final parts = k.split(':::');
-                    final label =
-                        parts.length == 2 ? '${parts[0]} (${parts[1]})' : k;
+                    final label = parts.length == 2
+                        ? '${parts[0]} (${parts[1]})'
+                        : k;
                     return DropdownMenuItem(value: k, child: Text(label));
                   }).toList(),
                   onChanged: (v) => setState(() => selectedKey = v),
@@ -906,9 +923,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                 const SizedBox(height: 8),
                 Text(
                   'Note : ceci met à jour la classe/année de la fiche élève. Les historiques (paiements/notes) ne sont pas modifiés.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                 ),
               ],
             ),
@@ -999,6 +1016,72 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     }
   }
 
+  Future<void> _exportClassDeliberationMinutesPdf({
+    required String term,
+    required List<Map<String, dynamic>> reportCardsForTerm,
+  }) async {
+    if (!SafeModeService.instance.isActionAllowed()) {
+      _showModernSnackBar(
+        SafeModeService.instance.getBlockedActionMessage(),
+        isError: true,
+      );
+      return;
+    }
+
+    final directory = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Choisir le dossier de sauvegarde',
+    );
+    if (directory == null) return;
+
+    try {
+      final info = await loadSchoolInfo();
+      final className = _nameController.text.trim();
+      final academicYear = _yearController.text.trim();
+
+      // Enrich report cards with student names for the PV
+      final List<Map<String, dynamic>> enrichedCards = [];
+      for (final rc in reportCardsForTerm) {
+        final studentId = (rc['studentId'] ?? '').toString();
+        final student = await _dbService.getStudentById(studentId);
+        final Map<String, dynamic> enriched = Map<String, dynamic>.from(rc);
+        enriched['studentName'] = student != null
+            ? '${student.lastName.toUpperCase()} ${student.firstName}'
+            : studentId;
+        enrichedCards.add(enriched);
+      }
+
+      final pdfBytes = await ClassSynthesisPdfService.generateClassSynthesisPdf(
+        schoolInfo: info,
+        className: className,
+        academicYear: academicYear,
+        term: term,
+        reportCards: enrichedCards,
+      );
+
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final safeTerm = term.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
+      final safeClass = className.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
+      final fileName = 'PV_Deliberation_${safeClass}_${safeTerm}_$stamp.pdf';
+
+      final file = File('$directory/$fileName');
+      await file.writeAsBytes(pdfBytes, flush: true);
+
+      if (!mounted) return;
+      _showModernSnackBar('PV créé: $fileName');
+      await OpenFile.open(file.path);
+    } catch (e) {
+      debugPrint(
+        '[ClassDetailsPage] _exportClassDeliberationMinutesPdf error: $e',
+      );
+      _showModernSnackBar(
+        'Erreur lors de la création du PV: $e',
+        isError: true,
+      );
+    }
+  }
+
   Future<_ArchivedBulletinsView> _loadArchivedBulletinsView() async {
     final year = _yearController.text.trim();
     final className = _nameController.text.trim();
@@ -1026,10 +1109,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
         if (s != null) byId[id] = s;
       } catch (_) {}
     }
-    return _ArchivedBulletinsView(
-      reportCards: reportCards,
-      studentsById: byId,
-    );
+    return _ArchivedBulletinsView(reportCards: reportCards, studentsById: byId);
   }
 
   List<double?> _decodeDoubleList(dynamic raw) {
@@ -1079,7 +1159,8 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     final info = await loadSchoolInfo();
     final classRow = await _dbService.getClassByName(
       reportCard['className']?.toString() ?? student.className,
-      academicYear: reportCard['academicYear']?.toString() ?? student.academicYear,
+      academicYear:
+          reportCard['academicYear']?.toString() ?? student.academicYear,
     );
     if (classRow == null) {
       throw Exception('Classe introuvable pour générer le bulletin.');
@@ -1092,8 +1173,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       className: classRow.name,
       studentId: student.id,
     );
-    final archivedGrades =
-        archivedGradesAll.where((g) => g.term == term).toList();
+    final archivedGrades = archivedGradesAll
+        .where((g) => g.term == term)
+        .toList();
 
     final subjectApps = await _dbService.getSubjectAppreciationsArchiveByKeys(
       studentId: student.id,
@@ -1113,7 +1195,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       moyennesClasse[subject] = (row['moyenne_classe'] ?? '-').toString();
     }
 
-    final moyennesParPeriode = _decodeDoubleList(reportCard['moyennes_par_periode']);
+    final moyennesParPeriode = _decodeDoubleList(
+      reportCard['moyennes_par_periode'],
+    );
     final allTerms = _decodeStringList(reportCard['all_terms']);
     final isExAequo = (reportCard['exaequo'] is int)
         ? (reportCard['exaequo'] as int) == 1
@@ -1126,15 +1210,15 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       professeurs: professeurs,
       appreciations: appreciations,
       moyennesClasse: moyennesClasse,
-      appreciationGenerale: (reportCard['appreciation_generale'] ?? '').toString(),
+      appreciationGenerale: (reportCard['appreciation_generale'] ?? '')
+          .toString(),
       decision: (reportCard['decision'] ?? '').toString(),
       recommandations: (reportCard['recommandations'] ?? '').toString(),
       forces: (reportCard['forces'] ?? '').toString(),
       pointsADevelopper: (reportCard['points_a_developper'] ?? '').toString(),
       sanctions: (reportCard['sanctions'] ?? '').toString(),
       attendanceJustifiee: (reportCard['attendance_justifiee'] ?? 0) as int,
-      attendanceInjustifiee:
-          (reportCard['attendance_injustifiee'] ?? 0) as int,
+      attendanceInjustifiee: (reportCard['attendance_injustifiee'] ?? 0) as int,
       retards: (reportCard['retards'] ?? 0) as int,
       presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
           ? (reportCard['presence_percent'] as int).toDouble()
@@ -1152,14 +1236,13 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       nbEleves: reportCard['nb_eleves'] ?? 0,
       mention: (reportCard['mention'] ?? '').toString(),
       allTerms: allTerms,
-      periodLabel:
-          term.contains('Semestre') ? 'Semestre' : 'Trimestre',
+      periodLabel: term.contains('Semestre') ? 'Semestre' : 'Trimestre',
       selectedTerm: term,
       academicYear: academicYear,
       faitA: (reportCard['fait_a'] ?? '').toString(),
       leDate: (reportCard['le_date'] ?? '').toString(),
       isLandscape: false,
-      niveau: '',
+      niveau: classRow.level ?? '',
       moyenneGeneraleDeLaClasse:
           reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
       moyenneLaPlusForte:
@@ -1167,6 +1250,117 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       moyenneLaPlusFaible:
           reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
       moyenneAnnuelle: reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
+      duplicata: true,
+    );
+  }
+
+  Future<List<int>> _generateArchivedReportCardPdfCustom({
+    required Student student,
+    required Map<String, dynamic> reportCard,
+    required bool isLandscape,
+    required bool useLongFormat,
+  }) async {
+    final info = await loadSchoolInfo();
+    final classRow = await _dbService.getClassByName(
+      reportCard['className']?.toString() ?? student.className,
+      academicYear:
+          reportCard['academicYear']?.toString() ?? student.academicYear,
+    );
+    if (classRow == null) {
+      throw Exception('Classe introuvable pour générer le bulletin.');
+    }
+
+    final academicYear = reportCard['academicYear']?.toString() ?? '';
+    final term = reportCard['term']?.toString() ?? '';
+    final archivedGradesAll = await _dbService.getArchivedGrades(
+      academicYear: academicYear,
+      className: classRow.name,
+      studentId: student.id,
+    );
+    final archivedGrades = archivedGradesAll
+        .where((g) => g.term == term)
+        .toList();
+
+    final subjectApps = await _dbService.getSubjectAppreciationsArchiveByKeys(
+      studentId: student.id,
+      className: classRow.name,
+      academicYear: academicYear,
+      term: term,
+    );
+
+    final professeurs = <String, String>{};
+    final appreciations = <String, String>{};
+    final moyennesClasse = <String, String>{};
+    for (final row in subjectApps) {
+      final subject = (row['subject'] ?? '').toString();
+      if (subject.trim().isEmpty) continue;
+      professeurs[subject] = (row['professeur'] ?? '-').toString();
+      appreciations[subject] = (row['appreciation'] ?? '-').toString();
+      moyennesClasse[subject] = (row['moyenne_classe'] ?? '-').toString();
+    }
+
+    final moyennesParPeriode = _decodeDoubleList(
+      reportCard['moyennes_par_periode'],
+    );
+    final allTerms = _decodeStringList(reportCard['all_terms']);
+
+    final prefs = await SharedPreferences.getInstance();
+    final footerNote = prefs.getString('report_card_footer_note') ?? '';
+    final adminCivility = prefs.getString('school_admin_civility') ?? 'M.';
+
+    return ReportCardCustomExportService.generateReportCardCustomPdf(
+      student: student,
+      schoolInfo: info,
+      grades: archivedGrades,
+      subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
+      professeurs: professeurs,
+      appreciations: appreciations,
+      moyennesClasse: moyennesClasse,
+      moyennesParPeriode: moyennesParPeriode,
+      allTerms: allTerms,
+      moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
+      rang: reportCard['rang'] ?? 0,
+      nbEleves: reportCard['nb_eleves'] ?? 0,
+      periodLabel: term.contains('Semestre') ? 'Semestre' : 'Trimestre',
+      appreciationGenerale: (reportCard['appreciation_generale'] ?? '')
+          .toString(),
+      mention: (reportCard['mention'] ?? '').toString(),
+      decision: (reportCard['decision'] ?? '').toString(),
+      decisionAutomatique: '',
+      conduite: (reportCard['conduite'] ?? '').toString(),
+      recommandations: (reportCard['recommandations'] ?? '').toString(),
+      forces: (reportCard['forces'] ?? '').toString(),
+      pointsADevelopper: (reportCard['points_a_developper'] ?? '').toString(),
+      sanctions: (reportCard['sanctions'] ?? '').toString(),
+      attendanceJustifiee: (reportCard['attendance_justifiee'] ?? 0) as int,
+      attendanceInjustifiee: (reportCard['attendance_injustifiee'] ?? 0) as int,
+      retards: (reportCard['retards'] ?? 0) as int,
+      presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
+          ? (reportCard['presence_percent'] as int).toDouble()
+          : (reportCard['presence_percent'] ?? 0.0) as double,
+      moyenneGeneraleDeLaClasse:
+          reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
+      moyenneLaPlusForte:
+          reportCard['moyenne_la_plus_forte']?.toDouble() ?? 0.0,
+      moyenneLaPlusFaible:
+          reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
+      moyenneAnnuelle: reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
+      moyenneAnnuelleClasse: null,
+      rangAnnuel: null,
+      nbElevesAnnuel: null,
+      academicYear: academicYear,
+      term: term,
+      className: classRow.name,
+      selectedTerm: term,
+      faitA: (reportCard['fait_a'] ?? '').toString(),
+      leDate: (reportCard['le_date'] ?? '').toString(),
+      titulaireName: classRow.titulaire ?? '',
+      directorName: info.director,
+      titulaireCivility: 'M.',
+      directorCivility: adminCivility,
+      footerNote: footerNote,
+      isLandscape: isLandscape,
+      useLongFormat: useLongFormat,
       duplicata: true,
     );
   }
@@ -1192,8 +1386,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       className: classRow.name,
       studentId: student.id,
     );
-    final archivedGrades =
-        archivedGradesAll.where((g) => g.term == term).toList();
+    final archivedGrades = archivedGradesAll
+        .where((g) => g.term == term)
+        .toList();
 
     final subjectApps = await _dbService.getSubjectAppreciationsArchiveByKeys(
       studentId: student.id,
@@ -1213,8 +1408,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       moyennesClasse[subject] = (row['moyenne_classe'] ?? '-').toString();
     }
 
-    final moyennesParPeriode =
-        _decodeDoubleList(reportCard['moyennes_par_periode']);
+    final moyennesParPeriode = _decodeDoubleList(
+      reportCard['moyennes_par_periode'],
+    );
     final allTerms = _decodeStringList(reportCard['all_terms']);
     final isExAequo = (reportCard['exaequo'] is int)
         ? (reportCard['exaequo'] as int) == 1
@@ -1227,16 +1423,15 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       professeurs: professeurs,
       appreciations: appreciations,
       moyennesClasse: moyennesClasse,
-      appreciationGenerale:
-          (reportCard['appreciation_generale'] ?? '').toString(),
+      appreciationGenerale: (reportCard['appreciation_generale'] ?? '')
+          .toString(),
       decision: (reportCard['decision'] ?? '').toString(),
       recommandations: (reportCard['recommandations'] ?? '').toString(),
       forces: (reportCard['forces'] ?? '').toString(),
       pointsADevelopper: (reportCard['points_a_developper'] ?? '').toString(),
       sanctions: (reportCard['sanctions'] ?? '').toString(),
       attendanceJustifiee: (reportCard['attendance_justifiee'] ?? 0) as int,
-      attendanceInjustifiee:
-          (reportCard['attendance_injustifiee'] ?? 0) as int,
+      attendanceInjustifiee: (reportCard['attendance_injustifiee'] ?? 0) as int,
       retards: (reportCard['retards'] ?? 0) as int,
       presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
           ? (reportCard['presence_percent'] as int).toDouble()
@@ -1260,7 +1455,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       faitA: (reportCard['fait_a'] ?? '').toString(),
       leDate: (reportCard['le_date'] ?? '').toString(),
       isLandscape: false,
-      niveau: '',
+      niveau: classRow.level ?? '',
       moyenneGeneraleDeLaClasse:
           reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
       moyenneLaPlusForte:
@@ -1293,8 +1488,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       className: classRow.name,
       studentId: student.id,
     );
-    final archivedGrades =
-        archivedGradesAll.where((g) => g.term == term).toList();
+    final archivedGrades = archivedGradesAll
+        .where((g) => g.term == term)
+        .toList();
 
     final subjectApps = await _dbService.getSubjectAppreciationsArchiveByKeys(
       studentId: student.id,
@@ -1314,8 +1510,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       moyennesClasse[subject] = (row['moyenne_classe'] ?? '-').toString();
     }
 
-    final moyennesParPeriode =
-        _decodeDoubleList(reportCard['moyennes_par_periode']);
+    final moyennesParPeriode = _decodeDoubleList(
+      reportCard['moyennes_par_periode'],
+    );
     final allTerms = _decodeStringList(reportCard['all_terms']);
     final isExAequo = (reportCard['exaequo'] is int)
         ? (reportCard['exaequo'] as int) == 1
@@ -1328,16 +1525,15 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       professeurs: professeurs,
       appreciations: appreciations,
       moyennesClasse: moyennesClasse,
-      appreciationGenerale:
-          (reportCard['appreciation_generale'] ?? '').toString(),
+      appreciationGenerale: (reportCard['appreciation_generale'] ?? '')
+          .toString(),
       decision: (reportCard['decision'] ?? '').toString(),
       recommandations: (reportCard['recommandations'] ?? '').toString(),
       forces: (reportCard['forces'] ?? '').toString(),
       pointsADevelopper: (reportCard['points_a_developper'] ?? '').toString(),
       sanctions: (reportCard['sanctions'] ?? '').toString(),
       attendanceJustifiee: (reportCard['attendance_justifiee'] ?? 0) as int,
-      attendanceInjustifiee:
-          (reportCard['attendance_injustifiee'] ?? 0) as int,
+      attendanceInjustifiee: (reportCard['attendance_injustifiee'] ?? 0) as int,
       retards: (reportCard['retards'] ?? 0) as int,
       presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
           ? (reportCard['presence_percent'] as int).toDouble()
@@ -1361,7 +1557,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       faitA: (reportCard['fait_a'] ?? '').toString(),
       leDate: (reportCard['le_date'] ?? '').toString(),
       isLandscape: false,
-      niveau: '',
+      niveau: classRow.level ?? '',
       moyenneGeneraleDeLaClasse:
           reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
       moyenneLaPlusForte:
@@ -1392,6 +1588,64 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
 
     final year = _yearController.text.trim();
     final className = _nameController.text.trim();
+
+    bool isLandscape = false;
+    bool useLongFormat = true;
+
+    if (variant == 'custom') {
+      final orientation =
+          await showDialog<String>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Orientation du PDF'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: const Text('Portrait'),
+                    leading: const Icon(Icons.stay_current_portrait),
+                    onTap: () => Navigator.of(context).pop('portrait'),
+                  ),
+                  ListTile(
+                    title: const Text('Paysage'),
+                    leading: const Icon(Icons.stay_current_landscape),
+                    onTap: () => Navigator.of(context).pop('landscape'),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          'portrait';
+      isLandscape = orientation == 'landscape';
+
+      final formatChoice =
+          await showDialog<String>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Format du PDF'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: const Text('Format long (A4 standard)'),
+                    subtitle: const Text('Dimensions standard A4'),
+                    leading: const Icon(Icons.description),
+                    onTap: () => Navigator.of(context).pop('long'),
+                  ),
+                  ListTile(
+                    title: const Text('Format court (compact)'),
+                    subtitle: const Text('Dimensions réduites'),
+                    leading: const Icon(Icons.view_compact),
+                    onTap: () => Navigator.of(context).pop('short'),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          'long';
+      useLongFormat = formatChoice == 'long';
+    }
+
     debugPrint(
       '[ClassDetailsPage] export archived bulletins ZIP: class=$className year=$year term=$term variant=$variant count=${reportCardsForTerm.length}',
     );
@@ -1412,6 +1666,13 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
           ? await _generateArchivedReportCardPdfUltraCompact(
               student: student,
               reportCard: rc,
+            )
+          : variant == 'custom'
+          ? await _generateArchivedReportCardPdfCustom(
+              student: student,
+              reportCard: rc,
+              isLandscape: isLandscape,
+              useLongFormat: useLongFormat,
             )
           : await _generateArchivedReportCardPdf(
               student: student,
@@ -1442,6 +1703,8 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
         ? '_compact'
         : variant == 'ultra'
         ? '_ultra_compact'
+        : variant == 'custom'
+        ? '_custom'
         : '';
     final out = File(
       '$directory/bulletins_archives_${safeClass}_${safeTerm}${suffix}_$stamp.zip',
@@ -1639,6 +1902,28 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                               validator: (value) =>
                                   value!.isEmpty ? AppStrings.required : null,
                               suffixIcon: Icons.calendar_today,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedLevel,
+                              decoration: const InputDecoration(
+                                labelText: 'Niveau scolaire',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _levels
+                                  .map(
+                                    (level) => DropdownMenuItem(
+                                      value: level,
+                                      child: Text(level),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => _selectedLevel = value);
+                              },
                             ),
                           ),
                           Padding(
@@ -1928,6 +2213,28 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                     ),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedLevel,
+                        decoration: const InputDecoration(
+                          labelText: 'Niveau scolaire',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _levels
+                            .map(
+                              (level) => DropdownMenuItem(
+                                value: level,
+                                child: Text(level),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedLevel = value);
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
                       child: CustomFormField(
                         controller: _titulaireController,
                         labelText: 'Titulaire',
@@ -2060,9 +2367,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                 ? theme.primaryColor.withOpacity(0.06)
                 : theme.cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: theme.dividerColor.withOpacity(0.1),
-            ),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
             boxShadow: [
               BoxShadow(
                 color: theme.shadowColor.withOpacity(0.05),
@@ -2109,9 +2414,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                   )
                 : CircleAvatar(
                     radius: 25,
-                    backgroundColor: const Color(
-                      0xFF667EEA,
-                    ).withOpacity(0.1),
+                    backgroundColor: const Color(0xFF667EEA).withOpacity(0.1),
                     child: Text(
                       student.firstName.isNotEmpty
                           ? student.firstName[0].toUpperCase()
@@ -2122,7 +2425,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                         color: Color(0xFF667EEA),
                       ),
                     ),
-                ),
+                  ),
             title: Row(
               children: [
                 Expanded(
@@ -2147,7 +2450,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    student.isDeleted ? 'Corbeille' : (isPaid ? 'Payé' : 'En attente'),
+                    student.isDeleted
+                        ? 'Corbeille'
+                        : (isPaid ? 'Payé' : 'En attente'),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -2953,218 +3258,271 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Boutons d'export PDF/Excel
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    // Boutons d'export
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Flexible(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              if (!SafeModeService.instance.isActionAllowed()) {
-                                _showModernSnackBar(
-                                  SafeModeService.instance
-                                      .getBlockedActionMessage(),
-                                  isError: true,
-                                );
-                                return;
-                              }
-                              final didApply = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => ReEnrollmentDialog(
-                                  sourceClass: Class(
-                                    name: _nameController.text.trim(),
-                                    academicYear: _yearController.text.trim(),
-                                    titulaire: _titulaireController.text.trim(),
-                                    fraisEcole: double.tryParse(
-                                      _fraisEcoleController.text,
-                                    ),
-                                    fraisCotisationParallele: double.tryParse(
-                                      _fraisCotisationParalleleController.text,
-                                    ),
-                                    seuilFelicitations:
-                                        double.tryParse(
-                                          _seuilFelicitationsController.text,
-                                        ) ??
-                                        16.0,
-                                    seuilEncouragements:
-                                        double.tryParse(
-                                          _seuilEncouragementsController.text,
-                                        ) ??
-                                        14.0,
-                                    seuilAdmission:
-                                        double.tryParse(
-                                          _seuilAdmissionController.text,
-                                        ) ??
-                                        12.0,
-                                    seuilAvertissement:
-                                        double.tryParse(
-                                          _seuilAvertissementController.text,
-                                        ) ??
-                                        10.0,
-                                    seuilConditions:
-                                        double.tryParse(
-                                          _seuilConditionsController.text,
-                                        ) ??
-                                        8.0,
-                                    seuilRedoublement:
-                                        double.tryParse(
-                                          _seuilRedoublementController.text,
-                                        ) ??
-                                        8.0,
-                                  ),
-                                  students: _students,
+                        Text(
+                          'Notes',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _exportGradesTemplateExcel,
+                              icon: const Icon(
+                                Icons.table_view,
+                                color: Colors.white,
+                              ),
+                              label: const Text('Modèle de notes (Excel)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0EA5E9),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
                                 ),
-                              );
-                              if (didApply == true) {
-                                await _reloadStudentsForCurrentClass();
-                              }
-                            },
-                            icon: const Icon(
-                              Icons.how_to_reg,
-                              color: Colors.white,
-                            ),
-                            label: const Text('Réinscription'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF59E0B),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                             ),
-                          ),
+                            ElevatedButton.icon(
+                              onPressed: _showSubjectTemplateDialog,
+                              icon: const Icon(
+                                Icons.view_list,
+                                color: Colors.white,
+                              ),
+                              label: const Text('Relevé de notes par matière'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF059669),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: ElevatedButton.icon(
-                            onPressed: _exportGradesTemplateExcel,
-                            icon: const Icon(
-                              Icons.table_view,
-                              color: Colors.white,
-                            ),
-                            label: const Text('Générer modèle Excel'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0EA5E9),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Élèves',
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: ElevatedButton.icon(
-                            onPressed: _showSubjectTemplateDialog,
-                            icon: const Icon(
-                              Icons.view_list,
-                              color: Colors.white,
-                            ),
-                            label: const Text('Modèle par matière'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF059669),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _exportStudentsPdf,
+                              icon: const Icon(
+                                Icons.picture_as_pdf,
+                                color: Colors.white,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                              label: const Text('Liste élèves (PDF)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF6366F1),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                             ),
-                          ),
+                            ElevatedButton.icon(
+                              onPressed: _exportStudentsExcel,
+                              icon: const Icon(
+                                Icons.grid_on,
+                                color: Colors.white,
+                              ),
+                              label: const Text('Liste élèves (Excel)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _exportStudentsWord,
+                              icon: const Icon(
+                                Icons.description,
+                                color: Colors.white,
+                              ),
+                              label: const Text('Liste élèves (Word)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF3B82F6),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _exportStudentProfilesPdf,
+                              icon: const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                              ),
+                              label: const Text('Fiches élèves (PDF)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF8B5CF6),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: ElevatedButton.icon(
-                            onPressed: _exportStudentsPdf,
-                            icon: const Icon(
-                              Icons.picture_as_pdf,
-                              color: Colors.white,
-                            ),
-                            label: const Text('Exporter PDF'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6366F1),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Cartes',
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: ElevatedButton.icon(
-                            onPressed: _exportStudentIdCards,
-                            icon: const Icon(Icons.badge, color: Colors.white),
-                            label: const Text('Cartes scolaires'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF7C3AED),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _exportStudentIdCards,
+                              icon: const Icon(
+                                Icons.badge,
+                                color: Colors.white,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                              label: const Text('Cartes scolaires (PDF)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF7C3AED),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: ElevatedButton.icon(
-                            onPressed: _exportStudentsExcel,
-                            icon: const Icon(
-                              Icons.grid_on,
-                              color: Colors.white,
-                            ),
-                            label: const Text('Exporter Excel'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF10B981),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Actions',
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: ElevatedButton.icon(
-                            onPressed: _exportStudentsWord,
-                            icon: const Icon(
-                              Icons.description,
-                              color: Colors.white,
-                            ),
-                            label: const Text('Exporter Word'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF3B82F6),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                if (!SafeModeService.instance
+                                    .isActionAllowed()) {
+                                  _showModernSnackBar(
+                                    SafeModeService.instance
+                                        .getBlockedActionMessage(),
+                                    isError: true,
+                                  );
+                                  return;
+                                }
+                                final didApply = await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => ReEnrollmentDialog(
+                                    sourceClass: Class(
+                                      name: _nameController.text.trim(),
+                                      academicYear: _yearController.text.trim(),
+                                      level: _selectedLevel,
+                                      titulaire: _titulaireController.text
+                                          .trim(),
+                                      fraisEcole: double.tryParse(
+                                        _fraisEcoleController.text,
+                                      ),
+                                      fraisCotisationParallele: double.tryParse(
+                                        _fraisCotisationParalleleController
+                                            .text,
+                                      ),
+                                      seuilFelicitations:
+                                          double.tryParse(
+                                            _seuilFelicitationsController.text,
+                                          ) ??
+                                          16.0,
+                                      seuilEncouragements:
+                                          double.tryParse(
+                                            _seuilEncouragementsController.text,
+                                          ) ??
+                                          14.0,
+                                      seuilAdmission:
+                                          double.tryParse(
+                                            _seuilAdmissionController.text,
+                                          ) ??
+                                          12.0,
+                                      seuilAvertissement:
+                                          double.tryParse(
+                                            _seuilAvertissementController.text,
+                                          ) ??
+                                          10.0,
+                                      seuilConditions:
+                                          double.tryParse(
+                                            _seuilConditionsController.text,
+                                          ) ??
+                                          8.0,
+                                      seuilRedoublement:
+                                          double.tryParse(
+                                            _seuilRedoublementController.text,
+                                          ) ??
+                                          8.0,
+                                    ),
+                                    students: _students,
+                                  ),
+                                );
+                                if (didApply == true) {
+                                  await _reloadStudentsForCurrentClass();
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.how_to_reg,
+                                color: Colors.white,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                              label: const Text('Réinscription'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFF59E0B),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -3312,10 +3670,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                               value: 'deleted',
                               child: Text('Corbeille'),
                             ),
-                            DropdownMenuItem(
-                              value: 'all',
-                              child: Text('Tous'),
-                            ),
+                            DropdownMenuItem(value: 'all', child: Text('Tous')),
                           ],
                           onChanged: (v) async {
                             if (v == null) return;
@@ -3353,11 +3708,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                           Text(
                             '${_selectedStudentIds.length} sélectionné(s)',
                             style: TextStyle(
-                              color: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.color
-                                  ?.withOpacity(0.8),
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color?.withOpacity(0.8),
                             ),
                           ),
                       ],
@@ -3381,10 +3734,8 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                               onPressed: _selectedStudentIds.isEmpty
                                   ? null
                                   : _exportSelectedStudentIdCards,
-                              icon: const Icon(
-                                Icons.picture_as_pdf_outlined,
-                              ),
-                              label: const Text('Cartes PDF'),
+                              icon: const Icon(Icons.picture_as_pdf_outlined),
+                              label: const Text('Cartes scolaires (PDF)'),
                             ),
                             ElevatedButton.icon(
                               onPressed: _selectedStudentIds.isEmpty
@@ -3413,28 +3764,6 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                         ),
                       ),
                     const SizedBox(height: 16),
-                    // Bouton d'export des fiches élèves
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _exportStudentProfilesPdf,
-                          icon: const Icon(Icons.person, color: Colors.white),
-                          label: const Text('Exporter fiches élèves'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B5CF6),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 20),
                     FutureBuilder<List<Student>>(
                       future: _getFilteredAndSortedStudentsAsync(),
@@ -3493,23 +3822,37 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                             ),
                           );
                         }
-                        final terms = view.reportCards
-                            .map((e) => (e['term'] ?? '').toString())
-                            .where((e) => e.trim().isNotEmpty)
-                            .toSet()
-                            .toList()
-                          ..sort();
-                        final selectedTerm = (_selectedArchivedBulletinTerm !=
-                                    null &&
+                        final terms =
+                            view.reportCards
+                                .map((e) => (e['term'] ?? '').toString())
+                                .where((e) => e.trim().isNotEmpty)
+                                .toSet()
+                                .toList()
+                              ..sort();
+                        final selectedTerm =
+                            (_selectedArchivedBulletinTerm != null &&
                                 terms.contains(_selectedArchivedBulletinTerm))
                             ? _selectedArchivedBulletinTerm!
                             : terms.first;
                         final forTerm =
                             view.reportCards
                                 .where(
-                                  (e) => (e['term'] ?? '').toString() == selectedTerm,
+                                  (e) =>
+                                      (e['term'] ?? '').toString() ==
+                                      selectedTerm,
                                 )
-                                .toList();
+                                .toList()
+                              ..sort((a, b) {
+                                final avgA =
+                                    (a['moyenne_generale'] as num?)
+                                        ?.toDouble() ??
+                                    0.0;
+                                final avgB =
+                                    (b['moyenne_generale'] as num?)
+                                        ?.toDouble() ??
+                                    0.0;
+                                return avgB.compareTo(avgA);
+                              });
 
                         return Container(
                           padding: const EdgeInsets.all(16),
@@ -3519,7 +3862,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                             border: Border.all(
                               color: Theme.of(
                                 context,
-                              ).dividerColor.withOpacity(0.1),
+                              ).dividerColor.withValues(alpha: 0.1),
                             ),
                           ),
                           child: Column(
@@ -3554,17 +3897,17 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                           .textTheme
                                           .bodyMedium
                                           ?.color
-                                          ?.withOpacity(0.8),
+                                          ?.withValues(alpha: 0.8),
                                     ),
                                   ),
                                   ElevatedButton.icon(
                                     onPressed: forTerm.isEmpty
                                         ? null
                                         : () => _exportArchivedBulletinsZip(
-                                              term: selectedTerm,
-                                              reportCardsForTerm: forTerm,
-                                              variant: 'standard',
-                                            ),
+                                            term: selectedTerm,
+                                            reportCardsForTerm: forTerm,
+                                            variant: 'standard',
+                                          ),
                                     icon: const Icon(Icons.archive_outlined),
                                     label: const Text('Exporter ZIP'),
                                   ),
@@ -3573,10 +3916,10 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                     onPressed: forTerm.isEmpty
                                         ? null
                                         : () => _exportArchivedBulletinsZip(
-                                              term: selectedTerm,
-                                              reportCardsForTerm: forTerm,
-                                              variant: 'compact',
-                                            ),
+                                            term: selectedTerm,
+                                            reportCardsForTerm: forTerm,
+                                            variant: 'compact',
+                                          ),
                                     icon: const Icon(
                                       Icons.picture_as_pdf_outlined,
                                     ),
@@ -3587,15 +3930,50 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                     onPressed: forTerm.isEmpty
                                         ? null
                                         : () => _exportArchivedBulletinsZip(
-                                              term: selectedTerm,
-                                              reportCardsForTerm: forTerm,
-                                              variant: 'ultra',
-                                            ),
+                                            term: selectedTerm,
+                                            reportCardsForTerm: forTerm,
+                                            variant: 'ultra',
+                                          ),
                                     icon: const Icon(
                                       Icons.picture_as_pdf_outlined,
                                     ),
-                                    label:
-                                        const Text('Exporter ZIP ultra compact'),
+                                    label: const Text(
+                                      'Exporter ZIP ultra compact',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: forTerm.isEmpty
+                                        ? null
+                                        : () => _exportArchivedBulletinsZip(
+                                            term: selectedTerm,
+                                            reportCardsForTerm: forTerm,
+                                            variant: 'custom',
+                                          ),
+                                    icon: const Icon(Icons.settings),
+                                    label: const Text('Exporter ZIP custom'),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: forTerm.isEmpty
+                                        ? null
+                                        : () =>
+                                              _exportClassDeliberationMinutesPdf(
+                                                term: selectedTerm,
+                                                reportCardsForTerm: forTerm,
+                                              ),
+                                    icon: const Icon(
+                                      Icons.description_outlined,
+                                    ),
+                                    label: const Text('PV de délibération'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.secondaryContainer,
+                                      foregroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.onSecondaryContainer,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -3611,13 +3989,17 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                     DataColumn(label: Text('Décision (sim.)')),
                                   ],
                                   rows: forTerm.map((rc) {
-                                    final studentId =
-                                        (rc['studentId'] ?? '').toString();
-                                    final student = view.studentsById[studentId];
+                                    final studentId = (rc['studentId'] ?? '')
+                                        .toString();
+                                    final student =
+                                        view.studentsById[studentId];
                                     final avg =
-                                        rc['moyenne_generale']?.toDouble() ?? 0.0;
-                                    final mention = (rc['mention'] ?? '').toString();
-                                    final decision = (rc['decision'] ?? '').toString();
+                                        rc['moyenne_generale']?.toDouble() ??
+                                        0.0;
+                                    final mention = (rc['mention'] ?? '')
+                                        .toString();
+                                    final decision = (rc['decision'] ?? '')
+                                        .toString();
                                     final proposed =
                                         _proposedDecisionForAverage(avg);
                                     final name = student != null
@@ -3662,9 +4044,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                                         }
                                                         final pdfBytes =
                                                             await _generateArchivedReportCardPdf(
-                                                          student: student,
-                                                          reportCard: rc,
-                                                        );
+                                                              student: student,
+                                                              reportCard: rc,
+                                                            );
                                                         final safeName = student
                                                             .name
                                                             .replaceAll(
@@ -3720,9 +4102,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                                         }
                                                         final pdfBytes =
                                                             await _generateArchivedReportCardPdfCompact(
-                                                          student: student,
-                                                          reportCard: rc,
-                                                        );
+                                                              student: student,
+                                                              reportCard: rc,
+                                                            );
                                                         final safeName = student
                                                             .name
                                                             .replaceAll(
@@ -3778,9 +4160,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                                         }
                                                         final pdfBytes =
                                                             await _generateArchivedReportCardPdfUltraCompact(
-                                                          student: student,
-                                                          reportCard: rc,
-                                                        );
+                                                              student: student,
+                                                              reportCard: rc,
+                                                            );
                                                         final safeName = student
                                                             .name
                                                             .replaceAll(
@@ -3803,12 +4185,189 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                                                         } catch (_) {}
                                                       },
                                               ),
+                                              IconButton(
+                                                tooltip:
+                                                    'Télécharger PDF custom',
+                                                icon: const Icon(
+                                                  Icons.settings,
+                                                ),
+                                                onPressed: student == null
+                                                    ? null
+                                                    : () async {
+                                                        if (!SafeModeService
+                                                            .instance
+                                                            .isActionAllowed()) {
+                                                          _showModernSnackBar(
+                                                            SafeModeService
+                                                                .instance
+                                                                .getBlockedActionMessage(),
+                                                            isError: true,
+                                                          );
+                                                          return;
+                                                        }
+                                                        // Demander l'orientation
+                                                        final orientation =
+                                                            await showDialog<
+                                                              String
+                                                            >(
+                                                              context: context,
+                                                              builder: (context) => AlertDialog(
+                                                                title: const Text(
+                                                                  'Orientation du PDF',
+                                                                ),
+                                                                content: Column(
+                                                                  mainAxisSize:
+                                                                      MainAxisSize
+                                                                          .min,
+                                                                  children: [
+                                                                    ListTile(
+                                                                      title: const Text(
+                                                                        'Portrait',
+                                                                      ),
+                                                                      leading:
+                                                                          const Icon(
+                                                                            Icons.stay_current_portrait,
+                                                                          ),
+                                                                      onTap: () =>
+                                                                          Navigator.of(
+                                                                            context,
+                                                                          ).pop(
+                                                                            'portrait',
+                                                                          ),
+                                                                    ),
+                                                                    ListTile(
+                                                                      title: const Text(
+                                                                        'Paysage',
+                                                                      ),
+                                                                      leading:
+                                                                          const Icon(
+                                                                            Icons.stay_current_landscape,
+                                                                          ),
+                                                                      onTap: () =>
+                                                                          Navigator.of(
+                                                                            context,
+                                                                          ).pop(
+                                                                            'landscape',
+                                                                          ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ) ??
+                                                            'portrait';
+                                                        final bool isLandscape =
+                                                            orientation ==
+                                                            'landscape';
+
+                                                        // Demander le format
+                                                        final formatChoice =
+                                                            await showDialog<
+                                                              String
+                                                            >(
+                                                              context: context,
+                                                              builder: (context) => AlertDialog(
+                                                                title: const Text(
+                                                                  'Format du PDF',
+                                                                ),
+                                                                content: Column(
+                                                                  mainAxisSize:
+                                                                      MainAxisSize
+                                                                          .min,
+                                                                  children: [
+                                                                    ListTile(
+                                                                      title: const Text(
+                                                                        'Format long (A4 standard)',
+                                                                      ),
+                                                                      subtitle:
+                                                                          const Text(
+                                                                            'Dimensions standard A4',
+                                                                          ),
+                                                                      leading:
+                                                                          const Icon(
+                                                                            Icons.description,
+                                                                          ),
+                                                                      onTap: () =>
+                                                                          Navigator.of(
+                                                                            context,
+                                                                          ).pop(
+                                                                            'long',
+                                                                          ),
+                                                                    ),
+                                                                    ListTile(
+                                                                      title: const Text(
+                                                                        'Format court (compact)',
+                                                                      ),
+                                                                      subtitle:
+                                                                          const Text(
+                                                                            'Dimensions réduites',
+                                                                          ),
+                                                                      leading:
+                                                                          const Icon(
+                                                                            Icons.view_compact,
+                                                                          ),
+                                                                      onTap: () =>
+                                                                          Navigator.of(
+                                                                            context,
+                                                                          ).pop(
+                                                                            'short',
+                                                                          ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ) ??
+                                                            'long';
+                                                        final bool
+                                                        useLongFormat =
+                                                            formatChoice ==
+                                                            'long';
+
+                                                        final directoryPath =
+                                                            await FilePicker
+                                                                .platform
+                                                                .getDirectoryPath(
+                                                                  dialogTitle:
+                                                                      'Choisir le dossier de sauvegarde',
+                                                                );
+                                                        if (directoryPath ==
+                                                            null) {
+                                                          return;
+                                                        }
+                                                        final pdfBytes =
+                                                            await _generateArchivedReportCardPdfCustom(
+                                                              student: student,
+                                                              reportCard: rc,
+                                                              isLandscape:
+                                                                  isLandscape,
+                                                              useLongFormat:
+                                                                  useLongFormat,
+                                                            );
+                                                        final safeName = student
+                                                            .name
+                                                            .replaceAll(
+                                                              ' ',
+                                                              '_',
+                                                            );
+                                                        final fileName =
+                                                            'Bulletin_${safeName}_${selectedTerm}_${rc['academicYear'] ?? ''}_custom.pdf';
+                                                        final file = File(
+                                                          '$directoryPath/$fileName',
+                                                        );
+                                                        await file.writeAsBytes(
+                                                          pdfBytes,
+                                                          flush: true,
+                                                        );
+                                                        try {
+                                                          await OpenFile.open(
+                                                            file.path,
+                                                          );
+                                                        } catch (_) {}
+                                                      },
+                                              ),
                                             ],
                                           ),
                                         ),
-                                        DataCell(
-                                          Text(avg.toStringAsFixed(2)),
-                                        ),
+                                        DataCell(Text(avg.toStringAsFixed(2))),
                                         DataCell(Text(mention)),
                                         DataCell(Text(decision)),
                                         DataCell(Text(proposed)),
@@ -4341,6 +4900,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
                       final deleted = Class(
                         name: _nameController.text,
                         academicYear: _yearController.text,
+                        level: _selectedLevel,
                         titulaire: _titulaireController.text.isNotEmpty
                             ? _titulaireController.text
                             : null,
@@ -4706,8 +5266,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
           orElse: () => Course.empty(),
         );
         if (subj.id.isNotEmpty) {
-          final assigned =
-              await _dbService.getTeacherNameByCourseForClass(
+          final assigned = await _dbService.getTeacherNameByCourseForClass(
             className: className,
             academicYear: year,
           );
@@ -4723,12 +5282,37 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
       final prefs = await SharedPreferences.getInstance();
       final adminCivility = (prefs.getString('school_admin_civility') ?? 'M.')
           .trim();
-      final directorName = (schoolInfo?.director ?? '').trim();
+      final classRow = await _dbService.getClassByName(
+        className,
+        academicYear: year,
+      );
+      final String niveau = (classRow?.level?.trim().isNotEmpty ?? false)
+          ? classRow!.level!.trim()
+          : (prefs.getString('school_level') ?? '').trim();
+      final bool isComplexe = (prefs.getString('school_level') ?? '')
+          .toLowerCase()
+          .contains('complexe');
+      String directorName = (schoolInfo?.director ?? '').trim();
+      String civility = adminCivility;
+      if (isComplexe && schoolInfo != null) {
+        final n = niveau.toLowerCase();
+        if (n.contains('primaire') || n.contains('maternelle')) {
+          directorName = (schoolInfo.directorPrimary ?? directorName).trim();
+          civility = (schoolInfo.civilityPrimary ?? civility).trim();
+        } else if (n.contains('coll')) {
+          directorName = (schoolInfo.directorCollege ?? directorName).trim();
+          civility = (schoolInfo.civilityCollege ?? civility).trim();
+        } else if (n.contains('lyc')) {
+          directorName = (schoolInfo.directorLycee ?? directorName).trim();
+          civility = (schoolInfo.civilityLycee ?? civility).trim();
+        } else if (n.contains('univ')) {
+          directorName = (schoolInfo.directorUniversity ?? directorName).trim();
+          civility = (schoolInfo.civilityUniversity ?? civility).trim();
+        }
+      }
       final directorDisplayName = directorName.isEmpty
           ? ''
-          : (adminCivility.isNotEmpty
-                ? '$adminCivility $directorName'
-                : directorName);
+          : (civility.isNotEmpty ? '$civility $directorName' : directorName);
       final PdfPageFormat _pageFormat = PdfPageFormat.a4;
       final pw.PageTheme _pageTheme = pw.PageTheme(
         pageFormat: _pageFormat,

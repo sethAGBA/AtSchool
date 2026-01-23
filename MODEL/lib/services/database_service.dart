@@ -30,6 +30,48 @@ import 'package:school_manager/models/library_book.dart';
 import 'package:school_manager/models/library_loan.dart';
 import 'package:school_manager/models/teacher_assignment.dart';
 // Removed UI and prefs from data layer
+// NOUVELLE MÉTHODE: import 'package:path_provider/path_provider.dart';
+// ANCIENNE MÉTHODE: utilise getDatabasesPath() de sqflite (pas besoin d'import supplémentaire)
+
+/// Service de gestion de la base de données
+///
+/// ============================================================================
+/// DOCUMENTATION: DEUX MÉTHODES D'INITIALISATION
+/// ============================================================================
+///
+/// Ce service supporte deux méthodes d'initialisation de la base de données :
+///
+/// 1. ANCIENNE MÉTHODE (ACTUELLEMENT ACTIVE)
+///    - Utilise `getDatabasesPath()` de sqflite
+///    - Chemin standard de sqflite pour chaque plateforme
+///    - Plus simple, pas de dépendance supplémentaire
+///    - Initialisation lazy au premier accès via `database` getter
+///    - Pas de méthode `init()` publique
+///
+/// 2. NOUVELLE MÉTHODE (ACTUELLEMENT COMMENTÉE)
+///    - Utilise `getApplicationDocumentsDirectory()` de path_provider
+///    - Chemin dans le répertoire Documents de l'application
+///    - Support pour base en mémoire (`useInMemory = true`)
+///    - Support pour chemin personnalisé via `init(dbPath: "...")`
+///    - Méthode `init()` publique pour configuration avancée
+///
+/// POUR BASCULER ENTRE LES DEUX MÉTHODES :
+///
+/// Pour utiliser l'ANCIENNE MÉTHODE (actuelle) :
+///   - Décommentez la section "ANCIENNE MÉTHODE" dans _initDatabase()
+///   - Commentez la section "NOUVELLE MÉTHODE"
+///   - Commentez les variables _dbPathOverride et _useInMemory
+///   - Commentez la méthode init()
+///   - Commentez l'import path_provider
+///
+/// Pour utiliser la NOUVELLE MÉTHODE :
+///   - Décommentez la section "NOUVELLE MÉTHODE" dans _initDatabase()
+///   - Commentez la section "ANCIENNE MÉTHODE"
+///   - Décommentez les variables _dbPathOverride et _useInMemory
+///   - Décommentez la méthode init()
+///   - Décommentez l'import path_provider
+///
+/// ============================================================================
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -41,6 +83,13 @@ class DatabaseService {
 
   static Database? _database;
   static Future<Database>? _openingDatabase;
+
+  // ============================================================================
+  // NOUVELLE MÉTHODE - Variables pour configuration avancée (COMMENTÉES)
+  // ============================================================================
+  // String? _dbPathOverride;
+  // bool _useInMemory = false;
+  // ============================================================================
 
   static void _bumpTeacherAssignmentsVersion() {
     teacherAssignmentsVersion.value = teacherAssignmentsVersion.value + 1;
@@ -56,6 +105,24 @@ class DatabaseService {
     _openingDatabase = null;
     return _database!;
   }
+
+  // ============================================================================
+  // NOUVELLE MÉTHODE - Méthode init() publique (COMMENTÉE)
+  // ============================================================================
+  // Permet de configurer le chemin de la base ou d'utiliser une base en mémoire
+  // Exemple d'utilisation:
+  //   await DatabaseService().init(dbPath: '/custom/path/db.db');
+  //   await DatabaseService().init(useInMemory: true);
+  // ============================================================================
+  // Future<void> init({String? dbPath, bool useInMemory = false}) async {
+  //   _dbPathOverride = dbPath;
+  //   _useInMemory = useInMemory;
+  //   if (_database != null || _openingDatabase != null) {
+  //     return;
+  //   }
+  //   await database;
+  // }
+  // ============================================================================
 
   Future<void> _migrateStaffTable(Database db) async {
     // Vérifier si les nouvelles colonnes existent déjà
@@ -106,7 +173,26 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
+    // ============================================================================
+    // ANCIENNE MÉTHODE (ACTIVE) - Utilise getDatabasesPath() de sqflite
+    // ============================================================================
     String path = join(await getDatabasesPath(), 'ecole_manager.db');
+    // ============================================================================
+
+    // ============================================================================
+    // NOUVELLE MÉTHODE (COMMENTÉE) - Utilise getApplicationDocumentsDirectory()
+    // ============================================================================
+    // String path;
+    // if (_useInMemory) {
+    //   path = ':memory:';
+    // } else if (_dbPathOverride != null) {
+    //   path = _dbPathOverride!;
+    // } else {
+    //   final documents = await getApplicationDocumentsDirectory();
+    //   path = join(documents.path, 'ecole_manager.db');
+    // }
+    // ============================================================================
+
     debugPrint('[DatabaseService] Ouverture de la base à : $path');
     final db = await openDatabase(
       path,
@@ -131,6 +217,7 @@ class DatabaseService {
             titulaire TEXT,
             fraisEcole REAL,
             fraisCotisationParallele REAL,
+            level TEXT,
             -- Seuils de passage personnalisés par classe
             seuilFelicitations REAL DEFAULT 16.0,
             seuilEncouragements REAL DEFAULT 14.0,
@@ -431,11 +518,20 @@ class DatabaseService {
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             address TEXT NOT NULL,
+            bp TEXT,
             telephone TEXT,
             email TEXT,
             website TEXT,
             logoPath TEXT,
             director TEXT,
+            directorPrimary TEXT,
+            directorCollege TEXT,
+            directorLycee TEXT,
+            directorUniversity TEXT,
+            civilityPrimary TEXT,
+            civilityCollege TEXT,
+            civilityLycee TEXT,
+            civilityUniversity TEXT,
             motto TEXT,
             republic TEXT,
             ministry TEXT,
@@ -1789,6 +1885,18 @@ class DatabaseService {
     );
   }
 
+  /// Purge les anciens journaux d'audit de plus de [days] jours.
+  Future<int> deleteOldAuditLogs(int days) async {
+    final db = await database;
+    final limitDate = DateTime.now().subtract(Duration(days: days));
+    final limitStr = limitDate.toIso8601String();
+    return await db.delete(
+      'audit_logs',
+      where: 'timestamp < ?',
+      whereArgs: [limitStr],
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getAuditLogsForStudent({
     required String studentId,
     int limit = 300,
@@ -1878,7 +1986,9 @@ class DatabaseService {
     final cols = await db.rawQuery('PRAGMA table_info(inventory_items)');
     final hasMin = cols.any((c) => c['name'] == 'minQuantity');
     if (!hasMin) {
-      await db.execute('ALTER TABLE inventory_items ADD COLUMN minQuantity INTEGER');
+      await db.execute(
+        'ALTER TABLE inventory_items ADD COLUMN minQuantity INTEGER',
+      );
     }
     final hasNotes = cols.any((c) => c['name'] == 'notes');
     if (!hasNotes) {
@@ -2122,6 +2232,28 @@ class DatabaseService {
     return map;
   }
 
+  Future<Map<String, double>> getClassCourseCoefficientsById(
+    String className,
+    String academicYear,
+  ) async {
+    final db = await database;
+    final res = await db.rawQuery(
+      '''
+      SELECT cc.courseId as courseId, cc.coefficient as coeff
+      FROM class_courses cc
+      WHERE cc.className = ? AND cc.academicYear = ?
+    ''',
+      [className, academicYear],
+    );
+    final map = <String, double>{};
+    for (final row in res) {
+      final courseId = row['courseId'] as String?;
+      final num? coeff = row['coeff'] as num?;
+      if (courseId != null && coeff != null) map[courseId] = coeff.toDouble();
+    }
+    return map;
+  }
+
   Future<void> updateClassCourseCoefficient({
     required String className,
     required String academicYear,
@@ -2307,11 +2439,20 @@ class DatabaseService {
           id INTEGER PRIMARY KEY,
           name TEXT NOT NULL,
           address TEXT NOT NULL,
+          bp TEXT,
           telephone TEXT,
           email TEXT,
           website TEXT,
           logoPath TEXT,
           director TEXT,
+          directorPrimary TEXT,
+          directorCollege TEXT,
+          directorLycee TEXT,
+          directorUniversity TEXT,
+          civilityPrimary TEXT,
+          civilityCollege TEXT,
+          civilityLycee TEXT,
+          civilityUniversity TEXT,
           motto TEXT,
           ministry TEXT,
           republicMotto TEXT,
@@ -2332,6 +2473,7 @@ class DatabaseService {
     );
 
     final newColumns = [
+      'bp TEXT',
       'republic TEXT',
       'ministry TEXT',
       'republicMotto TEXT',
@@ -2339,6 +2481,14 @@ class DatabaseService {
       'inspection TEXT',
       'paymentsAdminRole TEXT',
       'flagPath TEXT',
+      'directorPrimary TEXT',
+      'directorCollege TEXT',
+      'directorLycee TEXT',
+      'directorUniversity TEXT',
+      'civilityPrimary TEXT',
+      'civilityCollege TEXT',
+      'civilityLycee TEXT',
+      'civilityUniversity TEXT',
     ];
 
     for (final columnDef in newColumns) {
@@ -2397,6 +2547,7 @@ class DatabaseService {
           titulaire TEXT,
           fraisEcole REAL,
           fraisCotisationParallele REAL,
+          level TEXT,
           -- Seuils de passage personnalisés par classe
           seuilFelicitations REAL DEFAULT 16.0,
           seuilEncouragements REAL DEFAULT 14.0,
@@ -2408,8 +2559,8 @@ class DatabaseService {
         )
       ''');
       await db.execute('''
-        INSERT INTO classes (name, academicYear, titulaire, fraisEcole, fraisCotisationParallele, seuilFelicitations, seuilEncouragements, seuilAdmission, seuilAvertissement, seuilConditions, seuilRedoublement)
-        SELECT name, academicYear, titulaire, fraisEcole, fraisCotisationParallele, 16.0, 14.0, 12.0, 10.0, 8.0, 8.0 FROM classes_backup
+        INSERT INTO classes (name, academicYear, titulaire, fraisEcole, fraisCotisationParallele, level, seuilFelicitations, seuilEncouragements, seuilAdmission, seuilAvertissement, seuilConditions, seuilRedoublement)
+        SELECT name, academicYear, titulaire, fraisEcole, fraisCotisationParallele, '' AS level, 16.0, 14.0, 12.0, 10.0, 8.0, 8.0 FROM classes_backup
       ''');
     } catch (e) {
       debugPrint(
@@ -2492,6 +2643,7 @@ class DatabaseService {
       'seuilRedoublement',
       'REAL DEFAULT 8.0',
     );
+    await addColumnIfMissing('classes', 'level', 'TEXT');
 
     // Populate newly added columns when possible
     await db.execute('''
@@ -2686,12 +2838,11 @@ class DatabaseService {
           final newColsInfo = await txn.rawQuery(
             'PRAGMA table_info(${table}_new)',
           );
-          final oldCols =
-              oldColsInfo.map((c) => c['name'] as String).toSet();
-          final newCols =
-              newColsInfo.map((c) => c['name'] as String).toSet();
-          final common =
-              columns.where((c) => oldCols.contains(c) && newCols.contains(c));
+          final oldCols = oldColsInfo.map((c) => c['name'] as String).toSet();
+          final newCols = newColsInfo.map((c) => c['name'] as String).toSet();
+          final common = columns.where(
+            (c) => oldCols.contains(c) && newCols.contains(c),
+          );
           final cols = common.join(', ');
           if (cols.isNotEmpty) {
             await txn.execute(
@@ -3496,6 +3647,16 @@ class DatabaseService {
   Future<List<Class>> getClasses() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('classes');
+    return List.generate(maps.length, (i) => Class.fromMap(maps[i]));
+  }
+
+  Future<List<Class>> getClassesByYear(String academicYear) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'classes',
+      where: 'academicYear = ?',
+      whereArgs: [academicYear],
+    );
     return List.generate(maps.length, (i) => Class.fromMap(maps[i]));
   }
 
@@ -4387,11 +4548,10 @@ class DatabaseService {
     );
     int next = 1;
     if (rows.isEmpty) {
-      await txn.insert(
-        'payment_receipt_counters',
-        {'academicYear': year, 'seq': next},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await txn.insert('payment_receipt_counters', {
+        'academicYear': year,
+        'seq': next,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     } else {
       final current = (rows.first['seq'] as int?) ?? 0;
       next = current + 1;
@@ -4575,9 +4735,7 @@ class DatabaseService {
     return maps.map(PaymentAttachment.fromMap).toList();
   }
 
-  Future<void> deletePaymentAttachment({
-    required int id,
-  }) async {
+  Future<void> deletePaymentAttachment({required int id}) async {
     final db = await database;
     await db.delete('payment_attachments', where: 'id = ?', whereArgs: [id]);
     try {
@@ -4597,17 +4755,13 @@ class DatabaseService {
   }) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
-    await db.insert(
-      'payment_schedule_rules',
-      {
-        'classAcademicYear': classAcademicYear,
-        'className': className,
-        'scheduleJson': scheduleJson,
-        'updatedAt': now,
-        'updatedBy': updatedBy,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('payment_schedule_rules', {
+      'classAcademicYear': classAcademicYear,
+      'className': className,
+      'scheduleJson': scheduleJson,
+      'updatedAt': now,
+      'updatedBy': updatedBy,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     try {
       await logAudit(
         category: 'payment',
@@ -4690,7 +4844,8 @@ class DatabaseService {
     final db = await database;
     final maps = await db.query(
       'payment_adjustments',
-      where: 'classAcademicYear = ? AND (isCancelled IS NULL OR isCancelled = 0)',
+      where:
+          'classAcademicYear = ? AND (isCancelled IS NULL OR isCancelled = 0)',
       whereArgs: [academicYear],
       orderBy: 'createdAt DESC',
     );
@@ -4807,7 +4962,8 @@ class DatabaseService {
       await logAudit(
         category: 'expense',
         action: 'insert_expense_attachment',
-        details: 'expenseId=${attachment.expenseId} file=${attachment.fileName}',
+        details:
+            'expenseId=${attachment.expenseId} file=${attachment.fileName}',
       );
     } catch (_) {}
     return id;
@@ -4865,19 +5021,15 @@ class DatabaseService {
       return (existing.first['id'] as num?)?.toInt() ?? 0;
     }
     final now = DateTime.now().toIso8601String();
-    final id = await db.insert(
-      'suppliers',
-      {
-        'name': clean,
-        'phone': phone,
-        'email': email,
-        'address': address,
-        'notes': notes,
-        'createdAt': now,
-        'updatedAt': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    final id = await db.insert('suppliers', {
+      'name': clean,
+      'phone': phone,
+      'email': email,
+      'address': address,
+      'notes': notes,
+      'createdAt': now,
+      'updatedAt': now,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
     if (id != 0) {
       try {
         await logAudit(
@@ -4908,18 +5060,14 @@ class DatabaseService {
   }) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
-    final id = await db.insert(
-      'finance_budgets',
-      {
-        'academicYear': academicYear,
-        'category': category,
-        'className': className,
-        'plannedAmount': plannedAmount,
-        'updatedAt': now,
-        'updatedBy': updatedBy,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    final id = await db.insert('finance_budgets', {
+      'academicYear': academicYear,
+      'category': category,
+      'className': className,
+      'plannedAmount': plannedAmount,
+      'updatedAt': now,
+      'updatedBy': updatedBy,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     try {
       await logAudit(
         category: 'expense',
@@ -6367,8 +6515,7 @@ class DatabaseService {
                         (g) =>
                             (g['type'] == 'Devoir' ||
                                 g['type'] == 'Composition') &&
-                            g['value'] != null &&
-                            g['value'] != 0,
+                            g['value'] != null,
                       )
                       .toList();
 
@@ -6456,7 +6603,7 @@ class DatabaseService {
 
               // Mention
               String mention;
-              if (moyenneGenerale >= 18) {
+              if (moyenneGenerale >= 19) {
                 mention = 'EXCELLENT';
               } else if (moyenneGenerale >= 16) {
                 mention = 'TRÈS BIEN';
@@ -7149,6 +7296,25 @@ class DatabaseService {
     return res.first;
   }
 
+  /// Récupère la synthèse archivée du bulletin pour un élève/classe/année/période
+  Future<Map<String, dynamic>?> getReportCardArchive({
+    required String studentId,
+    required String className,
+    required String academicYear,
+    required String term,
+  }) async {
+    final db = await database;
+    final res = await db.query(
+      'report_cards_archive',
+      where:
+          'studentId = ? AND className = ? AND academicYear = ? AND term = ?',
+      whereArgs: [studentId, className, academicYear, term],
+      limit: 1,
+    );
+    if (res.isEmpty) return null;
+    return res.first;
+  }
+
   /// Récupère un bulletin "prioritaire" pour un élève/classe/année (fin d'année en priorité),
   /// pour réutiliser la décision/moyenne annuelle lors de la réinscription.
   Future<Map<String, dynamic>?> getPreferredReportCardForStudent({
@@ -7455,10 +7621,7 @@ class DatabaseService {
     } catch (_) {}
   }
 
-  Future<void> unlockUser({
-    required String username,
-    String? by,
-  }) async {
+  Future<void> unlockUser({required String username, String? by}) async {
     final db = await database;
     await db.update(
       'users',
@@ -7506,8 +7669,7 @@ class DatabaseService {
     String? lockedUntil;
     int storedCount = next;
     if (next >= lockAfter) {
-      lockedUntil =
-          DateTime.now().add(lockDuration).toIso8601String();
+      lockedUntil = DateTime.now().add(lockDuration).toIso8601String();
       storedCount = 0;
     }
 
@@ -7521,7 +7683,8 @@ class DatabaseService {
       await logAudit(
         category: 'auth',
         action: lockedUntil == null ? 'login_failed' : 'login_locked',
-        details: 'username=$username failed=$next lockedUntil=${lockedUntil ?? ''}',
+        details:
+            'username=$username failed=$next lockedUntil=${lockedUntil ?? ''}',
         username: username,
         success: false,
       );
@@ -7592,6 +7755,543 @@ class DatabaseService {
     } catch (_) {}
   }
 
+  // --- Statistics Aggregations ---
+
+  Future<Map<String, dynamic>> getGlobalAcademicStats(
+    String academicYear,
+  ) async {
+    final db = await database;
+
+    // Répartition des moyennes
+    final distribution = {
+      '<10': 0,
+      '10-12': 0,
+      '12-14': 0,
+      '14-16': 0,
+      '>16': 0,
+    };
+
+    final reports = await db.query(
+      'report_cards',
+      where: 'academicYear = ?',
+      whereArgs: [academicYear],
+    );
+
+    double totalMoyenne = 0;
+    int count = 0;
+    final Map<String, List<double>> classMoyennes = {};
+
+    for (final r in reports) {
+      final moy = r['moyenneGenerale'] as double? ?? 0.0;
+      final className = r['className'] as String? ?? 'Inconnue';
+
+      if (moy > 0) {
+        totalMoyenne += moy;
+        count++;
+
+        classMoyennes.putIfAbsent(className, () => []).add(moy);
+
+        if (moy < 10)
+          distribution['<10'] = (distribution['<10'] ?? 0) + 1;
+        else if (moy < 12)
+          distribution['10-12'] = (distribution['10-12'] ?? 0) + 1;
+        else if (moy < 14)
+          distribution['12-14'] = (distribution['12-14'] ?? 0) + 1;
+        else if (moy < 16)
+          distribution['14-16'] = (distribution['14-16'] ?? 0) + 1;
+        else
+          distribution['>16'] = (distribution['>16'] ?? 0) + 1;
+      }
+    }
+
+    final classAvgs = <String, double>{};
+    classMoyennes.forEach((key, value) {
+      final sum = value.reduce((a, b) => a + b);
+      classAvgs[key] = sum / value.length;
+    });
+
+    return {
+      'globalAverage': count > 0 ? totalMoyenne / count : 0.0,
+      'distribution': distribution,
+      'classAverages': classAvgs,
+    };
+  }
+
+  Future<Map<String, dynamic>> getDisciplineStats(String academicYear) async {
+    final db = await database;
+
+    final absencesByMonth = await db.rawQuery(
+      '''
+      SELECT strftime('%m', date) as month, COUNT(*) as count 
+      FROM attendance_events 
+      WHERE academicYear = ? AND type != 'Retard'
+      GROUP BY month
+    ''',
+      [academicYear],
+    );
+
+    final sanctionsByClass = await db.rawQuery(
+      '''
+      SELECT className, COUNT(*) as count 
+      FROM sanction_events 
+      WHERE academicYear = ?
+      GROUP BY className
+    ''',
+      [academicYear],
+    );
+
+    final topAbsentRows = await db.rawQuery(
+      '''
+      SELECT s.id, s.firstName, s.lastName, s.className, COUNT(*) as count
+      FROM attendance_events ae
+      JOIN students s ON ae.studentId = s.id
+      WHERE ae.academicYear = ? AND ae.type = 'absence'
+      GROUP BY s.id
+      ORDER BY count DESC
+      LIMIT 10
+    ''',
+      [academicYear],
+    );
+
+    return {
+      'absencesByMonth': <String, dynamic>{
+        for (var e in absencesByMonth)
+          (e['month'] ?? '').toString(): e['count'],
+      },
+      'sanctionsByClass': <String, dynamic>{
+        for (var e in sanctionsByClass)
+          (e['className'] ?? '').toString(): e['count'],
+      },
+      'topAbsentStudents': topAbsentRows
+          .map(
+            (row) => {
+              'id': row['id'],
+              'name': '${row['lastName']} ${row['firstName']}'.trim(),
+              'className': row['className'],
+              'count': row['count'],
+            },
+          )
+          .toList(),
+    };
+  }
+
+  Future<Map<String, dynamic>> getDemographicStats(String academicYear) async {
+    final db = await database;
+
+    final genderStats = await db.rawQuery(
+      '''
+      SELECT gender, COUNT(*) as count 
+      FROM students 
+      WHERE academicYear = ? 
+      GROUP BY gender
+    ''',
+      [academicYear],
+    );
+
+    final students = await db.query(
+      'students',
+      columns: ['dateOfBirth'],
+      where: 'academicYear = ?',
+      whereArgs: [academicYear],
+    );
+
+    final ageDistribution = <String, int>{
+      '<10': 0,
+      '10-14': 0,
+      '15-18': 0,
+      '>18': 0,
+    };
+
+    final now = DateTime.now();
+    for (final s in students) {
+      final bdStr = s['dateOfBirth'] as String?;
+      if (bdStr != null) {
+        final bd = DateTime.tryParse(bdStr);
+        if (bd != null) {
+          final age = now.year - bd.year;
+          if (age < 10)
+            ageDistribution['<10'] = (ageDistribution['<10'] ?? 0) + 1;
+          else if (age <= 14)
+            ageDistribution['10-14'] = (ageDistribution['10-14'] ?? 0) + 1;
+          else if (age <= 18)
+            ageDistribution['15-18'] = (ageDistribution['15-18'] ?? 0) + 1;
+          else
+            ageDistribution['>18'] = (ageDistribution['>18'] ?? 0) + 1;
+        }
+      }
+    }
+
+    final statusStats = await db.rawQuery(
+      '''
+      SELECT status, COUNT(*) as count 
+      FROM students 
+      WHERE academicYear = ? 
+      GROUP BY status
+    ''',
+      [academicYear],
+    );
+
+    return {
+      'gender': <String, dynamic>{
+        for (var e in genderStats) (e['gender'] ?? '').toString(): e['count'],
+      },
+      'status': <String, dynamic>{
+        for (var e in statusStats)
+          (e['status'] ?? 'Nouveau').toString(): e['count'],
+      },
+      'age': ageDistribution,
+    };
+  }
+
+  Future<Map<String, dynamic>> getFinanceStats(String academicYear) async {
+    final db = await database;
+
+    // 1. Revenus mensuels (Payments)
+    // On groupe par mois sur la date
+    final incomeByMonthRows = await db.rawQuery(
+      '''
+      SELECT strftime('%m', date) as month, SUM(amount) as total
+      FROM payments
+      WHERE classAcademicYear = ? AND isCancelled = 0
+      GROUP BY month
+      ''',
+      [academicYear],
+    );
+
+    // 2. Dépenses mensuelles (Expenses)
+    final expenseByMonthRows = await db.rawQuery(
+      '''
+      SELECT strftime('%m', date) as month, SUM(amount) as total
+      FROM expenses
+      WHERE academicYear = ?
+      GROUP BY month
+      ''',
+      [academicYear],
+    );
+
+    // 3. Dépenses par catégorie
+    final expenseByCategoryRows = await db.rawQuery(
+      '''
+      SELECT category, SUM(amount) as total
+      FROM expenses
+      WHERE academicYear = ?
+      GROUP BY category
+      ''',
+      [academicYear],
+    );
+
+    // 4. Totaux globaux
+    final totalIncomeRow = await db.rawQuery(
+      'SELECT SUM(amount) as total FROM payments WHERE classAcademicYear = ? AND isCancelled = 0',
+      [academicYear],
+    );
+    final totalExpenseRow = await db.rawQuery(
+      'SELECT SUM(amount) as total FROM expenses WHERE academicYear = ?',
+      [academicYear],
+    );
+
+    final totalIncome =
+        (totalIncomeRow.first['total'] as num?)?.toDouble() ?? 0.0;
+    final totalExpense =
+        (totalExpenseRow.first['total'] as num?)?.toDouble() ?? 0.0;
+
+    return {
+      'incomeByMonth': <String, dynamic>{
+        for (var e in incomeByMonthRows)
+          (e['month'] ?? '').toString(): e['total'],
+      },
+      'expenseByMonth': <String, dynamic>{
+        for (var e in expenseByMonthRows)
+          (e['month'] ?? '').toString(): e['total'],
+      },
+      'expenseByCategory': <String, dynamic>{
+        for (var e in expenseByCategoryRows)
+          (e['category'] ?? 'Autre').toString(): e['total'],
+      },
+      'totalIncome': totalIncome,
+      'totalExpense': totalExpense,
+      'balance': totalIncome - totalExpense,
+    };
+  }
+
+  Future<Map<String, dynamic>> getAdvancedAcademicStats(
+    String academicYear, {
+    String? className,
+    String? term,
+    int limit = 5,
+  }) async {
+    final db = await database;
+
+    // 1. Build Query with Filters
+    final parts = <String>['g.academicYear = ?'];
+    final args = <Object>[academicYear];
+
+    if ((className ?? '').trim().isNotEmpty) {
+      parts.add('s.className = ?');
+      args.add(className!.trim());
+    }
+
+    if ((term ?? '').trim().isNotEmpty) {
+      parts.add('g.term = ?');
+      args.add(term!.trim());
+    }
+
+    final whereClause = parts.join(' AND ');
+
+    // 2. Fetch live grades with gender and status
+    final gradesRows = await db.rawQuery('''
+      SELECT g.value, g.maxValue, g.coefficient, g.subject, g.subjectId, 
+             s.id as studentId, s.firstName, s.lastName, s.className, s.gender, s.status
+      FROM grades g
+      JOIN students s ON g.studentId = s.id
+      WHERE $whereClause
+    ''', args);
+
+    if (gradesRows.isEmpty) {
+      return {
+        'globalSuccessRate': 0.0,
+        'globalFailureRate': 0.0,
+        'topStudents': [],
+        'bottomStudents': [],
+        'subjectStats': [],
+        'genderStats': {},
+        'statusStats': {},
+      };
+    }
+
+    // 3. Compute averages per student
+    final studentAverages = <String, Map<String, dynamic>>{};
+    // Map<StudentId, {totalPoints, totalCoeff, studentInfo}>
+
+    for (final row in gradesRows) {
+      final sId = row['studentId'] as String;
+      final val = (row['value'] as num).toDouble();
+      final max = (row['maxValue'] as num).toDouble();
+      final coeff = (row['coefficient'] as num).toDouble();
+
+      if (max <= 0 || coeff <= 0) continue;
+
+      // Normalize to 20
+      final normalizedVal = (val / max) * 20;
+
+      studentAverages.putIfAbsent(
+        sId,
+        () => {
+          'totalPoints': 0.0,
+          'totalCoeff': 0.0,
+          'firstName': row['firstName'],
+          'lastName': row['lastName'],
+          'className': row['className'],
+
+          'gender': row['gender'],
+          'status': row['status'] ?? 'Nouveau',
+        },
+      );
+
+      studentAverages[sId]!['totalPoints'] += normalizedVal * coeff;
+      studentAverages[sId]!['totalCoeff'] += coeff;
+    }
+
+    final studentsList = studentAverages.entries.map((e) {
+      final data = e.value;
+      final totalPts = data['totalPoints'] as double;
+      final totalCoeff = data['totalCoeff'] as double;
+      final avg = totalCoeff > 0 ? totalPts / totalCoeff : 0.0;
+      return {
+        'id': e.key,
+        'name': '${data['lastName']} ${data['firstName']}'.trim(),
+        'className': data['className'],
+        'gender': data['gender'],
+        'status': data['status'],
+        'average': avg,
+      };
+    }).toList();
+
+    // 4. Success / Failure Counts
+    int totalSuccess = 0;
+    int totalFailure = 0;
+
+    // Breakdown maps
+    final genderBreakdown = <String, Map<String, int>>{};
+    final statusBreakdown = <String, Map<String, int>>{};
+    final classBreakdown = <String, Map<String, int>>{};
+
+    // Intersectional tracking: { "key": { success, failure, total, class, gender, status } }
+    final intersectional = <String, Map<String, dynamic>>{};
+
+    for (final s in studentsList) {
+      final avg = s['average'] as double;
+      final success = avg >= 10;
+      final gender = (s['gender'] as String? ?? 'M').toUpperCase();
+      final status = (s['status'] as String? ?? 'Nouveau');
+      final className = (s['className'] as String? ?? 'Inconnue');
+
+      if (success)
+        totalSuccess++;
+      else
+        totalFailure++;
+
+      // Gender tracking
+      genderBreakdown.putIfAbsent(
+        gender,
+        () => {'success': 0, 'failure': 0, 'total': 0},
+      );
+      genderBreakdown[gender]!['total'] =
+          genderBreakdown[gender]!['total']! + 1;
+      if (success) {
+        genderBreakdown[gender]!['success'] =
+            genderBreakdown[gender]!['success']! + 1;
+      } else {
+        genderBreakdown[gender]!['failure'] =
+            genderBreakdown[gender]!['failure']! + 1;
+      }
+
+      // Status tracking
+      statusBreakdown.putIfAbsent(
+        status,
+        () => {'success': 0, 'failure': 0, 'total': 0},
+      );
+      statusBreakdown[status]!['total'] =
+          statusBreakdown[status]!['total']! + 1;
+      if (success) {
+        statusBreakdown[status]!['success'] =
+            statusBreakdown[status]!['success']! + 1;
+      } else {
+        statusBreakdown[status]!['failure'] =
+            statusBreakdown[status]!['failure']! + 1;
+      }
+
+      // Class tracking
+      classBreakdown.putIfAbsent(
+        className,
+        () => {'success': 0, 'failure': 0, 'total': 0},
+      );
+      classBreakdown[className]!['total'] =
+          classBreakdown[className]!['total']! + 1;
+      if (success) {
+        classBreakdown[className]!['success'] =
+            classBreakdown[className]!['success']! + 1;
+      } else {
+        classBreakdown[className]!['failure'] =
+            classBreakdown[className]!['failure']! + 1;
+      }
+
+      // Intersectional tracking: combine class, status, gender
+      final comboKey = '${className}_${status}_${gender}';
+      intersectional.putIfAbsent(
+        comboKey,
+        () => {
+          'class': className,
+          'status': status,
+          'gender': gender,
+          'success': 0,
+          'failure': 0,
+          'total': 0,
+        },
+      );
+      intersectional[comboKey]!['total'] =
+          intersectional[comboKey]!['total'] + 1;
+      if (success) {
+        intersectional[comboKey]!['success'] =
+            intersectional[comboKey]!['success'] + 1;
+      } else {
+        intersectional[comboKey]!['failure'] =
+            intersectional[comboKey]!['failure'] + 1;
+      }
+    }
+
+    final globalSuccessRate = studentsList.isNotEmpty
+        ? (totalSuccess / studentsList.length) * 100
+        : 0.0;
+    final globalFailureRate = studentsList.isNotEmpty
+        ? (totalFailure / studentsList.length) * 100
+        : 0.0;
+
+    // 5. Top & Bottom Students
+    studentsList.sort(
+      (a, b) => (b['average'] as double).compareTo(a['average'] as double),
+    );
+    final topStudents = studentsList.take(limit).toList();
+    final bottomStudents = studentsList.reversed.take(limit).toList();
+
+    // 6. Subject Performance
+    final subjectSums = <String, Map<String, double>>{};
+    // Map<SubjectName, {sumAvg, count}>
+
+    for (final row in gradesRows) {
+      final subject = (row['subject'] as String?) ?? 'Inconnu';
+      final val = (row['value'] as num).toDouble();
+      final max = (row['maxValue'] as num).toDouble();
+
+      if (max <= 0) continue;
+      final normalizedVal = (val / max) * 20;
+
+      subjectSums.putIfAbsent(subject, () => {'total': 0.0, 'count': 0.0});
+      subjectSums[subject]!['total'] =
+          (subjectSums[subject]!['total']!) + normalizedVal;
+      subjectSums[subject]!['count'] = (subjectSums[subject]!['count']!) + 1;
+    }
+
+    final subjectStats = subjectSums.entries.map((e) {
+      final total = e.value['total']!;
+      final count = e.value['count']!;
+      return {
+        'subject': e.key,
+        'average': count > 0 ? total / count : 0.0,
+        'count': count.toInt(),
+      };
+    }).toList();
+
+    // Sort subjects by difficulty (lowest average first)
+    subjectStats.sort(
+      (a, b) => (a['average'] as double).compareTo(b['average'] as double),
+    );
+
+    // 7. Compute Progression
+    double? previousGlobalAverage;
+    if ((term ?? '').isNotEmpty) {
+      String? prevTerm;
+      if (term == 'Trimestre 2')
+        prevTerm = 'Trimestre 1';
+      else if (term == 'Trimestre 3')
+        prevTerm = 'Trimestre 2';
+      else if (term == 'Semestre 2')
+        prevTerm = 'Semestre 1';
+
+      if (prevTerm != null) {
+        final prevStats = await getAdvancedAcademicStats(
+          academicYear,
+          className: className,
+          term: prevTerm,
+          limit: limit,
+        );
+        previousGlobalAverage = prevStats['globalAverage'] as double?;
+      }
+    }
+
+    return {
+      'globalSuccessRate': globalSuccessRate,
+      'globalFailureRate': globalFailureRate,
+      'globalAverage': studentsList.isNotEmpty
+          ? studentsList
+                    .map((s) => s['average'] as double)
+                    .reduce((a, b) => a + b) /
+                studentsList.length
+          : 0.0,
+      'previousGlobalAverage': previousGlobalAverage,
+      'topStudents': topStudents,
+      'bottomStudents': bottomStudents,
+      'subjectStats': subjectStats,
+      'genderStats': genderBreakdown,
+      'statusStats': statusBreakdown,
+      'classStats': classBreakdown,
+      'intersectionalStats': intersectional.values.toList(),
+      'totalStudents': studentsList.length,
+      'totalSuccess': totalSuccess,
+      'totalFailure': totalFailure,
+    };
+  }
+
   // User activity logs
   Future<List<Map<String, dynamic>>> getAuditLogsForUser({
     required String username,
@@ -7617,17 +8317,14 @@ class DatabaseService {
   }) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
-    final id = await db.insert(
-      'user_sessions',
-      {
-        'username': username,
-        'loginAt': now,
-        'lastSeenAt': now,
-        'logoutAt': null,
-        'device': device,
-        'ip': ip,
-      },
-    );
+    final id = await db.insert('user_sessions', {
+      'username': username,
+      'loginAt': now,
+      'lastSeenAt': now,
+      'logoutAt': null,
+      'device': device,
+      'ip': ip,
+    });
     try {
       await logAudit(
         category: 'auth',

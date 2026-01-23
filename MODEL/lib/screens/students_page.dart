@@ -44,9 +44,14 @@ class _StudentsPageState extends State<StudentsPage> {
   String? _selectedClassFilter;
   String? _selectedGenderFilter;
   String? _selectedYearFilter;
+  String? _selectedLevelFilter;
 
   String _classKey(Class cls) => '${cls.name}:::${cls.academicYear}';
   String _classLabel(Class cls) => '${cls.name} (${cls.academicYear})';
+  String _normalizeLevel(String? level) {
+    final v = (level ?? '').trim();
+    return v.isNotEmpty ? v : 'Non défini';
+  }
   Class? _classFromKey(String? key, List<Class> classes) {
     if (key == null) return null;
     final parts = key.split(':::');
@@ -138,6 +143,7 @@ class _StudentsPageState extends State<StudentsPage> {
       final studentCount = filteredStudents.length;
       final boys = filteredStudents.where((s) => s.gender == 'M').length;
       final girls = filteredStudents.where((s) => s.gender == 'F').length;
+      final level = _normalizeLevel(cls.level);
       return {
         'classKey': key,
         'classLabel': label,
@@ -146,6 +152,7 @@ class _StudentsPageState extends State<StudentsPage> {
         'boys': boys.toString(),
         'girls': girls.toString(),
         'year': cls.academicYear,
+        'level': level,
       };
     }).toList();
 
@@ -171,6 +178,9 @@ class _StudentsPageState extends State<StudentsPage> {
           data['classKey'] == _selectedClassFilter;
       final matchYear =
           _selectedYearFilter == null || data['year'] == _selectedYearFilter;
+      final matchLevel =
+          _selectedLevelFilter == null ||
+          data['level'] == _selectedLevelFilter;
       if (_selectedGenderFilter != null) {
         if (_selectedGenderFilter == 'M' && data['boys'] == '0') return false;
         if (_selectedGenderFilter == 'F' && data['girls'] == '0') return false;
@@ -179,7 +189,7 @@ class _StudentsPageState extends State<StudentsPage> {
       // Enhanced search: include student names
       final matchSearch = _searchQuery.isEmpty || _matchesSearchQuery(data);
 
-      return matchClass && matchYear && matchSearch;
+      return matchClass && matchYear && matchLevel && matchSearch;
     }).toList();
   }
 
@@ -276,6 +286,10 @@ class _StudentsPageState extends State<StudentsPage> {
     final selectedGender = _selectedGenderFilter;
     final classAndYear = _selectedClassAndYearFromFilter();
     final query = _searchQuery.trim().toLowerCase();
+    final levelByClass = <String, String>{
+      for (final c in _allClasses)
+        '${c.name}:::${c.academicYear}': _normalizeLevel(c.level),
+    };
 
     return _allStudents.where((s) {
       if (_visibilityFilter == 'active' && s.isDeleted) return false;
@@ -289,6 +303,12 @@ class _StudentsPageState extends State<StudentsPage> {
       if (classAndYear != null) {
         if (s.className != classAndYear.className) return false;
         if (s.academicYear != classAndYear.academicYear) return false;
+      }
+      if (_selectedLevelFilter != null &&
+          _selectedLevelFilter!.isNotEmpty) {
+        final key = '${s.className}:::${s.academicYear}';
+        final level = levelByClass[key] ?? 'Non défini';
+        if (level != _selectedLevelFilter) return false;
       }
       if (query.isNotEmpty) {
         final hay = [
@@ -1320,10 +1340,31 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   Widget _buildFilters(BuildContext context) {
+    final classRows = List<Map<String, dynamic>>.from(_tableData);
+    classRows.sort((a, b) {
+      final aLevel = (a['level'] as String?)?.trim() ?? 'Non défini';
+      final bLevel = (b['level'] as String?)?.trim() ?? 'Non défini';
+      final ra = _levelRank(aLevel);
+      final rb = _levelRank(bLevel);
+      if (ra != rb) return ra.compareTo(rb);
+      final al = (a['classLabel'] as String?) ?? '';
+      final bl = (b['classLabel'] as String?) ?? '';
+      return al.compareTo(bl);
+    });
     final classMap = <String, String>{
-      for (final row in _tableData)
+      for (final row in classRows)
         row['classKey'] as String: row['classLabel'] as String,
     };
+    final levels = classRows
+        .map((r) => (r['level'] as String?)?.trim() ?? 'Non défini')
+        .toSet()
+        .toList()
+      ..sort((a, b) {
+        final ra = _levelRank(a);
+        final rb = _levelRank(b);
+        if (ra != rb) return ra.compareTo(rb);
+        return a.compareTo(b);
+      });
     final yearList = _tableData
         .map((e) => e['year'] as String)
         .toSet()
@@ -1332,6 +1373,61 @@ class _StudentsPageState extends State<StudentsPage> {
       spacing: AppSizes.smallSpacing,
       runSpacing: AppSizes.smallSpacing,
       children: [
+        if (levels.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Theme.of(context).dividerColor!),
+            ),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Niveaux',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).textTheme.bodyMedium!.color,
+                  ),
+                ),
+                ChoiceChip(
+                  label: const Text('Tous'),
+                  selected: _selectedLevelFilter == null,
+                  selectedColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.15),
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  labelStyle: TextStyle(
+                    color: _selectedLevelFilter == null
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).textTheme.bodyMedium!.color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  onSelected: (_) =>
+                      setState(() => _selectedLevelFilter = null),
+                ),
+                ...levels.map((level) {
+                  final color = _levelColor(level);
+                  final selected = _selectedLevelFilter == level;
+                  return ChoiceChip(
+                    label: Text(level),
+                    selected: selected,
+                    selectedColor: color.withOpacity(0.2),
+                    backgroundColor: color.withOpacity(0.08),
+                    labelStyle: TextStyle(
+                      color: selected ? color : color.withOpacity(0.9),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    onSelected: (_) =>
+                        setState(() => _selectedLevelFilter = level),
+                  );
+                }),
+              ],
+            ),
+          ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
@@ -1580,12 +1676,14 @@ class _StudentsPageState extends State<StudentsPage> {
         ),
         if (_selectedClassFilter != null ||
             _selectedGenderFilter != null ||
-            _selectedYearFilter != null)
+            _selectedYearFilter != null ||
+            _selectedLevelFilter != null)
           TextButton.icon(
             onPressed: () => setState(() {
               _selectedClassFilter = null;
               _selectedGenderFilter = null;
               _selectedYearFilter = _currentAcademicYear;
+              _selectedLevelFilter = null;
             }),
             icon: Icon(
               Icons.clear,
@@ -1703,11 +1801,89 @@ class _StudentsPageState extends State<StudentsPage> {
   Widget _buildDataTable(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final theme = Theme.of(context);
+        final headerBg = theme.colorScheme.primary;
+        final headerText = Colors.white;
+        final rowAlt = theme.colorScheme.primary.withOpacity(0.05);
+        final grouped = <String, List<Map<String, dynamic>>>{};
+        for (final data in _filteredTableData) {
+          final levelRaw = (data['level'] as String?)?.trim() ?? '';
+          final level = levelRaw.isNotEmpty ? levelRaw : 'Non défini';
+          grouped.putIfAbsent(level, () => []).add(data);
+        }
+        final orderedLevels = grouped.keys.toList()
+          ..sort((a, b) {
+            final ra = _levelRank(a);
+            final rb = _levelRank(b);
+            if (ra != rb) return ra.compareTo(rb);
+            return a.compareTo(b);
+          });
+        final List<DataRow> rows = [];
+        int stripeIndex = 0;
+        for (final level in orderedLevels) {
+          rows.add(
+            DataRow(
+              color: MaterialStateProperty.all(
+                _levelColor(level).withOpacity(0.12),
+              ),
+              cells: [
+                DataCell(
+                  Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: _levelColor(level),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Niveau: $level',
+                        style: TextStyle(
+                          fontSize: 15.0,
+                          fontWeight: FontWeight.bold,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const DataCell(SizedBox.shrink()),
+                const DataCell(SizedBox.shrink()),
+                const DataCell(SizedBox.shrink()),
+                const DataCell(SizedBox.shrink()),
+                const DataCell(SizedBox.shrink()),
+              ],
+            ),
+          );
+          for (final data in grouped[level] ?? const []) {
+            final rowColor = stripeIndex.isEven ? null : rowAlt;
+            stripeIndex++;
+            rows.add(
+              _buildRow(
+                context,
+                data['classKey'] as String,
+                data['classLabel'] as String,
+                data['total'],
+                data['boys'],
+                data['girls'],
+                data['year'],
+                rowColor: rowColor,
+              ),
+            );
+          }
+        }
         return Container(
           width: double.infinity,
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.dividerColor.withOpacity(0.4),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.shadowDark.withOpacity(0.2),
@@ -1726,6 +1902,8 @@ class _StudentsPageState extends State<StudentsPage> {
                 dataRowMinHeight: 56,
                 dataRowMaxHeight: 64,
                 columnSpacing: 32,
+                headingRowColor: MaterialStateProperty.all(headerBg),
+                dividerThickness: 0.6,
                 columns: [
                   DataColumn(
                     label: Text(
@@ -1733,7 +1911,7 @@ class _StudentsPageState extends State<StudentsPage> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge!.color,
+                        color: headerText,
                       ),
                     ),
                   ),
@@ -1743,7 +1921,7 @@ class _StudentsPageState extends State<StudentsPage> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge!.color,
+                        color: headerText,
                       ),
                     ),
                   ),
@@ -1753,7 +1931,7 @@ class _StudentsPageState extends State<StudentsPage> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge!.color,
+                        color: headerText,
                       ),
                     ),
                   ),
@@ -1763,7 +1941,7 @@ class _StudentsPageState extends State<StudentsPage> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge!.color,
+                        color: headerText,
                       ),
                     ),
                   ),
@@ -1773,7 +1951,7 @@ class _StudentsPageState extends State<StudentsPage> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge!.color,
+                        color: headerText,
                       ),
                     ),
                   ),
@@ -1783,30 +1961,38 @@ class _StudentsPageState extends State<StudentsPage> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyMedium!.color,
+                        color: headerText,
                       ),
                     ),
                   ),
                 ],
-                rows: _filteredTableData
-                    .map(
-                      (data) => _buildRow(
-                        context,
-                        data['classKey'] as String,
-                        data['classLabel'] as String,
-                        data['total'],
-                        data['boys'],
-                        data['girls'],
-                        data['year'],
-                      ),
-                    )
-                    .toList(),
+                rows: rows,
               ),
             ),
           ),
         );
       },
     );
+  }
+
+  int _levelRank(String level) {
+    final n = level.trim().toLowerCase();
+    if (n.contains('maternelle')) return 0;
+    if (n.contains('primaire')) return 1;
+    if (n.contains('coll')) return 2;
+    if (n.contains('lyc')) return 3;
+    if (n.contains('univ')) return 4;
+    return 99;
+  }
+
+  Color _levelColor(String level) {
+    final n = level.trim().toLowerCase();
+    if (n.contains('maternelle')) return const Color(0xFFEF4444);
+    if (n.contains('primaire')) return const Color(0xFF22C55E);
+    if (n.contains('coll')) return const Color(0xFFF59E0B);
+    if (n.contains('lyc')) return const Color(0xFF2563EB);
+    if (n.contains('univ')) return const Color(0xFF14B8A6);
+    return const Color(0xFF6B7280);
   }
 
   DataRow _buildRow(
@@ -1817,19 +2003,36 @@ class _StudentsPageState extends State<StudentsPage> {
     String male,
     String female,
     String year,
+    {Color? rowColor}
   ) {
     final keyParts = classKey.split(':::');
     final className = keyParts.isNotEmpty ? keyParts.first : classLabel;
     final classYear = keyParts.length > 1 ? keyParts.last : year;
     return DataRow(
+      color: rowColor == null
+          ? null
+          : MaterialStateProperty.all(rowColor),
       cells: [
         DataCell(
-          Text(
-            classLabel,
-            style: TextStyle(
-              fontSize: 15.0,
-              color: Theme.of(context).textTheme.bodyLarge!.color,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                classLabel,
+                style: TextStyle(
+                  fontSize: 15.0,
+                  color: Theme.of(context).textTheme.bodyLarge!.color,
+                ),
+              ),
+            ],
           ),
         ),
         DataCell(
@@ -2604,6 +2807,13 @@ class __ClassDialogState extends State<_ClassDialog> {
   final titulaireController = TextEditingController();
   final fraisEcoleController = TextEditingController();
   final fraisCotisationParalleleController = TextEditingController();
+  final List<String> _levels = const [
+    'Primaire',
+    'Collège',
+    'Lycée',
+    'Université',
+  ];
+  String _selectedLevel = 'Primaire';
   final DatabaseService _dbService = DatabaseService();
 
   @override
@@ -2643,6 +2853,24 @@ class __ClassDialogState extends State<_ClassDialog> {
               labelText: AppStrings.academicYearDialog,
               hintText: 'Enter l\'année scolaire',
               validator: (value) => value!.isEmpty ? AppStrings.required : null,
+            ),
+            const SizedBox(height: AppSizes.smallSpacing),
+            DropdownButtonFormField<String>(
+              value: _selectedLevel,
+              decoration: const InputDecoration(
+                labelText: 'Niveau scolaire',
+                border: OutlineInputBorder(),
+              ),
+              items: _levels
+                  .map((level) => DropdownMenuItem(
+                        value: level,
+                        child: Text(level),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _selectedLevel = value);
+              },
             ),
             const SizedBox(height: AppSizes.smallSpacing),
             CustomFormField(
@@ -2688,6 +2916,7 @@ class __ClassDialogState extends State<_ClassDialog> {
             final cls = Class(
               name: classNameController.text,
               academicYear: academicYearController.text,
+              level: _selectedLevel,
               titulaire: titulaireController.text.isNotEmpty
                   ? titulaireController.text
                   : null,
@@ -2721,6 +2950,7 @@ class __ClassDialogState extends State<_ClassDialog> {
                 final cls = Class(
                   name: classNameController.text,
                   academicYear: academicYearController.text,
+                  level: _selectedLevel,
                   titulaire: titulaireController.text.isNotEmpty
                       ? titulaireController.text
                       : null,

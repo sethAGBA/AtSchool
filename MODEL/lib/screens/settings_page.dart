@@ -36,11 +36,16 @@ class _SettingsPageState extends State<SettingsPage>
   // Controllers pour les informations de l'école
   final _etablissementController = TextEditingController();
   final _adresseController = TextEditingController();
+  final _bpController = TextEditingController();
   final _telephoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _siteWebController = TextEditingController();
   final _mottoController = TextEditingController();
   final _directeurController = TextEditingController();
+  final _directeurPrimaireController = TextEditingController();
+  final _directeurCollegeController = TextEditingController();
+  final _directeurLyceeController = TextEditingController();
+  final _directeurUniversityController = TextEditingController();
   final _codeEtablissementController = TextEditingController();
   final _niveauScolaireController = TextEditingController();
   final _searchController = TextEditingController();
@@ -55,11 +60,16 @@ class _SettingsPageState extends State<SettingsPage>
   // Focus nodes pour l'accessibilité
   late FocusNode _etablissementFocusNode;
   late FocusNode _adresseFocusNode;
+  late FocusNode _bpFocusNode;
   late FocusNode _telephoneFocusNode;
   late FocusNode _emailFocusNode;
   late FocusNode _siteWebFocusNode;
   late FocusNode _mottoFocusNode;
   late FocusNode _directeurFocusNode;
+  late FocusNode _directeurPrimaireFocusNode;
+  late FocusNode _directeurCollegeFocusNode;
+  late FocusNode _directeurLyceeFocusNode;
+  late FocusNode _directeurUniversityFocusNode;
   late FocusNode _codeEtablissementFocusNode;
   late FocusNode _searchFocusNode;
   late FocusNode _ministryFocusNode;
@@ -79,15 +89,20 @@ class _SettingsPageState extends State<SettingsPage>
   List<String> _availableYears = [];
   String _searchQuery = '';
   String _adminCivility = 'M.';
+  String _adminCivilityPrimary = 'M.';
+  String _adminCivilityCollege = 'M.';
+  String _adminCivilityLycee = 'M.';
+  String _adminCivilityUniversity = 'M.';
 
   final List<String> _languages = ['Français', 'English', 'العربية', 'Español'];
-  final List<String> _civilites = ['M.', 'Mme'];
+  final List<String> _civilites = ['M.', 'Mme', 'Dr.', 'Révérend', 'RP.'];
   final List<String> _niveauxScolaires = [
     'Maternelle',
     'Primaire',
     'Collège',
     'Lycée',
     'Université',
+    'Complexe scolaire',
   ];
 
   @override
@@ -111,11 +126,16 @@ class _SettingsPageState extends State<SettingsPage>
 
     _etablissementFocusNode = FocusNode();
     _adresseFocusNode = FocusNode();
+    _bpFocusNode = FocusNode();
     _telephoneFocusNode = FocusNode();
     _emailFocusNode = FocusNode();
     _siteWebFocusNode = FocusNode();
     _mottoFocusNode = FocusNode();
     _directeurFocusNode = FocusNode();
+    _directeurPrimaireFocusNode = FocusNode();
+    _directeurCollegeFocusNode = FocusNode();
+    _directeurLyceeFocusNode = FocusNode();
+    _directeurUniversityFocusNode = FocusNode();
     _codeEtablissementFocusNode = FocusNode();
     _searchFocusNode = FocusNode();
     _ministryFocusNode = FocusNode();
@@ -135,11 +155,16 @@ class _SettingsPageState extends State<SettingsPage>
     _animationController.dispose();
     _etablissementController.dispose();
     _adresseController.dispose();
+    _bpController.dispose();
     _telephoneController.dispose();
     _emailController.dispose();
     _siteWebController.dispose();
     _mottoController.dispose();
     _directeurController.dispose();
+    _directeurPrimaireController.dispose();
+    _directeurCollegeController.dispose();
+    _directeurLyceeController.dispose();
+    _directeurUniversityController.dispose();
     _codeEtablissementController.dispose();
     _niveauScolaireController.dispose();
     _searchController.dispose();
@@ -152,11 +177,16 @@ class _SettingsPageState extends State<SettingsPage>
 
     _etablissementFocusNode.dispose();
     _adresseFocusNode.dispose();
+    _bpFocusNode.dispose();
     _telephoneFocusNode.dispose();
     _emailFocusNode.dispose();
     _siteWebFocusNode.dispose();
     _mottoFocusNode.dispose();
     _directeurFocusNode.dispose();
+    _directeurPrimaireFocusNode.dispose();
+    _directeurCollegeFocusNode.dispose();
+    _directeurLyceeFocusNode.dispose();
+    _directeurUniversityFocusNode.dispose();
     _codeEtablissementFocusNode.dispose();
     _searchFocusNode.dispose();
     _ministryFocusNode.dispose();
@@ -174,11 +204,20 @@ class _SettingsPageState extends State<SettingsPage>
     setState(() {
       _etablissementController.text = prefs.getString('school_name') ?? '';
       _adresseController.text = prefs.getString('school_address') ?? '';
+      _bpController.text = prefs.getString('school_bp') ?? '';
       _telephoneController.text = prefs.getString('school_phone') ?? '';
       _emailController.text = prefs.getString('school_email') ?? '';
       _siteWebController.text = prefs.getString('school_website') ?? '';
       _mottoController.text = prefs.getString('school_motto') ?? '';
       _directeurController.text = prefs.getString('school_director') ?? '';
+      _directeurPrimaireController.text =
+          prefs.getString('school_director_primary') ?? '';
+      _directeurCollegeController.text =
+          prefs.getString('school_director_college') ?? '';
+      _directeurLyceeController.text =
+          prefs.getString('school_director_lycee') ?? '';
+      _directeurUniversityController.text =
+          prefs.getString('school_director_university') ?? '';
       _codeEtablissementController.text = prefs.getString('school_code') ?? '';
       _niveauScolaireController.text =
           prefs.getString('school_level') ?? 'Primaire';
@@ -200,7 +239,21 @@ class _SettingsPageState extends State<SettingsPage>
       _selectedLanguage = prefs.getString('language') ?? 'Français';
       _academicYear = prefs.getString('academic_year') ?? '2024-2025';
       _academicYearController.text = _academicYear;
-      _adminCivility = prefs.getString('school_admin_civility') ?? 'M.';
+
+      // Load civilities with migration logic
+      String fixCiv(String? val) => (val == 'RP' ? 'RP.' : (val ?? 'M.'));
+
+      _adminCivility = fixCiv(prefs.getString('school_admin_civility'));
+      _adminCivilityPrimary = fixCiv(
+        prefs.getString('school_civility_primary'),
+      );
+      _adminCivilityCollege = fixCiv(
+        prefs.getString('school_civility_college'),
+      );
+      _adminCivilityLycee = fixCiv(prefs.getString('school_civility_lycee'));
+      _adminCivilityUniversity = fixCiv(
+        prefs.getString('school_civility_university'),
+      );
     });
   }
 
@@ -221,12 +274,36 @@ class _SettingsPageState extends State<SettingsPage>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('school_name', _etablissementController.text.trim());
     await prefs.setString('school_address', _adresseController.text.trim());
+    await prefs.setString('school_bp', _bpController.text.trim());
     await prefs.setString('school_phone', _telephoneController.text.trim());
     await prefs.setString('school_email', _emailController.text.trim());
     await prefs.setString('school_website', _siteWebController.text.trim());
     await prefs.setString('school_motto', _mottoController.text.trim());
     await prefs.setString('school_republic', _republicController.text.trim());
     await prefs.setString('school_director', _directeurController.text.trim());
+    await prefs.setString(
+      'school_director_primary',
+      _directeurPrimaireController.text.trim(),
+    );
+    await prefs.setString(
+      'school_director_college',
+      _directeurCollegeController.text.trim(),
+    );
+    await prefs.setString(
+      'school_director_lycee',
+      _directeurLyceeController.text.trim(),
+    );
+    await prefs.setString(
+      'school_director_university',
+      _directeurUniversityController.text.trim(),
+    );
+    await prefs.setString('school_civility_primary', _adminCivilityPrimary);
+    await prefs.setString('school_civility_college', _adminCivilityCollege);
+    await prefs.setString('school_civility_lycee', _adminCivilityLycee);
+    await prefs.setString(
+      'school_civility_university',
+      _adminCivilityUniversity,
+    );
     await prefs.setString(
       'school_code',
       _codeEtablissementController.text.trim(),
@@ -270,7 +347,16 @@ class _SettingsPageState extends State<SettingsPage>
       final info = SchoolInfo(
         name: _etablissementController.text.trim(),
         address: _adresseController.text.trim(),
+        bp: _bpController.text.trim(),
         director: _directeurController.text.trim(),
+        directorPrimary: _directeurPrimaireController.text.trim(),
+        directorCollege: _directeurCollegeController.text.trim(),
+        directorLycee: _directeurLyceeController.text.trim(),
+        directorUniversity: _directeurUniversityController.text.trim(),
+        civilityPrimary: _adminCivilityPrimary,
+        civilityCollege: _adminCivilityCollege,
+        civilityLycee: _adminCivilityLycee,
+        civilityUniversity: _adminCivilityUniversity,
         logoPath: _logoPath,
         flagPath: _flagPath,
         telephone: _telephoneController.text.trim(),
@@ -1930,49 +2016,39 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Widget _buildModernSectionTitle(String title, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).dividerColor.withOpacity(0.1),
+    final primary = Theme.of(context).colorScheme.primary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 20, color: primary, semanticLabel: title),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: Colors.white,
-              semanticLabel: title,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).textTheme.titleLarge?.color,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        ],
-      ),
+        const SizedBox(height: 12),
+        Divider(
+          height: 1,
+          color: Theme.of(context).dividerColor.withOpacity(0.2),
+        ),
+      ],
     );
   }
 
@@ -1987,7 +2063,6 @@ class _SettingsPageState extends State<SettingsPage>
         position: _slideAnimation,
         child: Container(
           margin: const EdgeInsets.only(bottom: 24),
-          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
@@ -1996,19 +2071,42 @@ class _SettingsPageState extends State<SettingsPage>
             ),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                color: Theme.of(context).shadowColor.withOpacity(0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildModernSectionTitle(title, icon),
-              const SizedBox(height: 16),
-              ...children,
-            ],
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 6,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildModernSectionTitle(title, icon),
+                        const SizedBox(height: 16),
+                        ...children,
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2065,9 +2163,41 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           filled: true,
           fillColor: Theme.of(context).cardColor.withOpacity(0.5),
-          labelStyle: TextStyle(color: Colors.grey[600]),
+          labelStyle: TextStyle(
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
+    );
+  }
+
+  InputDecoration _buildModernDropdownDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: Theme.of(context).dividerColor.withOpacity(0.3),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+      ),
+      filled: true,
+      fillColor: Theme.of(context).cardColor.withOpacity(0.5),
     );
   }
 
@@ -2235,6 +2365,9 @@ class _SettingsPageState extends State<SettingsPage>
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
     final isDesktop = MediaQuery.of(context).size.width > 900;
+    final bool isComplexe = _niveauScolaireController.text
+        .toLowerCase()
+        .contains('complexe');
 
     // Filter sections based on search query
     final sections =
@@ -2266,8 +2399,111 @@ class _SettingsPageState extends State<SettingsPage>
                 label: 'Nom du directeur/directrice',
                 prefixIcon: Icons.person,
                 textInputAction: TextInputAction.next,
-                onFieldSubmitted: (_) => _adresseFocusNode.requestFocus(),
+                onFieldSubmitted: (_) => isComplexe
+                    ? _directeurPrimaireFocusNode.requestFocus()
+                    : _adresseFocusNode.requestFocus(),
               ),
+              if (isComplexe) ...[
+                DropdownButtonFormField<String>(
+                  value: _adminCivilityPrimary.isEmpty
+                      ? 'M.'
+                      : _adminCivilityPrimary,
+                  decoration: _buildModernDropdownDecoration(
+                    'Civilité (Primaire)',
+                    Icons.badge,
+                  ),
+                  items: _civilites
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => _adminCivilityPrimary = value ?? 'M.');
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildModernTextField(
+                  controller: _directeurPrimaireController,
+                  focusNode: _directeurPrimaireFocusNode,
+                  label: 'Chef d\'établissement (Primaire)',
+                  prefixIcon: Icons.person_outline,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) =>
+                      _directeurCollegeFocusNode.requestFocus(),
+                ),
+                DropdownButtonFormField<String>(
+                  value: _adminCivilityCollege.isEmpty
+                      ? 'M.'
+                      : _adminCivilityCollege,
+                  decoration: _buildModernDropdownDecoration(
+                    'Civilité (Collège)',
+                    Icons.badge,
+                  ),
+                  items: _civilites
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => _adminCivilityCollege = value ?? 'M.');
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildModernTextField(
+                  controller: _directeurCollegeController,
+                  focusNode: _directeurCollegeFocusNode,
+                  label: 'Chef d\'établissement (Collège)',
+                  prefixIcon: Icons.person_outline,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) =>
+                      _directeurLyceeFocusNode.requestFocus(),
+                ),
+                DropdownButtonFormField<String>(
+                  value: _adminCivilityLycee.isEmpty
+                      ? 'M.'
+                      : _adminCivilityLycee,
+                  decoration: _buildModernDropdownDecoration(
+                    'Civilité (Lycée)',
+                    Icons.badge,
+                  ),
+                  items: _civilites
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => _adminCivilityLycee = value ?? 'M.');
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildModernTextField(
+                  controller: _directeurLyceeController,
+                  focusNode: _directeurLyceeFocusNode,
+                  label: 'Chef d\'établissement (Lycée)',
+                  prefixIcon: Icons.person_outline,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) =>
+                      _directeurUniversityFocusNode.requestFocus(),
+                ),
+                DropdownButtonFormField<String>(
+                  value: _adminCivilityUniversity.isEmpty
+                      ? 'M.'
+                      : _adminCivilityUniversity,
+                  decoration: _buildModernDropdownDecoration(
+                    'Civilité (Université)',
+                    Icons.badge,
+                  ),
+                  items: _civilites
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => _adminCivilityUniversity = value ?? 'M.');
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildModernTextField(
+                  controller: _directeurUniversityController,
+                  focusNode: _directeurUniversityFocusNode,
+                  label: 'Chef d\'établissement (Université)',
+                  prefixIcon: Icons.person_outline,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) => _adresseFocusNode.requestFocus(),
+                ),
+              ],
               _buildModernTextField(
                 controller: _mottoController,
                 focusNode: _mottoFocusNode,
@@ -2280,40 +2516,9 @@ class _SettingsPageState extends State<SettingsPage>
                 value: _niveauScolaireController.text.isEmpty
                     ? 'Primaire'
                     : _niveauScolaireController.text,
-                decoration: InputDecoration(
-                  labelText: 'Niveau scolaire',
-                  prefixIcon: Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.school,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).dividerColor.withOpacity(0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF6366F1),
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor.withOpacity(0.5),
+                decoration: _buildModernDropdownDecoration(
+                  'Niveau scolaire',
+                  Icons.school,
                 ),
                 items: _niveauxScolaires.map((niveau) {
                   return DropdownMenuItem(value: niveau, child: Text(niveau));
@@ -2330,40 +2535,9 @@ class _SettingsPageState extends State<SettingsPage>
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _adminCivility.isEmpty ? 'M.' : _adminCivility,
-                decoration: InputDecoration(
-                  labelText: 'Civilité du chef d\'établissement',
-                  prefixIcon: Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.badge,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).dividerColor.withOpacity(0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF6366F1),
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor.withOpacity(0.5),
+                decoration: _buildModernDropdownDecoration(
+                  'Civilité du chef d\'établissement',
+                  Icons.badge,
                 ),
                 items: _civilites
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -2417,6 +2591,14 @@ class _SettingsPageState extends State<SettingsPage>
                 label: 'Inspection',
                 prefixIcon: Icons.admin_panel_settings,
                 textInputAction: TextInputAction.next,
+                onFieldSubmitted: (_) => _bpFocusNode.requestFocus(),
+              ),
+              _buildModernTextField(
+                controller: _bpController,
+                focusNode: _bpFocusNode,
+                label: 'BP',
+                prefixIcon: Icons.local_post_office,
+                textInputAction: TextInputAction.next,
                 onFieldSubmitted: (_) => _adresseFocusNode.requestFocus(),
               ),
               const SizedBox(height: 16),
@@ -2433,6 +2615,7 @@ class _SettingsPageState extends State<SettingsPage>
             'keywords': [
               'établissement',
               'adresse',
+              'bp',
               'code',
               'directeur',
               'niveau',
@@ -2490,13 +2673,7 @@ class _SettingsPageState extends State<SettingsPage>
                 textInputAction: TextInputAction.newline,
               ),
             ],
-            'keywords': [
-              'bulletin',
-              'pdf',
-              'pied de page',
-              'note',
-              'export',
-            ],
+            'keywords': ['bulletin', 'pdf', 'pied de page', 'note', 'export'],
           },
           {
             'title': 'Paramètres de l\'application',
@@ -2882,83 +3059,151 @@ class _SettingsPageState extends State<SettingsPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.school,
-                              size: 48,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'École Management System',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(
-                                context,
-                              ).textTheme.titleLarge?.color,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '© 2025  Cabinet ACTe',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyMedium?.color?.withOpacity(0.7),
-                            ),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withOpacity(0.1),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(
+                              context,
+                            ).shadowColor.withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildAboutInfoRow(Icons.tag, 'Version', '1.9.1 (100)'),
-                    _buildAboutInfoRow(
-                      Icons.apartment,
-                      'Éditeur',
-                      'cabinet ACTe',
-                    ),
-                    _buildAboutInfoRow(
-                      Icons.language,
-                      'Site web',
-                      'https://www.cabinetacte.com',
-                    ),
-                    _buildAboutInfoRow(
-                      Icons.email_outlined,
-                      'Email support',
-                      'cabinetactetg@gmail.com',
-                    ),
-                    _buildAboutInfoRow(
-                      Icons.phone,
-                      'Téléphone',
-                      '+228 92 21 75 64 / +228 90 57 9946',
-                    ),
-                    _buildAboutInfoRow(
-                      Icons.verified_user,
-                      'Licence',
-                      'Propriétaire',
-                    ),
-                    _buildAboutInfoRow(
-                      Icons.privacy_tip_outlined,
-                      'Confidentialité',
-                      'Voir la politique',
-                    ),
-                    _buildAboutInfoRow(
-                      Icons.rule_folder_outlined,
-                      "Conditions d'utilisation",
-                      'Voir les conditions',
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF6366F1),
+                                      Color(0xFF8B5CF6),
+                                    ],
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.school,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'École Management System',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge?.color,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '© 2025 Cabinet ACTe',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.color
+                                            ?.withOpacity(0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildAboutPill('Version', '2.1.0 (100)'),
+                              _buildAboutPill('Licence', 'Propriétaire'),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Divider(
+                            height: 1,
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withOpacity(0.2),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              SizedBox(
+                                width: 320,
+                                child: _buildAboutInfoRow(
+                                  Icons.apartment,
+                                  'Éditeur',
+                                  'cabinet ACTe',
+                                ),
+                              ),
+                              SizedBox(
+                                width: 320,
+                                child: _buildAboutInfoRow(
+                                  Icons.language,
+                                  'Site web',
+                                  'https://www.cabinetacte.com',
+                                ),
+                              ),
+                              SizedBox(
+                                width: 320,
+                                child: _buildAboutInfoRow(
+                                  Icons.email_outlined,
+                                  'Email support',
+                                  'cabinetactetg@gmail.com',
+                                ),
+                              ),
+                              SizedBox(
+                                width: 320,
+                                child: _buildAboutInfoRow(
+                                  Icons.phone,
+                                  'Téléphone',
+                                  '+228 92 21 75 64 / +228 90 57 9946',
+                                ),
+                              ),
+                              SizedBox(
+                                width: 320,
+                                child: _buildAboutInfoRow(
+                                  Icons.privacy_tip_outlined,
+                                  'Confidentialité',
+                                  'Voir la politique',
+                                ),
+                              ),
+                              SizedBox(
+                                width: 320,
+                                child: _buildAboutInfoRow(
+                                  Icons.rule_folder_outlined,
+                                  "Conditions d'utilisation",
+                                  'Voir les conditions',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -3052,350 +3297,199 @@ class _SettingsPageState extends State<SettingsPage>
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Logo header
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(24),
-                          margin: const EdgeInsets.only(bottom: 32),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withOpacity(0.1),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(
-                                  context,
-                                ).shadowColor.withOpacity(0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: _pickLogo,
-                                child: Container(
-                                  width: 140,
-                                  height: 140,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFF6366F1),
-                                        Color(0xFF8B5CF6),
-                                      ],
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFF6366F1,
-                                        ).withOpacity(0.3),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
-                                  child:
-                                      _logoPath != null &&
-                                          File(_logoPath!).existsSync()
-                                      ? ClipOval(
-                                          child: Image.file(
-                                            File(_logoPath!),
-                                            key: ValueKey(_logoPath),
-                                            fit: BoxFit.cover,
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.school,
-                                          color: Colors.white,
-                                          size: 60,
-                                          semanticLabel:
-                                              'Logo de l\'établissement',
-                                        ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Logo de l\'établissement',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium?.color,
-                                ),
-                              ),
-                              Text(
-                                'Touchez pour modifier',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.color
-                                      ?.withOpacity(0.7),
-                                ),
-                              ),
-                              if (_logoPath != null &&
-                                  File(_logoPath!).existsSync())
-                                TextButton.icon(
-                                  onPressed: () async {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).cardColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                        title: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: const [
-                                            Icon(
-                                              Icons.warning_amber_rounded,
-                                              color: Color(0xFFE11D48),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final maxWidth = constraints.maxWidth;
+                              final cardWidth = isDesktop
+                                  ? (maxWidth - 16) / 2
+                                  : maxWidth;
+                              return Wrap(
+                                spacing: 16,
+                                runSpacing: 16,
+                                children: [
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _buildMediaCard(
+                                      title: "Logo de l'établissement",
+                                      subtitle: 'Touchez pour modifier',
+                                      gradientStart: const Color(0xFF6366F1),
+                                      gradientEnd: const Color(0xFF8B5CF6),
+                                      height: 140,
+                                      semanticLabel: "Logo de l'établissement",
+                                      imagePath: _logoPath,
+                                      placeholderIcon: Icons.school,
+                                      onPick: _pickLogo,
+                                      removeLabel: 'Supprimer le logo',
+                                      isCircle: true,
+                                      imageFit: BoxFit.contain,
+                                      onRemove: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            backgroundColor: Theme.of(
+                                              context,
+                                            ).cardColor,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                             ),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Supprimer le logo ?',
-                                              style: TextStyle(
-                                                color: Color(0xFFE11D48),
-                                                fontWeight: FontWeight.bold,
+                                            title: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: const [
+                                                Icon(
+                                                  Icons.warning_amber_rounded,
+                                                  color: Color(0xFFE11D48),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'Supprimer le logo ?',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFE11D48),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            content: const Text(
+                                              'Cette action est irréversible.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, false),
+                                                child: const Text('Annuler'),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        content: const Text(
-                                          'Cette action est irréversible.',
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, false),
-                                            child: const Text('Annuler'),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, true),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFFE11D48,
+                                              ElevatedButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, true),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFFE11D48,
+                                                  ),
+                                                  foregroundColor: Colors.white,
+                                                ),
+                                                child: const Text('Supprimer'),
                                               ),
-                                              foregroundColor: Colors.white,
-                                            ),
-                                            child: const Text('Supprimer'),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      await _removeLogo();
-                                    }
-                                  },
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  label: const Text(
-                                    'Supprimer le logo',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withOpacity(0.1),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(
-                                context,
-                              ).shadowColor.withOpacity(0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            GestureDetector(
-                              onTap: _pickFlag,
-                              child: Container(
-                                width: 140,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF059669),
-                                      Color(0xFF10B981),
-                                    ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF059669,
-                                      ).withOpacity(0.3),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 10),
+                                        );
+                                        if (confirm == true) {
+                                          await _removeLogo();
+                                        }
+                                      },
                                     ),
-                                  ],
-                                ),
-                                child:
-                                    _flagPath != null &&
-                                        File(_flagPath!).existsSync()
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.file(
-                                          File(_flagPath!),
-                                          key: ValueKey(_flagPath),
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.flag,
-                                        color: Colors.white,
-                                        size: 60,
-                                        semanticLabel: 'Drapeau du pays',
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Drapeau du pays',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.titleMedium?.color,
-                              ),
-                            ),
-                            Text(
-                              'Touchez pour modifier',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.bodyMedium?.color?.withOpacity(0.7),
-                              ),
-                            ),
-                            if (_flagPath != null &&
-                                File(_flagPath!).existsSync())
-                              TextButton.icon(
-                                onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).cardColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      title: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: const [
-                                          Icon(
-                                            Icons.warning_amber_rounded,
-                                            color: Color(0xFFE11D48),
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Supprimer le drapeau ?',
-                                            style: TextStyle(
-                                              color: Color(0xFFE11D48),
-                                              fontWeight: FontWeight.bold,
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _buildMediaCard(
+                                      title: 'Drapeau du pays',
+                                      subtitle: 'Touchez pour modifier',
+                                      gradientStart: const Color(0xFF059669),
+                                      gradientEnd: const Color(0xFF10B981),
+                                      height: 100,
+                                      semanticLabel: 'Drapeau du pays',
+                                      imagePath: _flagPath,
+                                      placeholderIcon: Icons.flag,
+                                      onPick: _pickFlag,
+                                      removeLabel: 'Supprimer le drapeau',
+                                      imageFit: BoxFit.cover,
+                                      onRemove: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            backgroundColor: Theme.of(
+                                              context,
+                                            ).cardColor,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                      content: const Text(
-                                        'Cette action est irréversible.',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, false),
-                                          child: const Text('Annuler'),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, true),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xFFE11D48,
+                                            title: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: const [
+                                                Icon(
+                                                  Icons.warning_amber_rounded,
+                                                  color: Color(0xFFE11D48),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'Supprimer le drapeau ?',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFE11D48),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                            foregroundColor: Colors.white,
+                                            content: const Text(
+                                              'Cette action est irréversible.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, false),
+                                                child: const Text('Annuler'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, true),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFFE11D48,
+                                                  ),
+                                                  foregroundColor: Colors.white,
+                                                ),
+                                                child: const Text('Supprimer'),
+                                              ),
+                                            ],
                                           ),
-                                          child: const Text('Supprimer'),
-                                        ),
-                                      ],
+                                        );
+                                        if (confirm == true) {
+                                          await _removeFlag();
+                                        }
+                                      },
                                     ),
-                                  );
-                                  if (confirm == true) {
-                                    await _removeFlag();
-                                  }
-                                },
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.red,
-                                ),
-                                label: const Text(
-                                  'Supprimer le drapeau',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ),
-                          ],
-                        ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          // Settings sections (without "À propos")
+                          ...sections.map(
+                            (section) => _buildModernSectionCard(
+                              title: section['title'] as String,
+                              icon: section['icon'] as IconData,
+                              children: section['children'] as List<Widget>,
+                            ),
+                          ),
+                          // Save button
+                          _buildModernActionButton(
+                            label: 'Enregistrer les modifications',
+                            icon: Icons.save,
+                            onPressed: _saveSchoolSettings,
+                            gradientStart: const Color(0xFF6366F1),
+                            gradientEnd: const Color(0xFF8B5CF6),
+                            tooltip: 'Sauvegarder tous les paramètres',
+                          ),
+                          if (aboutSection != null)
+                            _buildModernSectionCard(
+                              title: aboutSection['title'] as String,
+                              icon: aboutSection['icon'] as IconData,
+                              children:
+                                  aboutSection['children'] as List<Widget>,
+                            ),
+                        ],
                       ),
-                      // Settings sections (without "À propos")
-                      ...sections.map(
-                        (section) => _buildModernSectionCard(
-                          title: section['title'] as String,
-                          icon: section['icon'] as IconData,
-                          children: section['children'] as List<Widget>,
-                        ),
-                      ),
-                      // Save button
-                      _buildModernActionButton(
-                        label: 'Enregistrer les modifications',
-                        icon: Icons.save,
-                        onPressed: _saveSchoolSettings,
-                        gradientStart: const Color(0xFF6366F1),
-                        gradientEnd: const Color(0xFF8B5CF6),
-                        tooltip: 'Sauvegarder tous les paramètres',
-                      ),
-                      if (aboutSection != null)
-                        _buildModernSectionCard(
-                          title: aboutSection['title'] as String,
-                          icon: aboutSection['icon'] as IconData,
-                          children: aboutSection['children'] as List<Widget>,
-                        ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -3495,14 +3589,246 @@ class _SettingsPageState extends State<SettingsPage>
             focusNode: _searchFocusNode,
             decoration: InputDecoration(
               hintText: 'Rechercher un paramètre...',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+              prefixIcon: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.search, color: theme.colorScheme.primary),
               ),
-              contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.dividerColor.withOpacity(0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: theme.cardColor.withOpacity(0.6),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 16,
+              ),
             ),
             onChanged: (value) => setState(() => _searchQuery = value.trim()),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMediaCard({
+    required String title,
+    required String subtitle,
+    required Color gradientStart,
+    required Color gradientEnd,
+    required double height,
+    required String semanticLabel,
+    required String? imagePath,
+    required IconData placeholderIcon,
+    required VoidCallback onPick,
+    required String removeLabel,
+    VoidCallback? onRemove,
+    bool isCircle = false,
+    BoxFit imageFit = BoxFit.cover,
+  }) {
+    final hasImage = imagePath != null && File(imagePath!).existsSync();
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).textTheme.titleMedium?.color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.color?.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onPick,
+            child: Container(
+              width: double.infinity,
+              height: height,
+              decoration: BoxDecoration(
+                shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+                borderRadius: isCircle ? null : BorderRadius.circular(14),
+                gradient: LinearGradient(colors: [gradientStart, gradientEnd]),
+                boxShadow: [
+                  BoxShadow(
+                    color: gradientStart.withOpacity(0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: isCircle
+                    ? BorderRadius.circular(999)
+                    : BorderRadius.circular(14),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.18),
+                              Colors.black.withOpacity(0.12),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.15),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: theme.cardColor.withOpacity(0.35),
+                            borderRadius: isCircle
+                                ? BorderRadius.circular(999)
+                                : BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            child: hasImage
+                                ? (isCircle
+                                      ? ClipOval(
+                                          child: Image.file(
+                                            File(imagePath!),
+                                            key: ValueKey(imagePath),
+                                            fit: imageFit,
+                                          ),
+                                        )
+                                      : ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          child: Image.file(
+                                            File(imagePath!),
+                                            key: ValueKey(imagePath),
+                                            fit: imageFit,
+                                          ),
+                                        ))
+                                : Column(
+                                    key: const ValueKey('placeholder'),
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        placeholderIcon,
+                                        color: Colors.white,
+                                        size: 44,
+                                        semanticLabel: semanticLabel,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Aperçu',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.35),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.edit, color: Colors.white, size: 14),
+                            SizedBox(width: 6),
+                            Text(
+                              'Modifier',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (hasImage && onRemove != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onRemove,
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                label: Text(
+                  removeLabel,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -3537,6 +3863,32 @@ class _SettingsPageState extends State<SettingsPage>
       subtitle: Text(value, style: TextStyle(color: color)),
       onTap: onTap,
       dense: true,
+    );
+  }
+
+  Widget _buildAboutPill(String label, String value) {
+    final color = Theme.of(context).textTheme.bodyMedium?.color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withOpacity(0.2),
+        ),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(color: color, fontSize: 12),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
     );
   }
 }

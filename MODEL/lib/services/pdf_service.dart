@@ -47,10 +47,10 @@ class PdfService {
   static Future<_PdfFonts> _loadPdfFonts() async {
     if (_cachedPdfFonts != null) return _cachedPdfFonts!;
     final regularData = await rootBundle.load(
-      'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Regular.ttf',
+      'assets/fonts/nunito/Nunito-Regular.ttf',
     );
     final boldData = await rootBundle.load(
-      'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Bold.ttf',
+      'assets/fonts/nunito/Nunito-Bold.ttf',
     );
     final symbolsData = await rootBundle.load(
       'assets/fonts/NotoSansSymbols2/NotoSansSymbols2-Regular.ttf',
@@ -94,6 +94,51 @@ class PdfService {
   static Future<String> _resolveAdminCivility() async {
     final prefs = await SharedPreferences.getInstance();
     return (prefs.getString('school_admin_civility') ?? 'M.').trim();
+  }
+
+  static String _resolveDirectorNameForLevel(
+    SchoolInfo schoolInfo,
+    String level,
+  ) {
+    final n = level.trim().toLowerCase();
+    String? candidate;
+    if (n.contains('primaire') || n.contains('maternelle')) {
+      candidate = schoolInfo.directorPrimary;
+    } else if (n.contains('coll')) {
+      candidate = schoolInfo.directorCollege;
+    } else if (n.contains('lyc')) {
+      candidate = schoolInfo.directorLycee;
+    } else if (n.contains('univ')) {
+      candidate = schoolInfo.directorUniversity;
+    }
+    final resolved = candidate?.trim();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
+    return schoolInfo.director.trim();
+  }
+
+  static bool _isLyceeLevel(String level) {
+    final n = level.trim().toLowerCase();
+    return n.contains('lyc');
+  }
+
+  static Future<String> _resolveAdminCivilityForLevel(
+    SchoolInfo schoolInfo,
+    String level,
+  ) async {
+    final n = level.trim().toLowerCase();
+    String? candidate;
+    if (n.contains('primaire') || n.contains('maternelle')) {
+      candidate = schoolInfo.civilityPrimary;
+    } else if (n.contains('coll')) {
+      candidate = schoolInfo.civilityCollege;
+    } else if (n.contains('lyc')) {
+      candidate = schoolInfo.civilityLycee;
+    } else if (n.contains('univ')) {
+      candidate = schoolInfo.civilityUniversity;
+    }
+    final resolved = candidate?.trim();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
+    return _resolveAdminCivility();
   }
 
   /// Calcule une moyenne sur 20 pondérée par `Grade.coefficient`.
@@ -179,13 +224,28 @@ class PdfService {
     String adminRole = (schoolInfo.paymentsAdminRole ?? '')
         .trim()
         .toLowerCase();
+    final classLevel = studentClass.level?.trim() ?? '';
+    if (adminRole.isEmpty && classLevel.isNotEmpty) {
+      adminRole = _isLyceeLevel(classLevel) ? 'proviseur' : 'directeur';
+    }
     if (adminRole.isEmpty) {
       // 1) Lire le niveau depuis les paramètres (SharedPreferences)
       try {
         final prefs = await SharedPreferences.getInstance();
         final schoolLevel = (prefs.getString('school_level') ?? '')
             .toLowerCase();
-        if (schoolLevel.contains('lyc')) {
+        if (schoolLevel.contains('complexe')) {
+          final n = classLevel.toLowerCase();
+          if (n.contains('primaire') || n.contains('maternelle')) {
+            adminRole = 'directeur_primaire';
+          } else if (n.contains('coll')) {
+            adminRole = 'directeur_college';
+          } else if (n.contains('lyc')) {
+            adminRole = 'directeur_lycee';
+          } else if (n.contains('univ')) {
+            adminRole = 'directeur_universite';
+          }
+        } else if (schoolLevel.contains('lyc')) {
           adminRole = 'proviseur';
         }
       } catch (_) {}
@@ -211,8 +271,14 @@ class PdfService {
     }
     // Afficher toujours le nom (comme dans le bulletin). Pour l'instant, on utilise
     // le champ 'director' de SchoolInfo comme nom du signataire administratif.
-    final adminCivility = await _resolveAdminCivility();
-    final String directeurName = schoolInfo.director.trim();
+    final adminCivility = await _resolveAdminCivilityForLevel(
+      schoolInfo,
+      classLevel,
+    );
+    final String directeurName = _resolveDirectorNameForLevel(
+      schoolInfo,
+      classLevel,
+    );
     final String directeurDisplayName = directeurName.isEmpty
         ? ''
         : (adminCivility.isNotEmpty
@@ -1401,9 +1467,9 @@ class PdfService {
     final schoolInfo = await dbService.getSchoolInfo();
     final currentAcademicYear = await getCurrentAcademicYear();
 
-    final String footerDate = DateFormat('dd/MM/yyyy HH:mm').format(
-      DateTime.now(),
-    );
+    final String footerDate = DateFormat(
+      'dd/MM/yyyy HH:mm',
+    ).format(DateTime.now());
 
     pdf.addPage(
       pw.MultiPage(
@@ -1451,10 +1517,7 @@ class PdfService {
                       children: [
                         pw.Text(
                           schoolInfo?.name ?? 'Établissement',
-                          style: pw.TextStyle(
-                            font: timesBold,
-                            fontSize: 14,
-                          ),
+                          style: pw.TextStyle(font: timesBold, fontSize: 14),
                         ),
                         pw.Text(
                           schoolInfo?.address ?? '',
@@ -2744,7 +2807,10 @@ class PdfService {
     bool duplicata = false,
   }) async {
     final footerNote = await _resolveReportFooterNote();
-    final adminCivility = await _resolveAdminCivility();
+    final adminCivility = await _resolveAdminCivilityForLevel(
+      schoolInfo,
+      niveau,
+    );
     return ReportCardPdfService.generateReportCardPdf(
       student: student,
       schoolInfo: schoolInfo,
@@ -2837,7 +2903,10 @@ class PdfService {
     bool duplicata = false,
   }) async {
     final footerNote = await _resolveReportFooterNote();
-    final adminCivility = await _resolveAdminCivility();
+    final adminCivility = await _resolveAdminCivilityForLevel(
+      schoolInfo,
+      niveau,
+    );
     return ReportCardCompactPdfService.generateReportCardPdfCompact(
       student: student,
       schoolInfo: schoolInfo,
@@ -2930,7 +2999,10 @@ class PdfService {
     bool duplicata = false,
   }) async {
     final footerNote = await _resolveReportFooterNote();
-    final adminCivility = await _resolveAdminCivility();
+    final adminCivility = await _resolveAdminCivilityForLevel(
+      schoolInfo,
+      niveau,
+    );
     return ReportCardUltraCompactPdfService.generateReportCardPdfUltraCompact(
       student: student,
       schoolInfo: schoolInfo,
@@ -4389,10 +4461,10 @@ class PdfService {
     pw.Font fontBold;
     try {
       final regularData = await rootBundle.load(
-        'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Regular.ttf',
+        'assets/fonts/nunito/Nunito-Regular.ttf',
       );
       final boldData = await rootBundle.load(
-        'assets/fonts/Josefin_Sans,Noto_Color_Emoji,Noto_Sans_Symbols_2,Nunito/Nunito/static/Nunito-Bold.ttf',
+        'assets/fonts/nunito/Nunito-Bold.ttf',
       );
       fontRegular = pw.Font.ttf(regularData);
       fontBold = pw.Font.ttf(boldData);

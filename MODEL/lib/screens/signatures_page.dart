@@ -8,6 +8,7 @@ import 'package:school_manager/models/staff.dart';
 import 'package:school_manager/services/database_service.dart';
 import 'package:school_manager/services/auth_service.dart';
 import 'package:school_manager/services/signature_assignment_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignaturesPage extends StatefulWidget {
   const SignaturesPage({Key? key}) : super(key: key);
@@ -27,6 +28,8 @@ class _SignaturesPageState extends State<SignaturesPage>
   List<Class> _classes = [];
   List<Staff> _staff = [];
   bool _isLoading = true;
+  String _schoolLevel = '';
+  bool _isComplexe = false;
 
   Future<void> _audit(String action, String details) async {
     try {
@@ -56,6 +59,8 @@ class _SignaturesPageState extends State<SignaturesPage>
   Future<void> _loadSignatures() async {
     setState(() => _isLoading = true);
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final schoolLevel = (prefs.getString('school_level') ?? '').trim();
       final futures = await Future.wait([
         _dbService.getAllSignatures(),
         _dbService.getClasses(),
@@ -64,12 +69,22 @@ class _SignaturesPageState extends State<SignaturesPage>
       
       setState(() {
         final allSignatures = futures[0] as List<Signature>;
-        final adminRoles = {'directeur', 'proviseur', 'vice_directeur'};
+        final adminRoles = {
+          'directeur',
+          'proviseur',
+          'vice_directeur',
+          'directeur_primaire',
+          'directeur_college',
+          'directeur_lycee',
+          'directeur_universite',
+        };
         _adminSignatures = allSignatures.where((s) => s.type == 'signature' && adminRoles.contains(s.associatedRole)).toList();
         _signatures = allSignatures.where((s) => s.type == 'signature' && !adminRoles.contains(s.associatedRole)).toList();
         _cachets = allSignatures.where((s) => s.type == 'cachet').toList();
         _classes = futures[1] as List<Class>;
         _staff = futures[2] as List<Staff>;
+        _schoolLevel = schoolLevel;
+        _isComplexe = schoolLevel.toLowerCase().contains('complexe');
         _isLoading = false;
       });
     } catch (e) {
@@ -104,6 +119,7 @@ class _SignaturesPageState extends State<SignaturesPage>
         cachets: _cachets,
         classes: _classes,
         staff: _staff,
+        isComplexe: _isComplexe,
       ),
     );
 
@@ -132,7 +148,7 @@ class _SignaturesPageState extends State<SignaturesPage>
   Future<void> _addSignature(String type) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => _SignatureDialog(type: type),
+      builder: (context) => _SignatureDialog(type: type, isComplexe: _isComplexe),
     );
 
     if (result != null) {
@@ -184,6 +200,7 @@ class _SignaturesPageState extends State<SignaturesPage>
       builder: (context) => _SignatureDialog(
         type: signature.type,
         initialSignature: signature,
+        isComplexe: _isComplexe,
       ),
     );
 
@@ -508,9 +525,45 @@ class _SignaturesPageState extends State<SignaturesPage>
     }
 
     final adminSignatures = _adminSignatures;
+    final List<String> requiredRoles = [
+      'directeur_primaire',
+      'directeur_college',
+      'directeur_lycee',
+      'directeur_universite',
+    ];
+    final Set<String> availableDefaults = adminSignatures
+        .where((s) => (s.associatedRole ?? '').isNotEmpty && s.isDefault)
+        .map((s) => s.associatedRole!)
+        .toSet();
+    final List<String> missingRoles = _isComplexe
+        ? requiredRoles.where((r) => !availableDefaults.contains(r)).toList()
+        : const [];
 
     return Column(
       children: [
+        if (_isComplexe && missingRoles.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withOpacity(0.4)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Complexe scolaire: signatures manquantes pour ${missingRoles.map(_roleLabel).join(', ')}.',
+                    style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+                  ),
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -581,7 +634,7 @@ class _SignaturesPageState extends State<SignaturesPage>
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Rôle: ${signature.associatedRole ?? '-'}'),
+                            Text('Rôle: ${_roleLabel(signature.associatedRole ?? '-')}'),
                             Text(
                               'Créé le ${_formatDate(signature.createdAt)}',
                               style: TextStyle(
@@ -625,7 +678,7 @@ class _SignaturesPageState extends State<SignaturesPage>
   Future<void> _addAdminSignature() async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => const _AdminSignatureDialog(),
+      builder: (context) => _AdminSignatureDialog(isComplexe: _isComplexe),
     );
 
     if (result != null) {
@@ -671,7 +724,10 @@ class _SignaturesPageState extends State<SignaturesPage>
   Future<void> _editAdminSignature(Signature signature) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => _AdminSignatureDialog(initialSignature: signature),
+      builder: (context) => _AdminSignatureDialog(
+        initialSignature: signature,
+        isComplexe: _isComplexe,
+      ),
     );
 
     if (result != null) {
@@ -768,6 +824,29 @@ class _SignaturesPageState extends State<SignaturesPage>
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'directeur_primaire':
+        return 'Directeur (Primaire)';
+      case 'directeur_college':
+        return 'Directeur (Collège)';
+      case 'directeur_lycee':
+        return 'Directeur (Lycée)';
+      case 'directeur_universite':
+        return 'Directeur (Université)';
+      case 'vice_directeur':
+        return 'Vice-Directeur';
+      case 'proviseur':
+        return 'Proviseur';
+      case 'directeur':
+        return 'Directeur';
+      case 'titulaire':
+        return 'Titulaire';
+      default:
+        return role;
+    }
   }
 
   Widget _buildHeader(BuildContext context, bool isDarkMode, bool isDesktop) {
@@ -938,10 +1017,12 @@ class _SignaturesPageState extends State<SignaturesPage>
 class _SignatureDialog extends StatefulWidget {
   final String type;
   final Signature? initialSignature;
+  final bool isComplexe;
 
   const _SignatureDialog({
     required this.type,
     this.initialSignature,
+    required this.isComplexe,
   });
 
   @override
@@ -950,8 +1031,12 @@ class _SignatureDialog extends StatefulWidget {
 
 class _AdminSignatureDialog extends StatefulWidget {
   final Signature? initialSignature;
+  final bool isComplexe;
 
-  const _AdminSignatureDialog({this.initialSignature});
+  const _AdminSignatureDialog({
+    this.initialSignature,
+    required this.isComplexe,
+  });
 
   @override
   State<_AdminSignatureDialog> createState() => _AdminSignatureDialogState();
@@ -966,6 +1051,27 @@ class _AdminSignatureDialogState extends State<_AdminSignatureDialog> {
   String? _role = 'directeur';
   bool _isDefault = true;
 
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'directeur_primaire':
+        return 'Directeur (Primaire)';
+      case 'directeur_college':
+        return 'Directeur (Collège)';
+      case 'directeur_lycee':
+        return 'Directeur (Lycée)';
+      case 'directeur_universite':
+        return 'Directeur (Université)';
+      case 'vice_directeur':
+        return 'Vice-Directeur';
+      case 'proviseur':
+        return 'Proviseur';
+      case 'directeur':
+        return 'Directeur';
+      default:
+        return role;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -976,6 +1082,8 @@ class _AdminSignatureDialogState extends State<_AdminSignatureDialog> {
       _imagePath = s.imagePath;
       _role = s.associatedRole ?? 'directeur';
       _isDefault = s.isDefault;
+    } else if (widget.isComplexe) {
+      _role = 'directeur_primaire';
     }
   }
 
@@ -993,6 +1101,14 @@ class _AdminSignatureDialogState extends State<_AdminSignatureDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final roles = widget.isComplexe
+        ? const [
+            'directeur_primaire',
+            'directeur_college',
+            'directeur_lycee',
+            'directeur_universite',
+          ]
+        : const ['directeur', 'proviseur', 'vice_directeur'];
     return AlertDialog(
       title: const Text('Signature Administration'),
       content: Form(
@@ -1038,11 +1154,14 @@ class _AdminSignatureDialogState extends State<_AdminSignatureDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _role,
-                items: const [
-                  DropdownMenuItem(value: 'directeur', child: Text('Directeur')),
-                  DropdownMenuItem(value: 'proviseur', child: Text('Proviseur')),
-                  DropdownMenuItem(value: 'vice_directeur', child: Text('Vice-Directeur')),
-                ],
+                items: roles
+                    .map(
+                      (role) => DropdownMenuItem(
+                        value: role,
+                        child: Text(_roleLabel(role)),
+                      ),
+                    )
+                    .toList(),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   labelText: 'Rôle administratif',
@@ -1098,6 +1217,29 @@ class _SignatureDialogState extends State<_SignatureDialog> {
   bool _isDefault = false;
   List<Class> _classes = [];
   List<Staff> _staff = [];
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'directeur_primaire':
+        return 'Directeur (Primaire)';
+      case 'directeur_college':
+        return 'Directeur (Collège)';
+      case 'directeur_lycee':
+        return 'Directeur (Lycée)';
+      case 'directeur_universite':
+        return 'Directeur (Université)';
+      case 'vice_directeur':
+        return 'Vice-Directeur';
+      case 'proviseur':
+        return 'Proviseur';
+      case 'directeur':
+        return 'Directeur';
+      case 'titulaire':
+        return 'Titulaire';
+      default:
+        return role;
+    }
+  }
 
   @override
   void initState() {
@@ -1164,6 +1306,20 @@ class _SignatureDialogState extends State<_SignatureDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final roles = widget.isComplexe
+        ? const [
+            'titulaire',
+            'directeur_primaire',
+            'directeur_college',
+            'directeur_lycee',
+            'directeur_universite',
+          ]
+        : const [
+            'titulaire',
+            'directeur',
+            'proviseur',
+            'vice_directeur',
+          ];
     return AlertDialog(
       title: Text('${widget.type == 'signature' ? 'Signature' : 'Cachet'}'),
       content: Form(
@@ -1240,12 +1396,14 @@ class _SignatureDialogState extends State<_SignatureDialog> {
                   labelText: 'Rôle associé (optionnel)',
                   border: OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('Aucun rôle')),
-                  DropdownMenuItem(value: 'titulaire', child: Text('Titulaire')),
-                  DropdownMenuItem(value: 'directeur', child: Text('Directeur')),
-                  DropdownMenuItem(value: 'proviseur', child: Text('Proviseur')),
-                  DropdownMenuItem(value: 'vice_directeur', child: Text('Vice-Directeur')),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Aucun rôle')),
+                  ...roles.map(
+                    (role) => DropdownMenuItem(
+                      value: role,
+                      child: Text(_roleLabel(role)),
+                    ),
+                  ),
                 ],
                 onChanged: (value) => setState(() => _selectedRole = value),
               ),
@@ -1316,12 +1474,14 @@ class _AssignmentModal extends StatefulWidget {
   final List<Signature> cachets;
   final List<Class> classes;
   final List<Staff> staff;
+  final bool isComplexe;
 
   const _AssignmentModal({
     required this.signatures,
     required this.cachets,
     required this.classes,
     required this.staff,
+    required this.isComplexe,
   });
 
   @override
@@ -1337,6 +1497,29 @@ class _AssignmentModalState extends State<_AssignmentModal>
   String? _selectedRole;
   String? _selectedStaffId;
   bool _setAsDefault = true;
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'directeur_primaire':
+        return 'Directeur (Primaire)';
+      case 'directeur_college':
+        return 'Directeur (Collège)';
+      case 'directeur_lycee':
+        return 'Directeur (Lycée)';
+      case 'directeur_universite':
+        return 'Directeur (Université)';
+      case 'vice_directeur':
+        return 'Vice-Directeur';
+      case 'proviseur':
+        return 'Proviseur';
+      case 'directeur':
+        return 'Directeur';
+      case 'titulaire':
+        return 'Titulaire';
+      default:
+        return role;
+    }
+  }
 
   @override
   void initState() {
@@ -1490,6 +1673,20 @@ class _AssignmentModalState extends State<_AssignmentModal>
   }
 
   Widget _buildSignaturesTab() {
+    final roles = widget.isComplexe
+        ? const [
+            'titulaire',
+            'directeur_primaire',
+            'directeur_college',
+            'directeur_lycee',
+            'directeur_universite',
+          ]
+        : const [
+            'titulaire',
+            'directeur',
+            'proviseur',
+            'vice_directeur',
+          ];
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1531,11 +1728,14 @@ class _AssignmentModalState extends State<_AssignmentModal>
               labelText: 'Rôle',
               border: OutlineInputBorder(),
             ),
-            items: const [
-              DropdownMenuItem(value: 'titulaire', child: Text('Titulaire')),
-              DropdownMenuItem(value: 'directeur', child: Text('Directeur')),
-              DropdownMenuItem(value: 'vice_directeur', child: Text('Vice-Directeur')),
-            ],
+            items: roles
+                .map(
+                  (role) => DropdownMenuItem(
+                    value: role,
+                    child: Text(_roleLabel(role)),
+                  ),
+                )
+                .toList(),
             onChanged: (value) => setState(() => _selectedRole = value),
           ),
           const SizedBox(height: 12),

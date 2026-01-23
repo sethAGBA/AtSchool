@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:school_manager/models/grade.dart';
 import 'dart:typed_data';
 import 'package:school_manager/models/student.dart';
 import 'package:school_manager/models/student_document.dart';
 import 'package:school_manager/models/payment.dart';
 import 'package:school_manager/services/database_service.dart';
 import 'package:school_manager/services/pdf_service.dart';
+import 'package:school_manager/services/report_card_custom_export_service.dart';
 import 'package:school_manager/models/school_info.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // import 'package:school_manager/models/class.dart';
 // import 'package:printing/printing.dart';
 import 'package:file_picker/file_picker.dart';
@@ -267,7 +270,10 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                               ),
                             ),
                           ],
-                          icon: Icon(Icons.more_vert, color: theme.iconTheme.color),
+                          icon: Icon(
+                            Icons.more_vert,
+                            color: theme.iconTheme.color,
+                          ),
                         ),
                         IconButton(
                           icon: Icon(Icons.close, color: theme.iconTheme.color),
@@ -740,7 +746,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
           Text(
             label,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: selected ? Colors.white : theme.textTheme.bodyMedium?.color,
+              color: selected
+                  ? Colors.white
+                  : theme.textTheme.bodyMedium?.color,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1001,9 +1009,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
             children: [
               Text(
                 'Carte élève',
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  ctx,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
@@ -1115,8 +1123,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       final src = File(srcPath);
       if (!await src.exists()) continue;
 
-      final baseName =
-          f.name.trim().isEmpty ? src.uri.pathSegments.last : f.name.trim();
+      final baseName = f.name.trim().isEmpty
+          ? src.uri.pathSegments.last
+          : f.name.trim();
       final safeName = baseName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final uniqueName = '${now.millisecondsSinceEpoch}_$safeName';
       final destPath = '${studentDir.path}/$uniqueName';
@@ -1317,10 +1326,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final d = _documents[index];
-                      final addedLabel =
-                          d.addedAt.millisecondsSinceEpoch == 0
-                              ? ''
-                              : 'Ajouté le ${DateFormat('dd/MM/yyyy').format(d.addedAt)}';
+                      final addedLabel = d.addedAt.millisecondsSinceEpoch == 0
+                          ? ''
+                          : 'Ajouté le ${DateFormat('dd/MM/yyyy').format(d.addedAt)}';
                       final exists = File(d.path).existsSync();
                       return Container(
                         decoration: BoxDecoration(
@@ -1331,8 +1339,7 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                           ),
                         ),
                         child: ListTile(
-                          leading:
-                              const Icon(Icons.insert_drive_file_outlined),
+                          leading: const Icon(Icons.insert_drive_file_outlined),
                           title: Text(
                             d.name,
                             maxLines: 1,
@@ -1341,7 +1348,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                           subtitle: addedLabel.isEmpty
                               ? null
                               : Text(
-                                  exists ? addedLabel : '$addedLabel • Introuvable',
+                                  exists
+                                      ? addedLabel
+                                      : '$addedLabel • Introuvable',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -1407,13 +1416,16 @@ class _StudentProfilePageState extends State<StudentProfilePage>
     List<Map<String, dynamic>> filteredAttendance = _attendanceEvents;
     List<Map<String, dynamic>> filteredSanctions = _sanctionEvents;
     if (_disciplineDays != null) {
-      final threshold = DateTime.now().subtract(Duration(days: _disciplineDays!));
+      final threshold = DateTime.now().subtract(
+        Duration(days: _disciplineDays!),
+      );
       bool isAfter(Map<String, dynamic> e) {
         final raw = (e['date'] ?? '').toString();
         final d = DateTime.tryParse(raw);
         if (d == null) return true;
         return d.isAfter(threshold);
       }
+
       filteredAttendance = filteredAttendance.where(isAfter).toList();
       filteredSanctions = filteredSanctions.where(isAfter).toList();
     }
@@ -1424,7 +1436,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
     for (final e in filteredAttendance) {
       final t = (e['type'] ?? '').toString();
       attByType[t] = (attByType[t] ?? 0) + 1;
-      totalMinutes += (e['minutes'] as int?) ?? int.tryParse('${e['minutes']}') ?? 0;
+      totalMinutes +=
+          (e['minutes'] as int?) ?? int.tryParse('${e['minutes']}') ?? 0;
       final justified = (e['justified']?.toString() == '1');
       if (!justified) unjustifiedCount++;
     }
@@ -1438,10 +1451,7 @@ class _StudentProfilePageState extends State<StudentProfilePage>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.red.withOpacity(0.02),
-            Colors.red.withOpacity(0.05),
-          ],
+          colors: [Colors.red.withOpacity(0.02), Colors.red.withOpacity(0.05)],
         ),
       ),
       child: ListView(
@@ -1507,7 +1517,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                     theme,
                     title: 'Assiduité',
                     value: '${filteredAttendance.length}',
-                    subtitle: 'Minutes: $totalMinutes • Non justifié: $unjustifiedCount',
+                    subtitle:
+                        'Minutes: $totalMinutes • Non justifié: $unjustifiedCount',
                     icon: Icons.access_time,
                   ),
                 ),
@@ -1535,9 +1546,15 @@ class _StudentProfilePageState extends State<StudentProfilePage>
             ),
             const SizedBox(height: 8),
             if (filteredAttendance.isEmpty)
-              Text('Aucun événement d’assiduité.', style: theme.textTheme.bodyMedium)
+              Text(
+                'Aucun événement d’assiduité.',
+                style: theme.textTheme.bodyMedium,
+              )
             else
-              ...filteredAttendance.take(100).map((e) => _buildAttendanceTile(e)).toList(),
+              ...filteredAttendance
+                  .take(100)
+                  .map((e) => _buildAttendanceTile(e))
+                  .toList(),
             const SizedBox(height: 16),
             Text(
               'Sanctions',
@@ -1549,7 +1566,10 @@ class _StudentProfilePageState extends State<StudentProfilePage>
             if (filteredSanctions.isEmpty)
               Text('Aucune sanction.', style: theme.textTheme.bodyMedium)
             else
-              ...filteredSanctions.take(100).map((e) => _buildSanctionTile(e)).toList(),
+              ...filteredSanctions
+                  .take(100)
+                  .map((e) => _buildSanctionTile(e))
+                  .toList(),
           ],
         ],
       ),
@@ -1735,8 +1755,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       return;
     }
     final id = existing == null ? null : int.tryParse('${existing['id']}');
-    DateTime date = DateTime.tryParse('${existing?['date'] ?? ''}') ??
-        DateTime.now();
+    DateTime date =
+        DateTime.tryParse('${existing?['date'] ?? ''}') ?? DateTime.now();
     String type = (existing?['type'] ?? 'Retard').toString();
     final minutesController = TextEditingController(
       text: (existing?['minutes']?.toString() ?? '0'),
@@ -1750,7 +1770,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: Text(existing == null ? 'Ajouter assiduité' : 'Modifier assiduité'),
+          title: Text(
+            existing == null ? 'Ajouter assiduité' : 'Modifier assiduité',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1758,7 +1780,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Date: ${DateFormat('dd/MM/yyyy').format(date)}'),
+                      child: Text(
+                        'Date: ${DateFormat('dd/MM/yyyy').format(date)}',
+                      ),
                     ),
                     TextButton(
                       onPressed: () async {
@@ -1911,8 +1935,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       return;
     }
     final id = existing == null ? null : int.tryParse('${existing['id']}');
-    DateTime date = DateTime.tryParse('${existing?['date'] ?? ''}') ??
-        DateTime.now();
+    DateTime date =
+        DateTime.tryParse('${existing?['date'] ?? ''}') ?? DateTime.now();
     String type = (existing?['type'] ?? 'Avertissement').toString();
     final descriptionController = TextEditingController(
       text: (existing?['description']?.toString() ?? ''),
@@ -1921,7 +1945,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: Text(existing == null ? 'Ajouter sanction' : 'Modifier sanction'),
+          title: Text(
+            existing == null ? 'Ajouter sanction' : 'Modifier sanction',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1929,7 +1955,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Date: ${DateFormat('dd/MM/yyyy').format(date)}'),
+                      child: Text(
+                        'Date: ${DateFormat('dd/MM/yyyy').format(date)}',
+                      ),
                     ),
                     TextButton(
                       onPressed: () async {
@@ -2055,8 +2083,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
     final dir = await FilePicker.platform.getDirectoryPath();
     if (dir == null) return;
     final ts = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final file =
-        File('$dir/discipline_${_student.name.replaceAll(' ', '_')}_$ts.csv');
+    final file = File(
+      '$dir/discipline_${_student.name.replaceAll(' ', '_')}_$ts.csv',
+    );
 
     final rows = <List<dynamic>>[
       ['kind', 'date', 'type', 'minutes', 'justified', 'description', 'reason'],
@@ -2137,7 +2166,9 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                   decoration: BoxDecoration(
                     color: theme.cardColor,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: theme.dividerColor.withOpacity(0.3)),
+                    border: Border.all(
+                      color: theme.dividerColor.withOpacity(0.3),
+                    ),
                   ),
                   child: ListTile(
                     leading: Icon(
@@ -2151,9 +2182,7 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                         if (username.isNotEmpty) 'Par $username',
                         ok ? 'Statut: Succès' : 'Statut: Échec',
                         if (details.trim().isNotEmpty) details,
-                      ]
-                          .where((s) => s.toString().trim().isNotEmpty)
-                          .join('\n'),
+                      ].where((s) => s.toString().trim().isNotEmpty).join('\n'),
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2533,8 +2562,12 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       return;
     }
     final info = await loadSchoolInfo();
+    final className =
+        reportCard['className']?.toString() ?? widget.student.className;
+    final academicYear = reportCard['academicYear']?.toString();
     final studentClass = await _dbService.getClassByName(
-      widget.student.className,
+      className,
+      academicYear: academicYear,
     );
     if (studentClass == null) return;
 
@@ -2591,24 +2624,95 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                   : 0.0,
             )
             .toList();
-        final double myAvg =
-            reportCard['moyenne_generale']?.toDouble() ?? 0.0;
+        final double myAvg = reportCard['moyenne_generale']?.toDouble() ?? 0.0;
         const double eps = 0.001;
         final int ties = avgs.where((m) => (m - myAvg).abs() < eps).length;
         isExAequo = ties > 1;
       }
     } catch (_) {}
 
-    final pdfBytes = variant == 'compact'
-        ? await PdfService.generateReportCardPdfCompact(
+    List<int> pdfBytes;
+    if (variant == 'custom') {
+      // Demander l'orientation
+      final orientation =
+          await showDialog<String>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Orientation du PDF'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: const Text('Portrait'),
+                    leading: const Icon(Icons.stay_current_portrait),
+                    onTap: () => Navigator.of(context).pop('portrait'),
+                  ),
+                  ListTile(
+                    title: const Text('Paysage'),
+                    leading: const Icon(Icons.stay_current_landscape),
+                    onTap: () => Navigator.of(context).pop('landscape'),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          'portrait';
+      final bool isLandscape = orientation == 'landscape';
+
+      // Demander le format
+      final formatChoice =
+          await showDialog<String>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Format du PDF'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: const Text('Format long (A4 standard)'),
+                    subtitle: const Text('Dimensions standard A4'),
+                    leading: const Icon(Icons.description),
+                    onTap: () => Navigator.of(context).pop('long'),
+                  ),
+                  ListTile(
+                    title: const Text('Format court (compact)'),
+                    subtitle: const Text('Dimensions réduites'),
+                    leading: const Icon(Icons.view_compact),
+                    onTap: () => Navigator.of(context).pop('short'),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          'long';
+      final bool useLongFormat = formatChoice == 'long';
+
+      final prefs = await SharedPreferences.getInstance();
+      final footerNote = prefs.getString('report_card_footer_note') ?? '';
+      final adminCivility = prefs.getString('school_admin_civility') ?? 'M.';
+      pdfBytes =
+          await ReportCardCustomExportService.generateReportCardCustomPdf(
             student: widget.student,
             schoolInfo: info,
             grades: archivedGrades,
+            subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
             professeurs: professeurs,
             appreciations: appreciations,
             moyennesClasse: moyennesClasse,
+            moyennesParPeriode: moyennesParPeriode,
+            allTerms: allTerms,
+            moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
+            rang: reportCard['rang'] ?? 0,
+            nbEleves: reportCard['nb_eleves'] ?? 0,
+            periodLabel:
+                reportCard['term']?.toString().contains('Semestre') == true
+                ? 'Semestre'
+                : 'Trimestre',
             appreciationGenerale: reportCard['appreciation_generale'] ?? '',
+            mention: reportCard['mention'] ?? '',
             decision: reportCard['decision'] ?? '',
+            decisionAutomatique: '',
+            conduite: reportCard['conduite'] ?? '',
             recommandations: reportCard['recommandations'] ?? '',
             forces: reportCard['forces'] ?? '',
             pointsADevelopper: reportCard['points_a_developper'] ?? '',
@@ -2621,148 +2725,187 @@ class _StudentProfilePageState extends State<StudentProfilePage>
             presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
                 ? (reportCard['presence_percent'] as int).toDouble()
                 : (reportCard['presence_percent'] ?? 0.0) as double,
-            conduite: reportCard['conduite'] ?? '',
-            telEtab: info.telephone ?? '',
-            mailEtab: info.email ?? '',
-            webEtab: info.website ?? '',
-            titulaire: studentClass.titulaire ?? '',
-            subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
-            moyennesParPeriode: moyennesParPeriode,
-            moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
-            rang: reportCard['rang'] ?? 0,
-            exaequo: isExAequo,
-            nbEleves: reportCard['nb_eleves'] ?? 0,
-            mention: reportCard['mention'] ?? '',
-            allTerms: allTerms,
-            periodLabel:
-                reportCard['term']?.toString().contains('Semestre') == true
-                    ? 'Semestre'
-                    : 'Trimestre',
-            selectedTerm: reportCard['term'] ?? '',
-            academicYear: reportCard['academicYear'] ?? '',
-            faitA: reportCard['fait_a'] ?? '',
-            leDate: reportCard['le_date'] ?? '',
-            isLandscape: false,
-            niveau: '',
             moyenneGeneraleDeLaClasse:
                 reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
             moyenneLaPlusForte:
                 reportCard['moyenne_la_plus_forte']?.toDouble() ?? 0.0,
             moyenneLaPlusFaible:
                 reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
-            moyenneAnnuelle:
-                reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
-            duplicata: true,
-          )
-        : variant == 'ultra'
-        ? await PdfService.generateReportCardPdfUltraCompact(
-            student: widget.student,
-            schoolInfo: info,
-            grades: archivedGrades,
-            professeurs: professeurs,
-            appreciations: appreciations,
-            moyennesClasse: moyennesClasse,
-            appreciationGenerale: reportCard['appreciation_generale'] ?? '',
-            decision: reportCard['decision'] ?? '',
-            recommandations: reportCard['recommandations'] ?? '',
-            forces: reportCard['forces'] ?? '',
-            pointsADevelopper: reportCard['points_a_developper'] ?? '',
-            sanctions: reportCard['sanctions'] ?? '',
-            attendanceJustifiee:
-                (reportCard['attendance_justifiee'] ?? 0) as int,
-            attendanceInjustifiee:
-                (reportCard['attendance_injustifiee'] ?? 0) as int,
-            retards: (reportCard['retards'] ?? 0) as int,
-            presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
-                ? (reportCard['presence_percent'] as int).toDouble()
-                : (reportCard['presence_percent'] ?? 0.0) as double,
-            conduite: reportCard['conduite'] ?? '',
-            telEtab: info.telephone ?? '',
-            mailEtab: info.email ?? '',
-            webEtab: info.website ?? '',
-            titulaire: studentClass.titulaire ?? '',
-            subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
-            moyennesParPeriode: moyennesParPeriode,
-            moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
-            rang: reportCard['rang'] ?? 0,
-            exaequo: isExAequo,
-            nbEleves: reportCard['nb_eleves'] ?? 0,
-            mention: reportCard['mention'] ?? '',
-            allTerms: allTerms,
-            periodLabel:
-                reportCard['term']?.toString().contains('Semestre') == true
-                    ? 'Semestre'
-                    : 'Trimestre',
-            selectedTerm: reportCard['term'] ?? '',
+            moyenneAnnuelle: reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
+            moyenneAnnuelleClasse: null,
+            rangAnnuel: null,
             academicYear: reportCard['academicYear'] ?? '',
+            term: reportCard['term'] ?? '',
+            className: reportCard['className'] ?? widget.student.className,
+            selectedTerm: reportCard['term'] ?? '',
             faitA: reportCard['fait_a'] ?? '',
             leDate: reportCard['le_date'] ?? '',
-            isLandscape: false,
-            niveau: '',
-            moyenneGeneraleDeLaClasse:
-                reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
-            moyenneLaPlusForte:
-                reportCard['moyenne_la_plus_forte']?.toDouble() ?? 0.0,
-            moyenneLaPlusFaible:
-                reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
-            moyenneAnnuelle:
-                reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
-            duplicata: true,
-          )
-        : await PdfService.generateReportCardPdf(
-            student: widget.student,
-            schoolInfo: info,
-            grades: archivedGrades,
-            professeurs: professeurs,
-            appreciations: appreciations,
-            moyennesClasse: moyennesClasse,
-            appreciationGenerale: reportCard['appreciation_generale'] ?? '',
-            decision: reportCard['decision'] ?? '',
-            recommandations: reportCard['recommandations'] ?? '',
-            forces: reportCard['forces'] ?? '',
-            pointsADevelopper: reportCard['points_a_developper'] ?? '',
-            sanctions: reportCard['sanctions'] ?? '',
-            attendanceJustifiee:
-                (reportCard['attendance_justifiee'] ?? 0) as int,
-            attendanceInjustifiee:
-                (reportCard['attendance_injustifiee'] ?? 0) as int,
-            retards: (reportCard['retards'] ?? 0) as int,
-            presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
-                ? (reportCard['presence_percent'] as int).toDouble()
-                : (reportCard['presence_percent'] ?? 0.0) as double,
-            conduite: reportCard['conduite'] ?? '',
-            telEtab: info.telephone ?? '',
-            mailEtab: info.email ?? '',
-            webEtab: info.website ?? '',
-            titulaire: studentClass.titulaire ?? '',
-            subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
-            moyennesParPeriode: moyennesParPeriode,
-            moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
-            rang: reportCard['rang'] ?? 0,
-            exaequo: isExAequo,
-            nbEleves: reportCard['nb_eleves'] ?? 0,
-            mention: reportCard['mention'] ?? '',
-            allTerms: allTerms,
-            periodLabel:
-                reportCard['term']?.toString().contains('Semestre') == true
-                    ? 'Semestre'
-                    : 'Trimestre',
-            selectedTerm: reportCard['term'] ?? '',
-            academicYear: reportCard['academicYear'] ?? '',
-            faitA: reportCard['fait_a'] ?? '',
-            leDate: reportCard['le_date'] ?? '',
-            isLandscape: false,
-            niveau: '',
-            moyenneGeneraleDeLaClasse:
-                reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
-            moyenneLaPlusForte:
-                reportCard['moyenne_la_plus_forte']?.toDouble() ?? 0.0,
-            moyenneLaPlusFaible:
-                reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
-            moyenneAnnuelle:
-                reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
+            titulaireName: studentClass.titulaire ?? '',
+            directorName: info.director,
+            titulaireCivility: 'M.',
+            directorCivility: adminCivility,
+            footerNote: footerNote,
+            isLandscape: isLandscape,
+            useLongFormat: useLongFormat,
             duplicata: true,
           );
+    } else if (variant == 'compact') {
+      pdfBytes = await PdfService.generateReportCardPdfCompact(
+        student: widget.student,
+        schoolInfo: info,
+        grades: archivedGrades,
+        professeurs: professeurs,
+        appreciations: appreciations,
+        moyennesClasse: moyennesClasse,
+        appreciationGenerale: reportCard['appreciation_generale'] ?? '',
+        decision: reportCard['decision'] ?? '',
+        recommandations: reportCard['recommandations'] ?? '',
+        forces: reportCard['forces'] ?? '',
+        pointsADevelopper: reportCard['points_a_developper'] ?? '',
+        sanctions: reportCard['sanctions'] ?? '',
+        attendanceJustifiee: (reportCard['attendance_justifiee'] ?? 0) as int,
+        attendanceInjustifiee:
+            (reportCard['attendance_injustifiee'] ?? 0) as int,
+        retards: (reportCard['retards'] ?? 0) as int,
+        presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
+            ? (reportCard['presence_percent'] as int).toDouble()
+            : (reportCard['presence_percent'] ?? 0.0) as double,
+        conduite: reportCard['conduite'] ?? '',
+        telEtab: info.telephone ?? '',
+        mailEtab: info.email ?? '',
+        webEtab: info.website ?? '',
+        titulaire: studentClass.titulaire ?? '',
+        subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
+        moyennesParPeriode: moyennesParPeriode,
+        moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
+        rang: reportCard['rang'] ?? 0,
+        exaequo: isExAequo,
+        nbEleves: reportCard['nb_eleves'] ?? 0,
+        mention: reportCard['mention'] ?? '',
+        allTerms: allTerms,
+        periodLabel: reportCard['term']?.toString().contains('Semestre') == true
+            ? 'Semestre'
+            : 'Trimestre',
+        selectedTerm: reportCard['term'] ?? '',
+        academicYear: reportCard['academicYear'] ?? '',
+        faitA: reportCard['fait_a'] ?? '',
+        leDate: reportCard['le_date'] ?? '',
+        isLandscape: false,
+        niveau: studentClass.level ?? '',
+        moyenneGeneraleDeLaClasse:
+            reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
+        moyenneLaPlusForte:
+            reportCard['moyenne_la_plus_forte']?.toDouble() ?? 0.0,
+        moyenneLaPlusFaible:
+            reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
+        moyenneAnnuelle: reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
+        duplicata: true,
+      );
+    } else if (variant == 'ultra') {
+      pdfBytes = await PdfService.generateReportCardPdfUltraCompact(
+        student: widget.student,
+        schoolInfo: info,
+        grades: archivedGrades,
+        professeurs: professeurs,
+        appreciations: appreciations,
+        moyennesClasse: moyennesClasse,
+        appreciationGenerale: reportCard['appreciation_generale'] ?? '',
+        decision: reportCard['decision'] ?? '',
+        recommandations: reportCard['recommandations'] ?? '',
+        forces: reportCard['forces'] ?? '',
+        pointsADevelopper: reportCard['points_a_developper'] ?? '',
+        sanctions: reportCard['sanctions'] ?? '',
+        attendanceJustifiee: (reportCard['attendance_justifiee'] ?? 0) as int,
+        attendanceInjustifiee:
+            (reportCard['attendance_injustifiee'] ?? 0) as int,
+        retards: (reportCard['retards'] ?? 0) as int,
+        presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
+            ? (reportCard['presence_percent'] as int).toDouble()
+            : (reportCard['presence_percent'] ?? 0.0) as double,
+        conduite: reportCard['conduite'] ?? '',
+        telEtab: info.telephone ?? '',
+        mailEtab: info.email ?? '',
+        webEtab: info.website ?? '',
+        titulaire: studentClass.titulaire ?? '',
+        subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
+        moyennesParPeriode: moyennesParPeriode,
+        moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
+        rang: reportCard['rang'] ?? 0,
+        exaequo: isExAequo,
+        nbEleves: reportCard['nb_eleves'] ?? 0,
+        mention: reportCard['mention'] ?? '',
+        allTerms: allTerms,
+        periodLabel: reportCard['term']?.toString().contains('Semestre') == true
+            ? 'Semestre'
+            : 'Trimestre',
+        selectedTerm: reportCard['term'] ?? '',
+        academicYear: reportCard['academicYear'] ?? '',
+        faitA: reportCard['fait_a'] ?? '',
+        leDate: reportCard['le_date'] ?? '',
+        isLandscape: false,
+        niveau: studentClass.level ?? '',
+        moyenneGeneraleDeLaClasse:
+            reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
+        moyenneLaPlusForte:
+            reportCard['moyenne_la_plus_forte']?.toDouble() ?? 0.0,
+        moyenneLaPlusFaible:
+            reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
+        moyenneAnnuelle: reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
+        duplicata: true,
+      );
+    } else {
+      pdfBytes = await PdfService.generateReportCardPdf(
+        student: widget.student,
+        schoolInfo: info,
+        grades: archivedGrades,
+        professeurs: professeurs,
+        appreciations: appreciations,
+        moyennesClasse: moyennesClasse,
+        appreciationGenerale: reportCard['appreciation_generale'] ?? '',
+        decision: reportCard['decision'] ?? '',
+        recommandations: reportCard['recommandations'] ?? '',
+        forces: reportCard['forces'] ?? '',
+        pointsADevelopper: reportCard['points_a_developper'] ?? '',
+        sanctions: reportCard['sanctions'] ?? '',
+        attendanceJustifiee: (reportCard['attendance_justifiee'] ?? 0) as int,
+        attendanceInjustifiee:
+            (reportCard['attendance_injustifiee'] ?? 0) as int,
+        retards: (reportCard['retards'] ?? 0) as int,
+        presencePercent: (reportCard['presence_percent'] ?? 0.0) is int
+            ? (reportCard['presence_percent'] as int).toDouble()
+            : (reportCard['presence_percent'] ?? 0.0) as double,
+        conduite: reportCard['conduite'] ?? '',
+        telEtab: info.telephone ?? '',
+        mailEtab: info.email ?? '',
+        webEtab: info.website ?? '',
+        titulaire: studentClass.titulaire ?? '',
+        subjects: archivedGrades.map((e) => e.subject).toSet().toList(),
+        moyennesParPeriode: moyennesParPeriode,
+        moyenneGenerale: reportCard['moyenne_generale']?.toDouble() ?? 0.0,
+        rang: reportCard['rang'] ?? 0,
+        exaequo: isExAequo,
+        nbEleves: reportCard['nb_eleves'] ?? 0,
+        mention: reportCard['mention'] ?? '',
+        allTerms: allTerms,
+        periodLabel: reportCard['term']?.toString().contains('Semestre') == true
+            ? 'Semestre'
+            : 'Trimestre',
+        selectedTerm: reportCard['term'] ?? '',
+        academicYear: reportCard['academicYear'] ?? '',
+        faitA: reportCard['fait_a'] ?? '',
+        leDate: reportCard['le_date'] ?? '',
+        isLandscape: false,
+        niveau: studentClass.level ?? '',
+        moyenneGeneraleDeLaClasse:
+            reportCard['moyenne_generale_classe']?.toDouble() ?? 0.0,
+        moyenneLaPlusForte:
+            reportCard['moyenne_la_plus_forte']?.toDouble() ?? 0.0,
+        moyenneLaPlusFaible:
+            reportCard['moyenne_la_plus_faible']?.toDouble() ?? 0.0,
+        moyenneAnnuelle: reportCard['moyenne_annuelle']?.toDouble() ?? 0.0,
+        duplicata: true,
+      );
+    }
 
     final directoryPath = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Choisir le dossier de sauvegarde',
@@ -2772,6 +2915,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
           ? '_compact'
           : variant == 'ultra'
           ? '_ultra_compact'
+          : variant == 'custom'
+          ? '_custom'
           : '';
       final fileName =
           'Bulletin_${widget.student.name.replaceAll(' ', '_')}_${reportCard['term'] ?? ''}_${reportCard['academicYear'] ?? ''}$suffix.pdf';
@@ -2784,6 +2929,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                 ? 'Bulletin compact enregistré dans $directoryPath'
                 : variant == 'ultra'
                 ? 'Bulletin ultra compact enregistré dans $directoryPath'
+                : variant == 'custom'
+                ? 'Bulletin custom enregistré dans $directoryPath'
                 : 'Bulletin enregistré dans $directoryPath',
           ),
           backgroundColor: Colors.green,
@@ -2797,6 +2944,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
               ? 'export_report_card_pdf_compact'
               : variant == 'ultra'
               ? 'export_report_card_pdf_ultra_compact'
+              : variant == 'custom'
+              ? 'export_report_card_pdf_custom'
               : 'export_report_card_pdf',
           username: u?.username,
           details:
@@ -3153,42 +3302,116 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                                 avg == 0 ||
                                 !isExAequo) {
                               try {
+                                final className =
+                                    reportCard['className'] as String? ?? '';
+                                final academicYear =
+                                    reportCard['academicYear'] as String? ?? '';
                                 final archived = await _dbService
                                     .getArchivedGrades(
-                                      academicYear: reportCard['academicYear'],
-                                      className: reportCard['className'],
+                                      academicYear: academicYear,
+                                      className: className,
                                     );
                                 final term =
                                     (reportCard['term'] as String?) ?? '';
-                                // group by student for the same term
-                                final Map<String, Map<String, double>> sums =
-                                    {};
-                                for (final g in archived.where(
-                                  (g) => g.term == term,
-                                )) {
-                                  final s = sums.putIfAbsent(
-                                    g.studentId,
-                                    () => {'n': 0.0, 'c': 0.0},
-                                  );
-                                  if (g.maxValue > 0 && g.coefficient > 0) {
-                                    s['n'] =
-                                        (s['n'] ?? 0) +
-                                        ((g.value / g.maxValue) * 20) *
-                                            g.coefficient;
-                                    s['c'] = (s['c'] ?? 0) + g.coefficient;
+                                final subjectWeightsById = await _dbService
+                                    .getClassCourseCoefficientsById(
+                                      className,
+                                      academicYear,
+                                    );
+                                final subjectWeightsByName = await _dbService
+                                    .getClassSubjectCoefficients(
+                                      className,
+                                      academicYear,
+                                    );
+
+                                double computeAverageOn20(List<Grade> grades) {
+                                  double total = 0.0;
+                                  double totalCoeff = 0.0;
+                                  for (final g in grades) {
+                                    if (g.maxValue > 0 && g.coefficient > 0) {
+                                      total +=
+                                          ((g.value / g.maxValue) * 20) *
+                                          g.coefficient;
+                                      totalCoeff += g.coefficient;
+                                    }
                                   }
+                                  return totalCoeff > 0
+                                      ? (total / totalCoeff)
+                                      : 0.0;
                                 }
-                                final List<MapEntry<String, double>> avgs = sums
-                                    .entries
-                                    .map(
-                                      (e) => MapEntry(
-                                        e.key,
-                                        (e.value['c'] ?? 0) > 0
-                                            ? (e.value['n']! / e.value['c']!)
-                                            : 0.0,
-                                      ),
-                                    )
-                                    .toList();
+
+                                double sumCoefficients(List<Grade> grades) {
+                                  double totalCoeff = 0.0;
+                                  for (final g in grades) {
+                                    if (g.maxValue > 0 && g.coefficient > 0) {
+                                      totalCoeff += g.coefficient;
+                                    }
+                                  }
+                                  return totalCoeff;
+                                }
+
+                                double computeWeightedAverageForStudent(
+                                  String studentId,
+                                ) {
+                                  final studentGrades = archived
+                                      .where(
+                                        (g) =>
+                                            g.studentId == studentId &&
+                                            g.term == term,
+                                      )
+                                      .toList();
+                                  if (studentGrades.isEmpty) return 0.0;
+                                  final Map<String, List<Grade>> bySubject = {};
+                                  for (final g in studentGrades) {
+                                    final key = g.subjectId.trim().isNotEmpty
+                                        ? g.subjectId
+                                        : g.subject;
+                                    bySubject.putIfAbsent(key, () => []).add(g);
+                                  }
+                                  double sumPoints = 0.0;
+                                  double sumWeights = 0.0;
+                                  bySubject.forEach((_, list) {
+                                    final average = computeAverageOn20(list);
+                                    final subjectId = list.first.subjectId
+                                        .trim();
+                                    final subjectName = list.first.subject;
+                                    double? weight = subjectId.isNotEmpty
+                                        ? subjectWeightsById[subjectId]
+                                        : null;
+                                    weight ??=
+                                        subjectWeightsByName[subjectName];
+                                    weight ??= sumCoefficients(list);
+                                    if (weight > 0) {
+                                      sumPoints += average * weight;
+                                      sumWeights += weight;
+                                    }
+                                  });
+                                  return sumWeights > 0
+                                      ? (sumPoints / sumWeights)
+                                      : 0.0;
+                                }
+
+                                final classStudents = await _dbService
+                                    .getStudentsByClassAndClassYear(
+                                      className,
+                                      academicYear,
+                                    );
+                                final studentIds = classStudents.isNotEmpty
+                                    ? classStudents.map((s) => s.id).toList()
+                                    : archived
+                                          .map((g) => g.studentId)
+                                          .toSet()
+                                          .toList();
+
+                                final List<MapEntry<String, double>> avgs = [];
+                                for (final sid in studentIds) {
+                                  avgs.add(
+                                    MapEntry(
+                                      sid,
+                                      computeWeightedAverageForStudent(sid),
+                                    ),
+                                  );
+                                }
                                 avgs.sort((a, b) => b.value.compareTo(a.value));
                                 nb = avgs.length;
                                 final sid = reportCard['studentId'] as String?;
@@ -3420,6 +3643,29 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                                 size: 18,
                               ),
                               label: Text('Télécharger PDF ultra compact'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.secondary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                await _exportArchivedReportCard(
+                                  reportCard: reportCard,
+                                  moyennesParPeriode: moyennesParPeriode,
+                                  allTerms: allTerms,
+                                  variant: 'custom',
+                                );
+                              },
+                              icon: Icon(
+                                Icons.picture_as_pdf_outlined,
+                                size: 18,
+                              ),
+                              label: Text('Télécharger PDF custom'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: theme.colorScheme.secondary,
                                 foregroundColor: Colors.white,
