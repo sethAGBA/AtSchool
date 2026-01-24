@@ -108,7 +108,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.ecolix.atschool.MainKt"
+        mainClass = "com.ecolix.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
