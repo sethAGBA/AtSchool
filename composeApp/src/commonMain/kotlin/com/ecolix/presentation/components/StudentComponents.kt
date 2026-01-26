@@ -1,23 +1,45 @@
 package com.ecolix.presentation.components
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Category as ClassIcon
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks as ListIcon
+import androidx.compose.material.icons.filled.HowToReg
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.Male
+import androidx.compose.material.icons.filled.Female
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.AddHome
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -38,10 +60,10 @@ fun DistributionChart(distribution: Map<String, Int>, colors: DashboardColors) {
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = colors.textPrimary
             )
-            
+
             val total = distribution.values.sum().coerceAtLeast(1)
             val levelColors = listOf(Color(0xFF6366F1), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFF8B5CF6))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth().height(24.dp).clip(RoundedCornerShape(6.dp))
             ) {
@@ -55,7 +77,7 @@ fun DistributionChart(distribution: Map<String, Int>, colors: DashboardColors) {
                     )
                 }
             }
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -93,7 +115,7 @@ fun SelectionActionBar(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onClearSelection) {
-                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -113,7 +135,7 @@ fun SelectionActionBar(
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Changer", fontSize = 12.sp)
                     }
@@ -124,7 +146,7 @@ fun SelectionActionBar(
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Supprimer", fontSize = 12.sp)
                     }
@@ -138,7 +160,7 @@ fun SelectionActionBar(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onClearSelection) {
-                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -147,14 +169,14 @@ fun SelectionActionBar(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Changer Classe")
                     }
@@ -163,7 +185,7 @@ fun SelectionActionBar(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444), contentColor = Color.White),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Supprimer")
                     }
@@ -191,7 +213,7 @@ fun ViewToggle(
             selected = currentMode == StudentsViewMode.CLASSES,
             onClick = { onModeChange(StudentsViewMode.CLASSES) },
             label = "Classes",
-            icon = Icons.Default.Dashboard,
+            icon = Icons.Filled.Dashboard,
             colors = colors,
             modifier = if (modifier != Modifier) Modifier.weight(1f) else Modifier
         )
@@ -199,7 +221,7 @@ fun ViewToggle(
             selected = currentMode == StudentsViewMode.STUDENTS,
             onClick = { onModeChange(StudentsViewMode.STUDENTS) },
             label = "Eleves",
-            icon = Icons.Default.People,
+            icon = Icons.Filled.People,
             colors = colors,
             modifier = if (modifier != Modifier) Modifier.weight(1f) else Modifier
         )
@@ -217,7 +239,7 @@ private fun ToggleItem(
 ) {
     val bg = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
     val contentColor = if (selected) Color.White else colors.textMuted
-    
+
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -259,29 +281,29 @@ fun ClassCard(classroom: Classroom, colors: DashboardColors, onClick: () -> Unit
                 }
                 TagPill(classroom.academicYear, Color(0xFF6366F1))
             }
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StatPill(Icons.Default.People, classroom.studentCount.toString(), "élèves", Color(0xFF3B82F6))
-                
+                StatPill(Icons.Filled.People, classroom.studentCount.toString(), "élèves", Color(0xFF3B82F6))
+
                 if (classroom.roomNumber != null) {
-                    StatPill(Icons.Default.MeetingRoom, classroom.roomNumber, "Salle", Color(0xFF8B5CF6))
+                    StatPill(Icons.Filled.Place, classroom.roomNumber, "Salle", Color(0xFF8B5CF6))
                 }
-                
+
                 if (classroom.capacity != null) {
-                    StatPill(Icons.Default.GroupAdd, "${classroom.studentCount}/${classroom.capacity}", "Cap.", if (classroom.studentCount >= (classroom.capacity ?: 0)) Color(0xFFEF4444) else Color(0xFF10B981))
+                    StatPill(Icons.Filled.GroupAdd, "${classroom.studentCount}/${classroom.capacity}", "Cap.", if (classroom.studentCount >= (classroom.capacity ?: 0)) Color(0xFFEF4444) else Color(0xFF10B981))
                 }
             }
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatMicroPill(Icons.Default.Male, classroom.boysCount.toString(), Color(0xFF10B981))
-                StatMicroPill(Icons.Default.Female, classroom.girlsCount.toString(), Color(0xFFF59E0B))
+                StatMicroPill(Icons.Filled.Male, classroom.boysCount.toString(), Color(0xFF10B981))
+                StatMicroPill(Icons.Filled.Female, classroom.girlsCount.toString(), Color(0xFFF59E0B))
                 if (classroom.mainTeacher != null) {
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
@@ -330,26 +352,26 @@ fun ActionBar(
     if (isCompact) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionButton(Icons.Default.PersonAdd, "Eleve", colors.textLink, Color.White, modifier = Modifier.weight(1f), onClick = onAddStudentClick)
-                ActionButton(Icons.Default.AddHome, "Classe", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f), onClick = onAddClassClick)
+                ActionButton(Icons.Filled.PersonAdd, "Eleve", colors.textLink, Color.White, modifier = Modifier.weight(1f), onClick = onAddStudentClick)
+                ActionButton(Icons.Filled.AddHome, "Classe", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f), onClick = onAddClassClick)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionButton(Icons.Default.FileUpload, "Importer", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f))
-                ActionButton(Icons.Default.FileDownload, "Exporter", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f))
+                ActionButton(Icons.Filled.FileUpload, "Importer", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f))
+                ActionButton(Icons.Filled.FileDownload, "Exporter", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f))
             }
-            ActionButton(Icons.Default.HowToReg, "Reinscription", Color(0xFFF59E0B), Color.White, modifier = Modifier.fillMaxWidth())
+            ActionButton(Icons.Filled.HowToReg, "Reinscription", Color(0xFFF59E0B), Color.White, modifier = Modifier.fillMaxWidth())
         }
     } else {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ActionButton(Icons.Default.PersonAdd, "Eleve", colors.textLink, Color.White, onClick = onAddStudentClick)
-            ActionButton(Icons.Default.AddHome, "Classe", colors.background, colors.textPrimary, border = true, colors = colors, onClick = onAddClassClick)
-            ActionButton(Icons.Default.HowToReg, "Reinscription", Color(0xFFF59E0B), Color.White)
+            ActionButton(Icons.Filled.PersonAdd, "Eleve", colors.textLink, Color.White, onClick = onAddStudentClick)
+            ActionButton(Icons.Filled.AddHome, "Classe", colors.background, colors.textPrimary, border = true, colors = colors, onClick = onAddClassClick)
+            ActionButton(Icons.Filled.HowToReg, "Reinscription", Color(0xFFF59E0B), Color.White)
             Spacer(modifier = Modifier.weight(1f))
-            ActionButton(Icons.Default.FileUpload, "Importer", colors.background, colors.textPrimary, border = true, colors = colors)
-            ActionButton(Icons.Default.FileDownload, "Exporter", colors.background, colors.textPrimary, border = true, colors = colors)
+            ActionButton(Icons.Filled.FileUpload, "Importer", colors.background, colors.textPrimary, border = true, colors = colors)
+            ActionButton(Icons.Filled.FileDownload, "Exporter", colors.background, colors.textPrimary, border = true, colors = colors)
         }
     }
 }
@@ -404,7 +426,7 @@ fun AdvancedFilters(
                 )
             }
         }
-        
+
         if (isCompact) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 FilterChipGroup(
@@ -470,7 +492,7 @@ private fun <T> FilterChipGroup(
             val isSelected = item == selectedItem
             val bg = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent
             val textColor = if (isSelected) MaterialTheme.colorScheme.primary else colors.textPrimary
-            
+
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
@@ -515,7 +537,7 @@ fun StudentRow(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            
+
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -523,11 +545,11 @@ fun StudentRow(
                     .background(colors.background),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = colors.textMuted)
+                Icon(Icons.Filled.Person, contentDescription = null, tint = colors.textMuted)
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "${student.firstName} ${student.lastName}",
@@ -540,18 +562,18 @@ fun StudentRow(
                     color = colors.textMuted
                 )
             }
-            
+
             Column(horizontalAlignment = Alignment.End) {
                 StatusIndicator(student.status)
                 if (student.isDeleted) {
                     TagPill("Supprime", Color(0xFFEF4444))
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(8.dp))
-            
+
             IconButton(onClick = { }) {
-                Icon(Icons.Default.MoreVert, contentDescription = null, tint = colors.textMuted)
+                Icon(Icons.Filled.MoreVert, contentDescription = null, tint = colors.textMuted)
             }
         }
     }
@@ -566,7 +588,7 @@ private fun StatusIndicator(status: String) {
         "DIPLOME", "GRADUATED" -> Color(0xFFF59E0B)
         else -> Color(0xFF6366F1) // Default for new statuses like "Nouveau", "Transfert"
     }
-    
+
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(color))
         Spacer(modifier = Modifier.width(6.dp))
@@ -585,7 +607,8 @@ fun StudentCard(
     selectionMode: Boolean = false,
     isSelected: Boolean = false,
     onToggleSelect: () -> Unit = {},
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    icon: ImageVector
 ) {
     CardContainer(
         containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) else colors.card,
@@ -613,12 +636,12 @@ fun StudentCard(
                             .background(colors.background),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = colors.textMuted)
+                        Icon(Icons.Filled.Person, contentDescription = null, tint = colors.textMuted)
                     }
                 }
                 StatusIndicator(student.status)
             }
-            
+
             Column {
                 Text(
                     text = "${student.firstName} ${student.lastName}",
@@ -633,16 +656,16 @@ fun StudentCard(
                     color = colors.textMuted
                 )
             }
-            
+
             HorizontalDivider(color = colors.divider, thickness = 0.5.dp)
-            
+
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                StudentInfoMini(Icons.Default.Class, student.classroom, colors)
+                StudentInfoMini(icon, student.classroom, colors)
                 if (student.dateOfBirth != null) {
-                    StudentInfoMini(Icons.Default.Cake, student.dateOfBirth, colors)
+                    StudentInfoMini(Icons.Filled.Cake, student.dateOfBirth, colors)
                 }
                 if (student.averageGrade > 0) {
-                    StudentInfoMini(Icons.Default.Star, "Moy: ${student.averageGrade}/20", colors)
+                    StudentInfoMini(Icons.Filled.Star, "Moy: ${student.averageGrade}/20", colors)
                 }
             }
         }
@@ -663,7 +686,8 @@ fun StudentViewToggle(
     currentMode: StudentDisplayMode,
     onModeChange: (StudentDisplayMode) -> Unit,
     colors: DashboardColors,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    ListIcon: ImageVector
 ) {
     Row(
         modifier = modifier
@@ -676,7 +700,7 @@ fun StudentViewToggle(
             selected = currentMode == StudentDisplayMode.LIST,
             onClick = { onModeChange(StudentDisplayMode.LIST) },
             label = "Liste",
-            icon = Icons.Default.List,
+            icon = ListIcon,
             colors = colors,
             modifier = if (modifier != Modifier) Modifier.weight(1f) else Modifier
         )
@@ -684,7 +708,7 @@ fun StudentViewToggle(
             selected = currentMode == StudentDisplayMode.GRID,
             onClick = { onModeChange(StudentDisplayMode.GRID) },
             label = "Grille",
-            icon = Icons.Default.GridView,
+            icon = Icons.Filled.GridView,
             colors = colors,
             modifier = if (modifier != Modifier) Modifier.weight(1f) else Modifier
         )
@@ -702,7 +726,7 @@ private fun ToggleItemGeneric(
 ) {
     val bg = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
     val contentColor = if (selected) Color.White else colors.textMuted
-    
+
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))

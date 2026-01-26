@@ -2,7 +2,19 @@ package com.ecolix.data.models
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.RemoveRedEye
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -24,7 +36,7 @@ data class Staff(
     val specialty: String? = null,
     val assignedClasses: List<String> = emptyList(),
     val isDeleted: Boolean = false,
-    
+
     // Nouveaux champs issus du modèle de référence
     val qualifications: String = "",
     val birthDate: String? = null,
@@ -46,20 +58,20 @@ data class Staff(
 )
 
 enum class StaffRole(val label: String, val icon: ImageVector, val color: Color) {
-    PRINCIPAL("Proviseur", Icons.Default.Person, Color(0xFF1E293B)),
-    DIRECTOR("Directeur", Icons.Default.Person, Color(0xFF475569)),
-    CENSOR("Censeur", Icons.Default.Gavel, Color(0xFF64748B)),
-    TEACHER("Enseignant", Icons.Default.School, Color(0xFF6366F1)),
-    ADMIN("Administration", Icons.Default.AdminPanelSettings, Color(0xFF10B981)),
-    SUPERVISOR("Surveillant", Icons.Default.RemoveRedEye, Color(0xFFF59E0B)),
-    SECRETARY("Secrétaire", Icons.Default.Description, Color(0xFFF43F5E)),
-    ACCOUNTANT("Comptable", Icons.Default.Payments, Color(0xFF06B6D4)),
-    LIBRARIAN("Bibliothécaire", Icons.Default.MenuBook, Color(0xFF8B5CF6)),
-    NURSE("Infirmier(e)", Icons.Default.MedicalServices, Color(0xFFEF4444)),
-    MAINTENANCE("Entretien", Icons.Default.CleaningServices, Color(0xFF94A3B8)),
-    SECURITY("Sécurité", Icons.Default.Security, Color(0xFF71717A)),
-    DRIVER("Chauffeur", Icons.Default.DirectionsBus, Color(0xFF0EA5E9)),
-    OTHER("Autre", Icons.Default.Groups, Color(0xFF94A3B8))
+    PRINCIPAL("Proviseur", Icons.Filled.Person, Color(0xFF1E293B)),
+    DIRECTOR("Directeur", Icons.Filled.Person, Color(0xFF475569)),
+    CENSOR("Censeur", Icons.Filled.Gavel, Color(0xFF64748B)),
+    TEACHER("Enseignant", Icons.Filled.School, Color(0xFF6366F1)),
+    ADMIN("Administration", Icons.Filled.AdminPanelSettings, Color(0xFF10B981)),
+    SUPERVISOR("Surveillant", Icons.Filled.RemoveRedEye, Color(0xFFF59E0B)),
+    SECRETARY("Secrétaire", Icons.Filled.Description, Color(0xFFF43F5E)),
+    ACCOUNTANT("Comptable", Icons.Filled.Payments, Color(0xFF06B6D4)),
+    LIBRARIAN("Bibliothécaire", Icons.AutoMirrored.Filled.MenuBook, Color(0xFF8B5CF6)),
+    NURSE("Infirmier(e)", Icons.Filled.MedicalServices, Color(0xFFEF4444)),
+    MAINTENANCE("Entretien", Icons.Filled.CleaningServices, Color(0xFF94A3B8)),
+    SECURITY("Sécurité", Icons.Filled.Security, Color(0xFF71717A)),
+    DRIVER("Chauffeur", Icons.Filled.DirectionsBus, Color(0xFF0EA5E9)),
+    OTHER("Autre", Icons.Filled.Groups, Color(0xFF94A3B8))
 }
 
 @Immutable
@@ -91,30 +103,30 @@ data class StaffUiState(
                 isDarkMode = isDarkMode,
                 staffMembers = listOf(
                     Staff(
-                        id = "P11", 
-                        firstName = "Moussa", 
-                        lastName = "Traoré", 
-                        role = StaffRole.PRINCIPAL, 
-                        department = "Administration", 
-                        email = "moussa.t@ecolix.com", 
-                        phone = "22 22 22 11", 
-                        joinDate = "01/09/2018", 
-                        matricule = "PROV-001", 
-                        gender = "M", 
+                        id = "P11",
+                        firstName = "Moussa",
+                        lastName = "Traoré",
+                        role = StaffRole.PRINCIPAL,
+                        department = "Administration",
+                        email = "moussa.t@ecolix.com",
+                        phone = "22 22 22 11",
+                        joinDate = "01/09/2018",
+                        matricule = "PROV-001",
+                        gender = "M",
                         status = "Actif",
                         nationality = "Ivoirienne"
                     ),
                     Staff(
-                        id = "P1", 
-                        firstName = "Jean", 
-                        lastName = "Koffi", 
-                        role = StaffRole.DIRECTOR, 
-                        department = "Administration", 
-                        email = "jean.koffi@ecolix.com", 
-                        phone = "22 22 22 01", 
-                        joinDate = "01/09/2020", 
-                        matricule = "DIR-001", 
-                        gender = "M", 
+                        id = "P1",
+                        firstName = "Jean",
+                        lastName = "Koffi",
+                        role = StaffRole.DIRECTOR,
+                        department = "Administration",
+                        email = "jean.koffi@ecolix.com",
+                        phone = "22 22 22 01",
+                        joinDate = "01/09/2020",
+                        matricule = "DIR-001",
+                        gender = "M",
                         status = "Actif",
                         birthDate = "12/05/1975",
                         nationality = "Ivoirienne",
@@ -123,33 +135,33 @@ data class StaffUiState(
                         baseSalary = 850000.0
                     ),
                     Staff(
-                        id = "P8", 
-                        firstName = "Blaise", 
-                        lastName = "Agbéno", 
-                        role = StaffRole.CENSOR, 
-                        department = "Administration", 
-                        email = "blaise.a@ecolix.com", 
-                        phone = "22 22 22 08", 
-                        joinDate = "05/09/2019", 
-                        matricule = "CEN-001", 
-                        gender = "M", 
+                        id = "P8",
+                        firstName = "Blaise",
+                        lastName = "Agbéno",
+                        role = StaffRole.CENSOR,
+                        department = "Administration",
+                        email = "blaise.a@ecolix.com",
+                        phone = "22 22 22 08",
+                        joinDate = "05/09/2019",
+                        matricule = "CEN-001",
+                        gender = "M",
                         status = "Actif",
                         qualifications = "Master en Gestion Éducative",
                         experienceYears = 12
                     ),
                     Staff(
-                        id = "P2", 
-                        firstName = "Marie", 
-                        lastName = "Diallo", 
-                        role = StaffRole.TEACHER, 
-                        department = "Scientifique", 
-                        email = "marie.diallo@ecolix.com", 
-                        phone = "22 22 22 02", 
-                        joinDate = "15/09/2021", 
-                        specialty = "Mathématiques", 
-                        assignedClasses = listOf("6ème A", "5ème B"), 
-                        matricule = "ENS-001", 
-                        gender = "F", 
+                        id = "P2",
+                        firstName = "Marie",
+                        lastName = "Diallo",
+                        role = StaffRole.TEACHER,
+                        department = "Scientifique",
+                        email = "marie.diallo@ecolix.com",
+                        phone = "22 22 22 02",
+                        joinDate = "15/09/2021",
+                        specialty = "Mathématiques",
+                        assignedClasses = listOf("6ème A", "5ème B"),
+                        matricule = "ENS-001",
+                        gender = "F",
                         status = "Actif",
                         highestDegree = "Doctorat en Mathématiques",
                         weeklyHours = 18

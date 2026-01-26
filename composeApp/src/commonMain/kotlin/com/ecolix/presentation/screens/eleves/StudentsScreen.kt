@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -192,7 +194,8 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                 StudentViewToggle(
                                     currentMode = state.studentDisplayMode,
                                     onModeChange = { screenModel.onStudentDisplayModeChange(it) },
-                                    colors = state.colors
+                                    colors = state.colors,
+                                    ListIcon = Icons.AutoMirrored.Filled.LibraryBooks,
                                 )
                                 IconButton(
                                     onClick = { screenModel.updateState(state.copy(selectionMode = !state.selectionMode, selectedStudentIds = emptySet())) },
@@ -356,7 +359,8 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                         else newSelection.add(student.id)
                                         screenModel.updateState(state.copy(selectedStudentIds = newSelection))
                                     },
-                                    onClick = { screenModel.updateState(state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) }
+                                    onClick = { screenModel.updateState(state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) },
+                                    icon = Icons.Filled.Category,
                                 )
                             }
 
@@ -517,7 +521,8 @@ private fun MobileStudentsHeader(
                         StudentViewToggle(
                             currentMode = state.studentDisplayMode,
                             onModeChange = { onStateChange(state.copy(studentDisplayMode = it)) },
-                            colors = state.colors
+                            colors = state.colors,
+                            ListIcon = Icons.AutoMirrored.Filled.LibraryBooks,
                         )
                         IconButton(
                             onClick = { onStateChange(state.copy(selectionMode = !state.selectionMode, selectedStudentIds = emptySet())) },

@@ -8,8 +8,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -145,7 +153,7 @@ fun StaffForm(
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        FormTextField("Date de Naissance", birthDate, { birthDate = it }, colors, Modifier.weight(1f), placeholder = "JJ/MM/AAAA", icon = Icons.Default.CalendarToday)
+                        FormTextField("Date de Naissance", birthDate, { birthDate = it }, colors, Modifier.weight(1f), placeholder = "JJ/MM/AAAA", icon = Icons.Filled.CalendarToday)
                         FormTextField("Lieu de Naissance", birthPlace, { birthPlace = it }, colors, Modifier.weight(1f))
                     }
                     
@@ -158,7 +166,7 @@ fun StaffForm(
                                 label = { Text("État Civil") },
                                 modifier = Modifier.fillMaxWidth(),
                                 readOnly = true,
-                                trailingIcon = { IconButton(onClick = { maritalExpanded = true }) { Icon(Icons.Default.ArrowDropDown, null) } },
+                                trailingIcon = { IconButton(onClick = { maritalExpanded = true }) { Icon(Icons.Filled.ArrowDropDown, null) } },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = fieldColors
                             )
@@ -193,7 +201,7 @@ fun StaffForm(
                         FormTextField("Email *", email, { email = it }, colors, Modifier.weight(1f), keyboardType = KeyboardType.Email, isError = showErrors && !isEmailValid)
                         FormTextField("Téléphone", phone, { phone = it }, colors, Modifier.weight(1f), keyboardType = KeyboardType.Phone)
                     }
-                    FormTextField("Adresse Résidentielle", address, { address = it }, colors, icon = Icons.Default.LocationOn)
+                    FormTextField("Adresse Résidentielle", address, { address = it }, colors, icon = Icons.Filled.LocationOn)
                 }
             }
 
@@ -208,7 +216,7 @@ fun StaffForm(
                             label = { Text("Rôle / Fonction") },
                             modifier = Modifier.fillMaxWidth(),
                             readOnly = true,
-                            trailingIcon = { IconButton(onClick = { roleExpanded = true }) { Icon(Icons.Default.ArrowDropDown, null) } },
+                            trailingIcon = { IconButton(onClick = { roleExpanded = true }) { Icon(Icons.Filled.ArrowDropDown, null) } },
                             shape = RoundedCornerShape(12.dp),
                             colors = fieldColors
                         )
@@ -226,7 +234,7 @@ fun StaffForm(
                             label = { Text("Département") },
                             modifier = Modifier.fillMaxWidth(),
                             readOnly = true,
-                            trailingIcon = { IconButton(onClick = { deptExpanded = true }) { Icon(Icons.Default.ArrowDropDown, null) } },
+                            trailingIcon = { IconButton(onClick = { deptExpanded = true }) { Icon(Icons.Filled.ArrowDropDown, null) } },
                             shape = RoundedCornerShape(12.dp),
                             colors = fieldColors
                         )
@@ -264,7 +272,7 @@ fun StaffForm(
                                 label = { Text("Type de Contrat") },
                                 modifier = Modifier.fillMaxWidth(),
                                 readOnly = true,
-                                trailingIcon = { IconButton(onClick = { contractExpanded = true }) { Icon(Icons.Default.ArrowDropDown, null) } },
+                                trailingIcon = { IconButton(onClick = { contractExpanded = true }) { Icon(Icons.Filled.ArrowDropDown, null) } },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = fieldColors
                             )
@@ -281,7 +289,7 @@ fun StaffForm(
                                 label = { Text("Statut Actuel") },
                                 modifier = Modifier.fillMaxWidth(),
                                 readOnly = true,
-                                trailingIcon = { IconButton(onClick = { statusExpanded = true }) { Icon(Icons.Default.ArrowDropDown, null) } },
+                                trailingIcon = { IconButton(onClick = { statusExpanded = true }) { Icon(Icons.Filled.ArrowDropDown, null) } },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = fieldColors
                             )
@@ -294,15 +302,15 @@ fun StaffForm(
                     }
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        FormTextField("Salaire de Base", baseSalary, { baseSalary = it }, colors, Modifier.weight(1f), keyboardType = KeyboardType.Decimal, icon = Icons.Default.Payments)
-                        FormTextField("Heures Lib. / Semaine", weeklyHours, { weeklyHours = it }, colors, Modifier.weight(1f), keyboardType = KeyboardType.Number, icon = Icons.Default.Schedule)
+                        FormTextField("Salaire de Base", baseSalary, { baseSalary = it }, colors, Modifier.weight(1f), keyboardType = KeyboardType.Decimal, icon = Icons.Filled.Payments)
+                        FormTextField("Heures Lib. / Semaine", weeklyHours, { weeklyHours = it }, colors, Modifier.weight(1f), keyboardType = KeyboardType.Number, icon = Icons.Filled.Schedule)
                     }
                     
-                    FormTextField("Responsable Hiérarchique", supervisor, { supervisor = it }, colors, icon = Icons.Default.Person)
+                    FormTextField("Responsable Hiérarchique", supervisor, { supervisor = it }, colors, icon = Icons.Filled.Person)
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        FormTextField("Date d'intégration", joinDate, { joinDate = it }, colors, Modifier.weight(1f), icon = Icons.Default.Login)
-                        FormTextField("Date Retraite Prévue", retirementDate, { retirementDate = it }, colors, Modifier.weight(1f), icon = Icons.Default.Logout)
+                        FormTextField("Date d'intégration", joinDate, { joinDate = it }, colors, Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.Login)
+                        FormTextField("Date Retraite Prévue", retirementDate, { retirementDate = it }, colors, Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.Logout)
                     }
                 }
             }
@@ -355,7 +363,7 @@ fun StaffForm(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = colors.textLink, contentColor = Color.White)
         ) {
-            Icon(Icons.Default.Save, contentDescription = null)
+            Icon(Icons.Filled.Save, contentDescription = null)
             Spacer(modifier = Modifier.width(12.dp))
             Text("Enregistrer le Personnel", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }

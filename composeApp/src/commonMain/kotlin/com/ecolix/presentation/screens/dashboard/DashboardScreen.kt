@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,6 +46,7 @@ class DashboardScreen : Screen {
                                 Triple(1, "Élèves", Icons.Default.People),
                                 Triple(2, "Staff", Icons.Default.Person),
                                 Triple(3, "Notes", Icons.Default.Description),
+                                Triple(4, "Matières", Icons.AutoMirrored.Filled.MenuBook),
                                 Triple(5, "Réglages", Icons.Default.Settings)
                             )
                             
@@ -95,6 +97,7 @@ class DashboardScreen : Screen {
                                     1 -> com.ecolix.presentation.screens.eleves.StudentsScreenContent(isDarkMode = isDarkMode)
                                     2 -> com.ecolix.presentation.screens.staff.StaffScreenContent(isDarkMode = isDarkMode)
                                     3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
+                                    4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
                                     5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                                     else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                                 }
@@ -106,6 +109,7 @@ class DashboardScreen : Screen {
                             1 -> com.ecolix.presentation.screens.eleves.StudentsScreenContent(isDarkMode = isDarkMode)
                             2 -> com.ecolix.presentation.screens.staff.StaffScreenContent(isDarkMode = isDarkMode)
                             3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
+                            4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
                             5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                             else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                         }

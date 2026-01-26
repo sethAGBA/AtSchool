@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -195,7 +196,7 @@ fun StaffViewToggle(
             selected = currentMode == StaffViewMode.LIST,
             onClick = { onModeChange(StaffViewMode.LIST) },
             label = "Liste",
-            icon = Icons.Default.List,
+            icon = Icons.AutoMirrored.Filled.List,
             colors = colors
         )
         ToggleItem(

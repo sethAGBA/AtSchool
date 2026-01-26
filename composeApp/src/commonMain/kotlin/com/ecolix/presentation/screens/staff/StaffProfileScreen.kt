@@ -7,8 +7,32 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Male
+import androidx.compose.material.icons.filled.Female
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.FamilyRestroom
+import androidx.compose.material.icons.filled.ChildCare
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.HistoryEdu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -170,12 +194,12 @@ fun StaffProfileScreen(
                         Text("Contrat & Situation Salariale", fontWeight = FontWeight.Bold, color = colors.textPrimary)
                         HorizontalDivider(color = colors.divider)
                         
-                        DetailRow(Icons.Default.Login, "Date d'Intégration", staff.joinDate, colors)
-                        DetailRow(Icons.Default.Assignment, "Type de Contrat", staff.contractType ?: "N/A", colors)
-                        DetailRow(Icons.Default.Payments, "Salaire de Base", staff.baseSalary?.let { "$it FCFA" } ?: "Non renseigné", colors)
-                        DetailRow(Icons.Default.Schedule, "Heures Lib. / Semaine", "${staff.weeklyHours}h", colors)
-                        DetailRow(Icons.Default.Person, "Responsable Hiérarchique", staff.supervisor ?: "N/A", colors)
-                        DetailRow(Icons.Default.Logout, "Date Retraite Prévue", staff.retirementDate ?: "N/A", colors)
+                        DetailRow(Icons.AutoMirrored.Filled.Login, "Date d'Intégration", staff.joinDate, colors)
+                        DetailRow(Icons.Filled.HistoryEdu, "Type de Contrat", staff.contractType ?: "N/A", colors)
+                        DetailRow(Icons.Filled.Payments, "Salaire de Base", staff.baseSalary?.let { "$it FCFA" } ?: "Non renseigné", colors)
+                        DetailRow(Icons.Filled.Schedule, "Heures Lib. / Semaine", "${staff.weeklyHours}h", colors)
+                        DetailRow(Icons.Filled.Person, "Responsable Hiérarchique", staff.supervisor ?: "N/A", colors)
+                        DetailRow(Icons.AutoMirrored.Filled.Logout, "Date Retraite Prévue", staff.retirementDate ?: "N/A", colors)
                     }
                 }
             }
