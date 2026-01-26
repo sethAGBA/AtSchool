@@ -65,6 +65,10 @@ kotlin {
             implementation("cafe.adriel.voyager:voyager-screenmodel:1.1.0-beta03")
             implementation("cafe.adriel.voyager:voyager-transitions:1.1.0-beta03")
             implementation("cafe.adriel.voyager:voyager-koin:1.1.0-beta03")
+
+            // Koin
+            implementation("io.insert-koin:koin-core:3.6.0-Beta4")
+            implementation("io.insert-koin:koin-compose:1.2.0-Beta4")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -72,6 +76,9 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation(libs.kotlinx.datetime)
+            
+            // PDF Generation
             implementation(libs.openhtmltopdf.core)
             implementation(libs.openhtmltopdf.pdfbox)
             implementation(libs.openhtmltopdf.font)

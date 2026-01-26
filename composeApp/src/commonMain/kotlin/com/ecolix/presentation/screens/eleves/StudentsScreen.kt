@@ -66,6 +66,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
 
     // Scroll States
     val studentsListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val studentsGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val classesGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
 
     // Detect Scroll for Students
@@ -82,6 +83,24 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
     }
     LaunchedEffect(studentsEndReached) {
         if (studentsEndReached && filteredStudents.size > state.loadedStudentsCount) {
+            screenModel.loadMoreStudents()
+        }
+    }
+
+    // Detect Scroll for Students Grid
+    val studentsGridEndReached by remember {
+        derivedStateOf {
+            val layoutInfo = studentsGridState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            if (layoutInfo.totalItemsCount == 0) false
+            else {
+                val lastVisibleItem = visibleItemsInfo.lastOrNull()
+                lastVisibleItem != null && lastVisibleItem.index >= layoutInfo.totalItemsCount - 1
+            }
+        }
+    }
+    LaunchedEffect(studentsGridEndReached) {
+        if (studentsGridEndReached && filteredStudents.size > state.loadedStudentsCount) {
             screenModel.loadMoreStudents()
         }
     }
@@ -170,6 +189,11 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                 modifier = Modifier.weight(1f)
                             )
                             if (state.viewMode == StudentsViewMode.STUDENTS) {
+                                StudentViewToggle(
+                                    currentMode = state.studentDisplayMode,
+                                    onModeChange = { screenModel.onStudentDisplayModeChange(it) },
+                                    colors = state.colors
+                                )
                                 IconButton(
                                     onClick = { screenModel.updateState(state.copy(selectionMode = !state.selectionMode, selectedStudentIds = emptySet())) },
                                     colors = IconButtonDefaults.iconButtonColors(
@@ -233,61 +257,125 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                     }
                 }
                 StudentsViewMode.STUDENTS -> {
-                    LazyColumn(
-                        state = studentsListState,
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp) // Space for selection bar
-                    ) {
-                        if (isCompact) {
+                    if (state.studentDisplayMode == com.ecolix.data.models.StudentDisplayMode.LIST) {
+                        LazyColumn(
+                            state = studentsListState,
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(bottom = 80.dp) // Space for selection bar
+                        ) {
+                            if (isCompact) {
+                                item {
+                                    MobileStudentsHeader(
+                                        state = state,
+                                        isCompact = true,
+                                        onStateChange = { screenModel.updateState(it) }
+                                    )
+                                }
+                            }
+
                             item {
-                                MobileStudentsHeader(
-                                    state = state,
-                                    isCompact = true,
-                                    onStateChange = { screenModel.updateState(it) }
+                                Text(
+                                    text = "Eleves trouves (${filteredStudents.size})",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = state.colors.textPrimary
                                 )
                             }
-                        }
 
-                        item {
-                            Text(
-                                text = "Eleves trouves (${filteredStudents.size})",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = state.colors.textPrimary
-                            )
-                        }
+                            items(visibleStudents) { student ->
+                                StudentRow(
+                                    student = student,
+                                    colors = state.colors,
+                                    selectionMode = state.selectionMode,
+                                    isSelected = state.selectedStudentIds.contains(student.id),
+                                    onToggleSelect = {
+                                        val newSelection = state.selectedStudentIds.toMutableSet()
+                                        if (newSelection.contains(student.id)) newSelection.remove(student.id)
+                                        else newSelection.add(student.id)
+                                        screenModel.updateState(state.copy(selectedStudentIds = newSelection))
+                                    },
+                                    onClick = { screenModel.updateState(state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) }
+                                )
+                            }
+                            
+                            if (filteredStudents.size > state.loadedStudentsCount) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                    }
+                                }
+                            }
 
-                        items(visibleStudents) { student ->
-                            StudentRow(
-                                student = student,
-                                colors = state.colors,
-                                selectionMode = state.selectionMode,
-                                isSelected = state.selectedStudentIds.contains(student.id),
-                                onToggleSelect = {
-                                    val newSelection = state.selectedStudentIds.toMutableSet()
-                                    if (newSelection.contains(student.id)) newSelection.remove(student.id)
-                                    else newSelection.add(student.id)
-                                    screenModel.updateState(state.copy(selectedStudentIds = newSelection))
-                                },
-                                onClick = { screenModel.updateState(state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) }
-                            )
-                        }
-                        
-                        if (filteredStudents.size > state.loadedStudentsCount) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            if (filteredStudents.isEmpty()) {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(48.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = "Aucun eleve trouve.", color = state.colors.textMuted)
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        LazyVerticalGrid(
+                            state = studentsGridState,
+                            columns = GridCells.Adaptive(minSize = 240.dp),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = 80.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            if (isCompact) {
+                                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                    MobileStudentsHeader(
+                                        state = state,
+                                        isCompact = true,
+                                        onStateChange = { screenModel.updateState(it) }
+                                    )
+                                }
+                            }
 
-                        if (filteredStudents.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(48.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = "Aucun eleve trouve.", color = state.colors.textMuted)
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = "Eleves trouves (${filteredStudents.size})",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = state.colors.textPrimary
+                                )
+                            }
+
+                            items(visibleStudents) { student ->
+                                StudentCard(
+                                    student = student,
+                                    colors = state.colors,
+                                    selectionMode = state.selectionMode,
+                                    isSelected = state.selectedStudentIds.contains(student.id),
+                                    onToggleSelect = {
+                                        val newSelection = state.selectedStudentIds.toMutableSet()
+                                        if (newSelection.contains(student.id)) newSelection.remove(student.id)
+                                        else newSelection.add(student.id)
+                                        screenModel.updateState(state.copy(selectedStudentIds = newSelection))
+                                    },
+                                    onClick = { screenModel.updateState(state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) }
+                                )
+                            }
+
+                            if (filteredStudents.size > state.loadedStudentsCount) {
+                                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                    }
+                                }
+                            }
+
+                            if (filteredStudents.isEmpty()) {
+                                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(48.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = "Aucun eleve trouve.", color = state.colors.textMuted)
+                                    }
                                 }
                             }
                         }
@@ -426,6 +514,11 @@ private fun MobileStudentsHeader(
                         modifier = Modifier.weight(1f)
                     )
                     if (state.viewMode == StudentsViewMode.STUDENTS) {
+                        StudentViewToggle(
+                            currentMode = state.studentDisplayMode,
+                            onModeChange = { onStateChange(state.copy(studentDisplayMode = it)) },
+                            colors = state.colors
+                        )
                         IconButton(
                             onClick = { onStateChange(state.copy(selectionMode = !state.selectionMode, selectedStudentIds = emptySet())) },
                             colors = IconButtonDefaults.iconButtonColors(

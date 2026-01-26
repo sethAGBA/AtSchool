@@ -93,7 +93,7 @@ class DashboardScreen : Screen {
                                 when (selectedIndex) {
                                     0 -> DashboardContent(state = state, isWide = true, modifier = Modifier.fillMaxSize())
                                     1 -> com.ecolix.presentation.screens.eleves.StudentsScreenContent(isDarkMode = isDarkMode)
-                                    2 -> ScreenPlaceholder("Gestion du Personnel", state.colors)
+                                    2 -> com.ecolix.presentation.screens.staff.StaffScreenContent(isDarkMode = isDarkMode)
                                     3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
                                     5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                                     else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
@@ -104,7 +104,7 @@ class DashboardScreen : Screen {
                         when (selectedIndex) {
                             0 -> DashboardContent(state = state, isWide = false, modifier = Modifier.fillMaxSize())
                             1 -> com.ecolix.presentation.screens.eleves.StudentsScreenContent(isDarkMode = isDarkMode)
-                            2 -> ScreenPlaceholder("Gestion du Personnel", state.colors)
+                            2 -> com.ecolix.presentation.screens.staff.StaffScreenContent(isDarkMode = isDarkMode)
                             3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
                             5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                             else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)

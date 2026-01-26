@@ -34,6 +34,17 @@ fun ClassForm(
     var description by remember { mutableStateOf(classroom?.description ?: "") }
     var academicYear by remember { mutableStateOf(classroom?.academicYear ?: "2024-2025") }
 
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = colors.textPrimary,
+        unfocusedTextColor = colors.textPrimary,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = colors.divider.copy(alpha = if (colors.textPrimary == Color(0xFF1E293B)) 0.8f else 0.5f),
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = colors.textMuted,
+        focusedPlaceholderColor = colors.textMuted,
+        unfocusedPlaceholderColor = colors.textMuted.copy(alpha = 0.7f)
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -73,14 +84,16 @@ fun ClassForm(
                             onValueChange = { name = it },
                             label = { Text("Nom de la classe *") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = fieldColors
                         )
                         OutlinedTextField(
                             value = level,
                             onValueChange = { level = it },
                             label = { Text("Niveau *") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = fieldColors
                         )
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -89,14 +102,16 @@ fun ClassForm(
                                 onValueChange = { name = it },
                                 label = { Text("Nom de la classe *") },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = fieldColors
                             )
                             OutlinedTextField(
                                 value = level,
                                 onValueChange = { level = it },
                                 label = { Text("Niveau *") },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = fieldColors
                             )
                         }
                     }
@@ -107,14 +122,16 @@ fun ClassForm(
                             onValueChange = { roomNumber = it },
                             label = { Text("Numéro de salle") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = fieldColors
                         )
                         OutlinedTextField(
                             value = capacity,
                             onValueChange = { capacity = it },
                             label = { Text("Capacité max") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = fieldColors
                         )
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -123,14 +140,16 @@ fun ClassForm(
                                 onValueChange = { roomNumber = it },
                                 label = { Text("Numéro de salle") },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = fieldColors
                             )
                             OutlinedTextField(
                                 value = capacity,
                                 onValueChange = { capacity = it },
                                 label = { Text("Capacité max") },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = fieldColors
                             )
                         }
                     }
@@ -151,7 +170,8 @@ fun ClassForm(
                         onValueChange = { mainTeacher = it },
                         label = { Text("Professeur Principal") },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = fieldColors
                     )
 
                     OutlinedTextField(
@@ -160,7 +180,8 @@ fun ClassForm(
                         label = { Text("Année Scolaire") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        readOnly = true
+                        readOnly = true,
+                        colors = fieldColors
                     )
                 }
             }
@@ -180,7 +201,8 @@ fun ClassForm(
                         label = { Text("Description / Observations") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        minLines = 3
+                        minLines = 3,
+                        colors = fieldColors
                     )
                 }
             }

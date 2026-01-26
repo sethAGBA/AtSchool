@@ -58,6 +58,10 @@ class StudentsScreenModel : StateScreenModel<StudentsUiState>(StudentsUiState.sa
         }
     }
 
+    fun onStudentDisplayModeChange(mode: com.ecolix.data.models.StudentDisplayMode) {
+        mutableState.update { it.copy(studentDisplayMode = mode) }
+    }
+
     fun onViewModeChange(mode: StudentsViewMode) {
         mutableState.update { 
             it.copy(

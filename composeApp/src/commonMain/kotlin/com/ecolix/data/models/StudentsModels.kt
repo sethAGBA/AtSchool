@@ -68,6 +68,7 @@ data class StudentsUiState(
     val students: List<Student>,
     val classrooms: List<Classroom>,
     val viewMode: StudentsViewMode = StudentsViewMode.CLASSES,
+    val studentDisplayMode: StudentDisplayMode = StudentDisplayMode.LIST,
     val selectedClassroom: String? = null,
     val selectedStudentId: String? = null,
     val selectedLevel: String? = null,
@@ -111,6 +112,11 @@ data class StudentsUiState(
             )
         }
     }
+}
+
+enum class StudentDisplayMode {
+    LIST,
+    GRID
 }
 
 enum class StudentsViewMode {

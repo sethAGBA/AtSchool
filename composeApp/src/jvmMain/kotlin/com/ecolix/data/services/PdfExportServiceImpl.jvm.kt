@@ -12,7 +12,7 @@ import java.io.File
  * Implémentation JVM du service d'export PDF
  * Utilise openhtmltopdf pour convertir HTML → PDF
  */
-actual class PdfExportServiceImpl : PdfExportService {
+actual class PdfExportServiceImpl actual constructor() : PdfExportService {
     
     actual override suspend fun generateReportCardPdf(reportCard: ReportCard): ByteArray = withContext(Dispatchers.IO) {
         try {

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ecolix.data.models.Classroom
 import com.ecolix.data.models.Student
+import com.ecolix.data.models.StudentDisplayMode
 import com.ecolix.data.models.StudentsViewMode
 import com.ecolix.data.models.DashboardColors
 
@@ -577,4 +578,144 @@ private fun StatusIndicator(status: String) {
     }
 }
 
+@Composable
+fun StudentCard(
+    student: Student,
+    colors: DashboardColors,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: () -> Unit = {},
+    onClick: () -> Unit
+) {
+    CardContainer(
+        containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) else colors.card,
+        modifier = Modifier.clickable { if (selectionMode) onToggleSelect() else onClick() }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (selectionMode) {
+                        Checkbox(
+                            checked = isSelected,
+                            onCheckedChange = { onToggleSelect() },
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(colors.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = colors.textMuted)
+                    }
+                }
+                StatusIndicator(student.status)
+            }
+            
+            Column {
+                Text(
+                    text = "${student.firstName} ${student.lastName}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Matr: ${student.matricule ?: "N/A"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted
+                )
+            }
+            
+            HorizontalDivider(color = colors.divider, thickness = 0.5.dp)
+            
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                StudentInfoMini(Icons.Default.Class, student.classroom, colors)
+                if (student.dateOfBirth != null) {
+                    StudentInfoMini(Icons.Default.Cake, student.dateOfBirth, colors)
+                }
+                if (student.averageGrade > 0) {
+                    StudentInfoMini(Icons.Default.Star, "Moy: ${student.averageGrade}/20", colors)
+                }
+            }
+        }
+    }
+}
 
+@Composable
+private fun StudentInfoMini(icon: ImageVector, text: String, colors: DashboardColors) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.textMuted)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.labelSmall, color = colors.textPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+fun StudentViewToggle(
+    currentMode: StudentDisplayMode,
+    onModeChange: (StudentDisplayMode) -> Unit,
+    colors: DashboardColors,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.card)
+            .border(1.dp, colors.divider, RoundedCornerShape(12.dp))
+            .padding(4.dp)
+    ) {
+        ToggleItemGeneric(
+            selected = currentMode == StudentDisplayMode.LIST,
+            onClick = { onModeChange(StudentDisplayMode.LIST) },
+            label = "Liste",
+            icon = Icons.Default.List,
+            colors = colors,
+            modifier = if (modifier != Modifier) Modifier.weight(1f) else Modifier
+        )
+        ToggleItemGeneric(
+            selected = currentMode == StudentDisplayMode.GRID,
+            onClick = { onModeChange(StudentDisplayMode.GRID) },
+            label = "Grille",
+            icon = Icons.Default.GridView,
+            colors = colors,
+            modifier = if (modifier != Modifier) Modifier.weight(1f) else Modifier
+        )
+    }
+}
+
+@Composable
+private fun ToggleItemGeneric(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    icon: ImageVector,
+    colors: DashboardColors,
+    modifier: Modifier = Modifier
+) {
+    val bg = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val contentColor = if (selected) Color.White else colors.textMuted
+    
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = contentColor)
+        if (label.isNotEmpty()) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = label, color = contentColor, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}

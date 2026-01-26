@@ -247,8 +247,13 @@ fun SearchBar(
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             focusedTextColor = colors.textPrimary,
             unfocusedTextColor = colors.textPrimary,
-            unfocusedBorderColor = colors.divider,
-            cursorColor = MaterialTheme.colorScheme.primary
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = colors.divider.copy(alpha = if (colors.textPrimary == Color(0xFF1E293B)) 0.8f else 0.5f),
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = colors.textMuted,
+            focusedPlaceholderColor = colors.textMuted,
+            unfocusedPlaceholderColor = colors.textMuted.copy(alpha = 0.7f)
         )
     )
 }
