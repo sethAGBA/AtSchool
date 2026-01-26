@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -264,11 +265,39 @@ private fun ClassOverviewTab(classroom: Classroom, colors: DashboardColors, isCo
 
 @Composable
 private fun ClassStudentsTab(students: List<Student>, colors: DashboardColors, onStudentClick: (String) -> Unit) {
+    var loadedCount by remember { mutableStateOf(10) }
+    val batchSize = 10
+    
+    val visibleStudents = remember(students, loadedCount) {
+        students.take(loadedCount)
+    }
+    
+    val listState = rememberLazyListState()
+    
+    val endReached by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            if (layoutInfo.totalItemsCount == 0) false
+            else {
+                val lastVisibleItem = visibleItemsInfo.lastOrNull()
+                lastVisibleItem != null && lastVisibleItem.index >= layoutInfo.totalItemsCount - 1
+            }
+        }
+    }
+    
+    LaunchedEffect(endReached) {
+        if (endReached && students.size > loadedCount) {
+            loadedCount += batchSize
+        }
+    }
+
     LazyColumn(
+        state = listState,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
-        items(students) { student ->
+        items(visibleStudents) { student ->
             StudentRow(
                 student = student,
                 colors = colors,
@@ -277,6 +306,14 @@ private fun ClassStudentsTab(students: List<Student>, colors: DashboardColors, o
                 onToggleSelect = {},
                 onClick = { onStudentClick(student.id) }
             )
+        }
+        
+        if (students.size > loadedCount) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
     }
 }

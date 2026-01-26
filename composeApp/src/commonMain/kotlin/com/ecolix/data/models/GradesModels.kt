@@ -66,6 +66,63 @@ data class EvaluationSession(
     val gradeCount: Int
 )
 
+data class ReportCardSubject(
+    val name: String,
+    val professor: String,
+    val devoir: Float?,
+    val composition: Float?,
+    val average: Float,
+    val coefficient: Float,
+    val total: Float,
+    val totalCoefficient: Float,
+    val classAverage: Float,
+    val minAverage: Float,
+    val maxAverage: Float,
+    val rank: Int,
+    val appreciation: String,
+    val category: String = "Général"
+)
+
+data class ReportCard(
+    val id: String,
+    val studentName: String,
+    val studentId: String,
+    val matricule: String,
+    val dateOfBirth: String,
+    val sex: String = "M",
+    val isRepeater: Boolean = false,
+    val className: String,
+    val period: String,
+    val academicYear: String,
+    val subjects: List<ReportCardSubject>,
+    val generalAverage: Float,
+    val annualAverage: Float?,
+    val rank: Int,
+    val totalStudents: Int,
+    val classAverage: Float,
+    val minAverage: Float,
+    val maxAverage: Float,
+    val appreciationGenerale: String,
+    val decision: String,
+    val sanctions: String? = null,
+    val retards: Int = 0,
+    val absInjustifiees: Int = 0,
+    val absJustifiees: Int = 0,
+    val conduite: String = "Bonne",
+    val travail: String = "Bien",
+    val tableauHonneur: Boolean = false,
+    val tableauEncouragement: Boolean = false,
+    val tableauFelicitations: Boolean = false,
+    val forces: String = "NON",
+    val pointsADevelopper: String = "NON",
+    val historyAverages: List<Float?> = emptyList(), // Previous period averages
+    val teacherName: String = "",
+    val directorName: String = "",
+    val isDuplicate: Boolean = false,
+    val serie: String = "",
+    val nb: String = ""
+)
+
 data class AcademicSummary(
     val averageGrade: Float,
     val successRate: Int,
@@ -88,6 +145,17 @@ data class GradesUiState(
     val bulletins: List<BulletinPreview> = emptyList(),
     val classrooms: List<String> = listOf("Toutes les classes", "6ème A", "6ème B", "5ème A", "4ème Espagnol", "3ème Rouge"),
     val subjects: List<String> = listOf("Toutes les matières", "Mathématiques", "Français", "Physique-Chimie", "SVT", "Anglais", "Histoire-Géo"),
+    val currentClassStudents: List<Student> = emptyList(),
+    val selectedReportCard: ReportCard? = null,
+    val isExporting: Boolean = false,
+    val exportProgress: Float = 0f,
+    val batchExportCount: Int = 0,
+    val itemsPerPage: Int = 5,
+    val studentsBatchSize: Int = 10,
+    val studentsLoadedCount: Int = 10,
+    val notesPage: Int = 0,
+    val bulletinsPage: Int = 0,
+    val archivesPage: Int = 0,
     val templates: List<EvaluationTemplate> = listOf(
         EvaluationTemplate("T1", "6ème A", EvaluationType.DEVOIR, "Devoir", 20f, 1f),
         EvaluationTemplate("T2", "6ème A", EvaluationType.COMPOSITION, "Composition", 20f, 2f),

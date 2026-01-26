@@ -77,7 +77,10 @@ data class StudentsUiState(
     val currentYear: String = "2024-2025",
     val selectionMode: Boolean = false,
     val selectedStudentIds: Set<String> = emptySet(),
-    val isDarkMode: Boolean = false
+    val isDarkMode: Boolean = false,
+    val loadedStudentsCount: Int = 10,
+    val loadedClassesCount: Int = 10,
+    val batchSize: Int = 10
 ) {
     val colors: DashboardColors
         get() = if (isDarkMode) DashboardColors.dark() else DashboardColors.light()

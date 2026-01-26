@@ -12,7 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,9 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ecolix.data.models.DashboardColors
 import com.ecolix.presentation.components.CardContainer
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.ui.text.input.ImeAction
 
 @Composable
 fun SettingsScreenContent(isDarkMode: Boolean) {
@@ -38,11 +35,8 @@ fun SettingsScreenContent(isDarkMode: Boolean) {
 fun SettingsScreen(
     colors: DashboardColors
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isCompact = maxWidth < 800.dp
-        
-        var selectedTabIndex by remember { mutableStateOf(0) }
-        val tabs = listOf("L'École", "Académique", "Données & Système", "Préférences")
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("L'École", "Académique", "Données & Système", "Préférences")
 
     // State for School Settings
     var schoolName by remember { mutableStateOf("Groupe Scolaire Ecolix") }
@@ -133,143 +127,116 @@ fun SettingsScreen(
         )
     }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = if (isCompact) 16.dp else 24.dp)
-                .padding(top = if (isCompact) 16.dp else 24.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 20.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .padding(top = 24.dp, bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Header
+        Text(
+            text = "Paramètres",
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            color = colors.textPrimary
+        )
+
+        // Tabs
+        SecondaryTabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary,
+            indicator = @Composable {
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(selectedTab)
+                )
+            },
+            divider = {}
         ) {
-            // Header
-            Text(
-                text = "Paramètres",
-                style = if (isCompact) MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold) 
-                        else MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = colors.textPrimary
-            )
-
-            // Tabs
-            if (isCompact) {
-                SecondaryScrollableTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    edgePadding = 0.dp,
-                    divider = {}
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { 
-                                Text(
-                                    title, 
-                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 13.sp
-                                ) 
-                            },
-                            selectedContentColor = MaterialTheme.colorScheme.primary,
-                            unselectedContentColor = colors.textMuted
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = {
+                        Text(
+                            title,
+                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 14.sp
                         )
-                    }
-                }
-            } else {
-                SecondaryTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    divider = {}
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { 
-                                Text(
-                                    title, 
-                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 14.sp
-                                ) 
-                            },
-                            selectedContentColor = MaterialTheme.colorScheme.primary,
-                            unselectedContentColor = colors.textMuted
-                        )
-                    }
-                }
+                    },
+                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                    unselectedContentColor = colors.textMuted
+                )
             }
+        }
 
-            // Animated Content for Tabs
-            Box(modifier = Modifier.weight(1f)) {
-                AnimatedContent(
-                    targetState = selectedTabIndex,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() }
-                ) { targetTab ->
-                    when (targetTab) {
-                        0 -> SchoolSettingsTab(
-                            colors = colors,
-                            isCompact = isCompact,
-                            schoolName = schoolName, onSchoolNameChange = { schoolName = it },
-                            schoolCode = schoolCode, onSchoolCodeChange = { schoolCode = it },
-                            schoolSlogan = schoolSlogan, onSchoolSloganChange = { schoolSlogan = it },
-                            schoolLevel = schoolLevel, onSchoolLevelChange = { schoolLevel = it },
-                            ministry = ministry, onMinistryChange = { ministry = it },
-                            republicName = republicName, onRepublicNameChange = { republicName = it },
-                            republicMotto = republicMotto, onRepublicMottoChange = { republicMotto = it },
-                            inspection = inspection, onInspectionChange = { inspection = it },
-                            educationDirection = educationDirection, onEducationDirectionChange = { educationDirection = it },
-                            phone = phone, onPhoneChange = { phone = it },
-                            email = email, onEmailChange = { email = it },
-                            website = website, onWebsiteChange = { website = it },
-                            bp = bp, onBpChange = { bp = it },
-                            address = address, onAddressChange = { address = it },
-                            pdfFooter = pdfFooter, onPdfFooterChange = { pdfFooter = it },
-                            genCivility = genCivility, onGenCivilityChange = { genCivility = it },
-                            genDirector = genDirector, onGenDirectorChange = { genDirector = it },
-                            matCivility = matCivility, onMatCivilityChange = { matCivility = it },
-                            matDirector = matDirector, onMatDirectorChange = { matDirector = it },
-                            priCivility = priCivility, onPriCivilityChange = { priCivility = it },
-                            priDirector = priDirector, onPriDirectorChange = { priDirector = it },
-                            colCivility = colCivility, onColCivilityChange = { colCivility = it },
-                            colDirector = colDirector, onColDirectorChange = { colDirector = it },
-                            lycCivility = lycCivility, onLycCivilityChange = { lycCivility = it },
-                            lycDirector = lycDirector, onLycDirectorChange = { lycDirector = it },
-                            uniCivility = uniCivility, onUniCivilityChange = { uniCivility = it },
-                            uniDirector = uniDirector, onUniDirectorChange = { uniDirector = it },
-                            supCivility = supCivility, onSupCivilityChange = { supCivility = it },
-                            supDirector = supDirector, onSupDirectorChange = { supDirector = it }
-                        )
-                        1 -> AcademicSettingsTab(
-                            colors = colors,
-                            isCompact = isCompact,
-                            academicYear = academicYear,
-                            useTrimesters = useTrimesters,
-                            onTrimestersChange = { useTrimesters = it },
-                            useSemesters = useSemesters,
-                            onSemestersChange = { useSemesters = it },
-                            onAddYearClick = { showNewYearDialog = true },
-                            onArchiveClick = { showArchiveDialog = true }
-                        )
-                        2 -> SystemSettingsTab(
-                            colors = colors,
-                            isCompact = isCompact,
-                            autoBackup = autoBackup, onAutoBackupChange = { autoBackup = it },
-                            backupFrequency = backupFrequency, onBackupFrequencyChange = { backupFrequency = it },
-                            retentionDays = retentionDays, onRetentionDaysChange = { retentionDays = it }
-                        )
-                        3 -> PreferencesSettingsTab(
-                            colors = colors,
-                            isCompact = isCompact,
-                            userDisplayName = userDisplayName, onDisplayNameChange = { userDisplayName = it },
-                            userRole = userRole, onUserRoleChange = { userRole = it },
-                            userAvatar = userAvatar, onAvatarChange = { userAvatar = it },
-                            isDarkMode = isDarkMode, onDarkModeChange = { isDarkMode = it },
-                            reducedAnimations = reducedAnimations, onReducedAnimationsChange = { reducedAnimations = it },
-                            realTimeNotifications = realTimeNotifications, onRealTimeNotificationsChange = { realTimeNotifications = it },
-                            selectedLanguage = selectedLanguage, onLanguageChange = { selectedLanguage = it },
-                            is2FAEnabled = is2FAEnabled, on2FAChange = { is2FAEnabled = it },
-                            onShowAuditHistory = { showAuditDialog = true }
-                        )
-                    }
+        // Animated Content for Tabs
+        Box(modifier = Modifier.weight(1f)) {
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = { fadeIn() togetherWith fadeOut() }
+            ) { targetTab ->
+                when (targetTab) {
+                    0 -> SchoolSettingsTab(
+                        colors = colors,
+                        schoolName = schoolName, onSchoolNameChange = { schoolName = it },
+                        schoolCode = schoolCode, onSchoolCodeChange = { schoolCode = it },
+                        schoolSlogan = schoolSlogan, onSchoolSloganChange = { schoolSlogan = it },
+                        schoolLevel = schoolLevel, onSchoolLevelChange = { schoolLevel = it },
+                        ministry = ministry, onMinistryChange = { ministry = it },
+                        republicName = republicName, onRepublicNameChange = { republicName = it },
+                        republicMotto = republicMotto, onRepublicMottoChange = { republicMotto = it },
+                        inspection = inspection, onInspectionChange = { inspection = it },
+                        educationDirection = educationDirection, onEducationDirectionChange = { educationDirection = it },
+                        phone = phone, onPhoneChange = { phone = it },
+                        email = email, onEmailChange = { email = it },
+                        website = website, onWebsiteChange = { website = it },
+                        bp = bp, onBpChange = { bp = it },
+                        address = address, onAddressChange = { address = it },
+                        pdfFooter = pdfFooter, onPdfFooterChange = { pdfFooter = it },
+                        genCivility = genCivility, onGenCivilityChange = { genCivility = it },
+                        genDirector = genDirector, onGenDirectorChange = { genDirector = it },
+                        matCivility = matCivility, onMatCivilityChange = { matCivility = it },
+                        matDirector = matDirector, onMatDirectorChange = { matDirector = it },
+                        priCivility = priCivility, onPriCivilityChange = { priCivility = it },
+                        priDirector = priDirector, onPriDirectorChange = { priDirector = it },
+                        colCivility = colCivility, onColCivilityChange = { colCivility = it },
+                        colDirector = colDirector, onColDirectorChange = { colDirector = it },
+                        lycCivility = lycCivility, onLycCivilityChange = { lycCivility = it },
+                        lycDirector = lycDirector, onLycDirectorChange = { lycDirector = it },
+                        uniCivility = uniCivility, onUniCivilityChange = { uniCivility = it },
+                        uniDirector = uniDirector, onUniDirectorChange = { uniDirector = it },
+                        supCivility = supCivility, onSupCivilityChange = { supCivility = it },
+                        supDirector = supDirector, onSupDirectorChange = { supDirector = it }
+                    )
+                    1 -> AcademicSettingsTab(
+                        colors = colors,
+                        academicYear = academicYear,
+                        useTrimesters = useTrimesters,
+                        onTrimestersChange = { useTrimesters = it },
+                        useSemesters = useSemesters,
+                        onSemestersChange = { useSemesters = it },
+                        onAddYearClick = { showNewYearDialog = true },
+                        onArchiveClick = { showArchiveDialog = true }
+                    )
+                    2 -> SystemSettingsTab(
+                        colors = colors,
+                        autoBackup = autoBackup, onAutoBackupChange = { autoBackup = it },
+                        backupFrequency = backupFrequency, onBackupFrequencyChange = { backupFrequency = it },
+                        retentionDays = retentionDays, onRetentionDaysChange = { retentionDays = it }
+                    )
+                    3 -> PreferencesSettingsTab(
+                        colors = colors,
+                        userDisplayName = userDisplayName, onDisplayNameChange = { userDisplayName = it },
+                        userRole = userRole, onUserRoleChange = { userRole = it },
+                        userAvatar = userAvatar, onAvatarChange = { userAvatar = it },
+                        isDarkMode = isDarkMode, onDarkModeChange = { isDarkMode = it },
+                        reducedAnimations = reducedAnimations, onReducedAnimationsChange = { reducedAnimations = it },
+                        realTimeNotifications = realTimeNotifications, onRealTimeNotificationsChange = { realTimeNotifications = it },
+                        selectedLanguage = selectedLanguage, onLanguageChange = { selectedLanguage = it },
+                        is2FAEnabled = is2FAEnabled, on2FAChange = { is2FAEnabled = it },
+                        onShowAuditHistory = { showAuditDialog = true }
+                    )
                 }
             }
         }
@@ -287,9 +254,7 @@ private fun CustomSettingsField(
     readOnly: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
-    maxLines: Int = 1,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    maxLines: Int = 1
 ) {
     OutlinedTextField(
         value = value,
@@ -301,8 +266,6 @@ private fun CustomSettingsField(
         trailingIcon = trailingIcon,
         leadingIcon = leadingIcon,
         maxLines = maxLines,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = colors.divider,
@@ -320,7 +283,6 @@ private fun CustomSettingsField(
 @Composable
 private fun SchoolSettingsTab(
     colors: DashboardColors,
-    isCompact: Boolean,
     schoolName: String, onSchoolNameChange: (String) -> Unit,
     schoolCode: String, onSchoolCodeChange: (String) -> Unit,
     schoolSlogan: String, onSchoolSloganChange: (String) -> Unit,
@@ -420,76 +382,39 @@ private fun SchoolSettingsTab(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    if (isCompact) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         CustomSettingsField(
                             value = schoolCode,
                             onValueChange = onSchoolCodeChange,
                             label = "Code Établissement",
                             colors = colors,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.weight(1f)
                         )
-                        Column {
-                            Text("Niveau Scolaire", style = MaterialTheme.typography.bodySmall, color = colors.textMuted, modifier = Modifier.padding(bottom = 8.dp))
-                            OutlinedButton(
-                                onClick = { showLevelMenu = true },
-                                modifier = Modifier.fillMaxWidth().height(52.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
-                            ) {
-                                Text(schoolLevel.ifEmpty { "Sélectionner" }, modifier = Modifier.weight(1f), color = colors.textPrimary, fontSize = 14.sp)
-                                Icon(Icons.Default.ArrowDropDown, null, tint = colors.textMuted)
-                            }
-                            DropdownMenu(
-                                expanded = showLevelMenu,
-                                onDismissRequest = { showLevelMenu = false },
-                                modifier = Modifier.background(colors.card)
-                            ) {
-                                levels.forEach { level ->
-                                    DropdownMenuItem(
-                                        text = { Text(level, color = colors.textPrimary) },
-                                        onClick = {
-                                            onSchoolLevelChange(level)
-                                            showLevelMenu = false
-                                        }
-                                    )
+                        Box(modifier = Modifier.weight(1f)) {
+                            Column {
+                                Text("Niveau Scolaire", style = MaterialTheme.typography.bodySmall, color = colors.textMuted, modifier = Modifier.padding(bottom = 8.dp))
+                                OutlinedButton(
+                                    onClick = { showLevelMenu = true },
+                                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
+                                ) {
+                                    Text(schoolLevel.ifEmpty { "Sélectionner" }, modifier = Modifier.weight(1f), color = colors.textPrimary, fontSize = 14.sp)
+                                    Icon(Icons.Default.ArrowDropDown, null, tint = colors.textMuted)
                                 }
-                            }
-                        }
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            CustomSettingsField(
-                                value = schoolCode,
-                                onValueChange = onSchoolCodeChange,
-                                label = "Code Établissement",
-                                colors = colors,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Box(modifier = Modifier.weight(1f)) {
-                                Column {
-                                    Text("Niveau Scolaire", style = MaterialTheme.typography.bodySmall, color = colors.textMuted, modifier = Modifier.padding(bottom = 8.dp))
-                                    OutlinedButton(
-                                        onClick = { showLevelMenu = true },
-                                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
-                                    ) {
-                                        Text(schoolLevel.ifEmpty { "Sélectionner" }, modifier = Modifier.weight(1f), color = colors.textPrimary, fontSize = 14.sp)
-                                        Icon(Icons.Default.ArrowDropDown, null, tint = colors.textMuted)
-                                    }
-                                    DropdownMenu(
-                                        expanded = showLevelMenu,
-                                        onDismissRequest = { showLevelMenu = false },
-                                        modifier = Modifier.background(colors.card)
-                                    ) {
-                                        levels.forEach { level ->
-                                            DropdownMenuItem(
-                                                text = { Text(level, color = colors.textPrimary) },
-                                                onClick = {
-                                                    onSchoolLevelChange(level)
-                                                    showLevelMenu = false
-                                                }
-                                            )
-                                        }
+                                DropdownMenu(
+                                    expanded = showLevelMenu,
+                                    onDismissRequest = { showLevelMenu = false },
+                                    modifier = Modifier.background(colors.card)
+                                ) {
+                                    levels.forEach { level ->
+                                        DropdownMenuItem(
+                                            text = { Text(level, color = colors.textPrimary) },
+                                            onClick = {
+                                                onSchoolLevelChange(level)
+                                                showLevelMenu = false
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -520,38 +445,21 @@ private fun SchoolSettingsTab(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    if (isCompact) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         CustomSettingsField(
                             value = republicName,
                             onValueChange = onRepublicNameChange,
                             label = "Nom de la République",
                             colors = colors,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.weight(1f)
                         )
                         CustomSettingsField(
                             value = republicMotto,
                             onValueChange = onRepublicMottoChange,
                             label = "Devise de la République",
                             colors = colors,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.weight(1f)
                         )
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            CustomSettingsField(
-                                value = republicName,
-                                onValueChange = onRepublicNameChange,
-                                label = "Nom de la République",
-                                colors = colors,
-                                modifier = Modifier.weight(1f)
-                            )
-                            CustomSettingsField(
-                                value = republicMotto,
-                                onValueChange = onRepublicMottoChange,
-                                label = "Devise de la République",
-                                colors = colors,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
                     }
 
                     CustomSettingsField(
@@ -578,17 +486,17 @@ private fun SchoolSettingsTab(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Direction de l'Établissement", fontWeight = FontWeight.Bold, color = colors.textPrimary)
                     
-                    DirectorProfileField("Directeur Général / Fondateur", genCivility, onGenCivilityChange, genDirector, onGenDirectorChange, colors, isCompact)
+                    DirectorProfileField("Directeur Général / Fondateur", genCivility, onGenCivilityChange, genDirector, onGenDirectorChange, colors)
 
                     if (isComplexe) {
                         Text("Responsables de Direction par Niveau", fontWeight = FontWeight.Bold, color = colors.textPrimary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                         
-                        DirectorProfileField("Direction Maternelle", matCivility, onMatCivilityChange, matDirector, onMatDirectorChange, colors, isCompact)
-                        DirectorProfileField("Direction Primaire", priCivility, onPriCivilityChange, priDirector, onPriDirectorChange, colors, isCompact)
-                        DirectorProfileField("Direction Collège", colCivility, onColCivilityChange, colDirector, onColDirectorChange, colors, isCompact)
-                        DirectorProfileField("Direction Lycée", lycCivility, onLycCivilityChange, lycDirector, onLycDirectorChange, colors, isCompact)
-                        DirectorProfileField("Direction Université", uniCivility, onUniCivilityChange, uniDirector, onUniDirectorChange, colors, isCompact)
-                        DirectorProfileField("Direction Enseignement Supérieur", supCivility, onSupCivilityChange, supDirector, onSupDirectorChange, colors, isCompact)
+                        DirectorProfileField("Direction Maternelle", matCivility, onMatCivilityChange, matDirector, onMatDirectorChange, colors)
+                        DirectorProfileField("Direction Primaire", priCivility, onPriCivilityChange, priDirector, onPriDirectorChange, colors)
+                        DirectorProfileField("Direction Collège", colCivility, onColCivilityChange, colDirector, onColDirectorChange, colors)
+                        DirectorProfileField("Direction Lycée", lycCivility, onLycCivilityChange, lycDirector, onLycDirectorChange, colors)
+                        DirectorProfileField("Direction Université", uniCivility, onUniCivilityChange, uniDirector, onUniDirectorChange, colors)
+                        DirectorProfileField("Direction Enseignement Supérieur", supCivility, onSupCivilityChange, supDirector, onSupDirectorChange, colors)
                     }
                 }
             }
@@ -599,13 +507,13 @@ private fun SchoolSettingsTab(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Coordonnées & Contact", fontWeight = FontWeight.Bold, color = colors.textPrimary)
                     
-                    if (isCompact) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         CustomSettingsField(
                             value = phone,
                             onValueChange = onPhoneChange,
                             label = "Téléphone",
                             colors = colors,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.weight(1f),
                             leadingIcon = { Icon(Icons.Default.Phone, null) }
                         )
                         CustomSettingsField(
@@ -613,28 +521,9 @@ private fun SchoolSettingsTab(
                             onValueChange = onEmailChange,
                             label = "Email",
                             colors = colors,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.weight(1f),
                             leadingIcon = { Icon(Icons.Default.Email, null) }
                         )
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            CustomSettingsField(
-                                value = phone,
-                                onValueChange = onPhoneChange,
-                                label = "Téléphone",
-                                colors = colors,
-                                modifier = Modifier.weight(1f),
-                                leadingIcon = { Icon(Icons.Default.Phone, null) }
-                            )
-                            CustomSettingsField(
-                                value = email,
-                                onValueChange = onEmailChange,
-                                label = "Email",
-                                colors = colors,
-                                modifier = Modifier.weight(1f),
-                                leadingIcon = { Icon(Icons.Default.Email, null) }
-                            )
-                        }
                     }
 
                     CustomSettingsField(
@@ -704,7 +593,6 @@ private fun SchoolSettingsTab(
 @Composable
 private fun AcademicSettingsTab(
     colors: DashboardColors,
-    isCompact: Boolean,
     academicYear: String,
     useTrimesters: Boolean,
     onTrimestersChange: (Boolean) -> Unit,
@@ -735,156 +623,85 @@ private fun AcademicSettingsTab(
 
                     Text("Découpages de l'Année", fontWeight = FontWeight.Bold, color = colors.textPrimary, style = MaterialTheme.typography.bodySmall)
                     
-                    if (isCompact) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().clickable { onTrimestersChange(!useTrimesters) },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (useTrimesters) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else colors.background
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp, 
-                                    if (useTrimesters) MaterialTheme.colorScheme.primary else colors.divider
-                                ),
-                                shape = RoundedCornerShape(12.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Card(
+                            modifier = Modifier.weight(1f).clickable { onTrimestersChange(!useTrimesters) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (useTrimesters) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else colors.background
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (useTrimesters) MaterialTheme.colorScheme.primary else colors.divider
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = useTrimesters,
-                                        onCheckedChange = onTrimestersChange,
-                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                                    )
-                                    Text("Trimestres", color = colors.textPrimary, fontSize = 13.sp)
-                                }
-                            }
-
-                            Card(
-                                modifier = Modifier.fillMaxWidth().clickable { onSemestersChange(!useSemesters) },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (useSemesters) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else colors.background
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp, 
-                                    if (useSemesters) MaterialTheme.colorScheme.primary else colors.divider
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = useSemesters,
-                                        onCheckedChange = onSemestersChange,
-                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                                    )
-                                    Text("Semestres", color = colors.textPrimary, fontSize = 13.sp)
-                                }
+                                Checkbox(
+                                    checked = useTrimesters,
+                                    onCheckedChange = onTrimestersChange,
+                                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                                )
+                                Text("Trimestres", color = colors.textPrimary, fontSize = 13.sp)
                             }
                         }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Card(
-                                modifier = Modifier.weight(1f).clickable { onTrimestersChange(!useTrimesters) },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (useTrimesters) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else colors.background
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp, 
-                                    if (useTrimesters) MaterialTheme.colorScheme.primary else colors.divider
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = useTrimesters,
-                                        onCheckedChange = onTrimestersChange,
-                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                                    )
-                                    Text("Trimestres", color = colors.textPrimary, fontSize = 13.sp)
-                                }
-                            }
 
-                            Card(
-                                modifier = Modifier.weight(1f).clickable { onSemestersChange(!useSemesters) },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (useSemesters) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else colors.background
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp, 
-                                    if (useSemesters) MaterialTheme.colorScheme.primary else colors.divider
-                                ),
-                                shape = RoundedCornerShape(12.dp)
+                        Card(
+                            modifier = Modifier.weight(1f).clickable { onSemestersChange(!useSemesters) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (useSemesters) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else colors.background
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (useSemesters) MaterialTheme.colorScheme.primary else colors.divider
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = useSemesters,
-                                        onCheckedChange = onSemestersChange,
-                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                                    )
-                                    Text("Semestres", color = colors.textPrimary, fontSize = 13.sp)
-                                }
+                                Checkbox(
+                                    checked = useSemesters,
+                                    onCheckedChange = onSemestersChange,
+                                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                                )
+                                Text("Semestres", color = colors.textPrimary, fontSize = 13.sp)
                             }
                         }
                     }
 
-                    if (isCompact) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button(
-                                onClick = onAddYearClick,
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                            ) {
-                                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Nouvelle Année", fontSize = 14.sp)
-                            }
-                            Button(
-                                onClick = onArchiveClick,
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF64748B))
-                            ) {
-                                Icon(Icons.Default.Archive, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Archiver", fontSize = 14.sp)
-                            }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = onAddYearClick,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Nouvelle Année")
                         }
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(
-                                onClick = onAddYearClick,
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                            ) {
-                                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Nouvelle Année")
-                            }
-                            Button(
-                                onClick = onArchiveClick,
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF64748B))
-                            ) {
-                                Icon(Icons.Default.Archive, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Archiver")
-                            }
+                        Button(
+                            onClick = onArchiveClick,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF64748B),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(Icons.Default.Archive, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Archiver")
                         }
                     }
                 }
@@ -896,7 +713,6 @@ private fun AcademicSettingsTab(
 @Composable
 private fun SystemSettingsTab(
     colors: DashboardColors,
-    isCompact: Boolean,
     autoBackup: Boolean, onAutoBackupChange: (Boolean) -> Unit,
     backupFrequency: String, onBackupFrequencyChange: (String) -> Unit,
     retentionDays: Float, onRetentionDaysChange: (Float) -> Unit
@@ -921,62 +737,30 @@ private fun SystemSettingsTab(
                         var showFrequencyMenu by remember { mutableStateOf(false) }
                         val frequencies = listOf("Quotidienne", "Hebdomadaire", "Mensuelle")
 
-                        if (isCompact) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Fréquence", color = colors.textPrimary)
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    OutlinedButton(
-                                        onClick = { showFrequencyMenu = true },
-                                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
-                                    ) {
-                                        Text(backupFrequency, color = colors.textPrimary, modifier = Modifier.weight(1f))
-                                        Icon(Icons.Default.ArrowDropDown, null, tint = colors.textMuted)
-                                    }
-                                    DropdownMenu(
-                                        expanded = showFrequencyMenu,
-                                        onDismissRequest = { showFrequencyMenu = false },
-                                        modifier = Modifier.background(colors.card).width(200.dp)
-                                    ) {
-                                        frequencies.forEach { freq ->
-                                            DropdownMenuItem(
-                                                text = { Text(freq, color = colors.textPrimary) },
-                                                onClick = {
-                                                    onBackupFrequencyChange(freq)
-                                                    showFrequencyMenu = false
-                                                }
-                                            )
-                                        }
-                                    }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Fréquence", color = colors.textPrimary)
+                            Box {
+                                TextButton(onClick = { showFrequencyMenu = true }) {
+                                    Text(backupFrequency, color = colors.textLink)
+                                    Icon(Icons.Default.ArrowDropDown, null, tint = colors.textLink)
                                 }
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Fréquence", color = colors.textPrimary)
-                                Box {
-                                    TextButton(onClick = { showFrequencyMenu = true }) {
-                                        Text(backupFrequency, color = colors.textLink)
-                                        Icon(Icons.Default.ArrowDropDown, null, tint = colors.textLink)
-                                    }
-                                    DropdownMenu(
-                                        expanded = showFrequencyMenu,
-                                        onDismissRequest = { showFrequencyMenu = false },
-                                        modifier = Modifier.background(colors.card)
-                                    ) {
-                                        frequencies.forEach { freq ->
-                                            DropdownMenuItem(
-                                                text = { Text(freq, color = colors.textPrimary) },
-                                                onClick = {
-                                                    onBackupFrequencyChange(freq)
-                                                    showFrequencyMenu = false
-                                                }
-                                            )
-                                        }
+                                DropdownMenu(
+                                    expanded = showFrequencyMenu,
+                                    onDismissRequest = { showFrequencyMenu = false },
+                                    modifier = Modifier.background(colors.card)
+                                ) {
+                                    frequencies.forEach { freq ->
+                                        DropdownMenuItem(
+                                            text = { Text(freq, color = colors.textPrimary) },
+                                            onClick = {
+                                                onBackupFrequencyChange(freq)
+                                                showFrequencyMenu = false
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -1040,49 +824,21 @@ private fun SystemSettingsTab(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("À propos du Système", fontWeight = FontWeight.Bold, color = colors.textPrimary)
                     
-                    if (isCompact) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(colors.background)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.VpnKey, null, tint = colors.textLink)
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column {
-                                    Text("Licence Professionnelle", fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                                    Text("Active (Cabinet ACTe)", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                                }
-                            }
-                            Button(
-                                onClick = {},
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = colors.textLink)
-                            ) {
-                                Text("Vérifier la licence", fontSize = 13.sp)
-                            }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.background)
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.VpnKey, null, tint = colors.textLink)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Licence Professionnelle", fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                            Text("État : Active (Cabinet ACTe)", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                         }
-                    } else {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(colors.background)
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.VpnKey, null, tint = colors.textLink)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Licence Professionnelle", fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                                Text("État : Active (Cabinet ACTe)", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                            }
-                            TextButton(onClick = {}) { Text("Vérifier") }
-                        }
+                        TextButton(onClick = {}) { Text("Vérifier") }
                     }
 
                     Column(
@@ -1124,7 +880,6 @@ private fun SystemActionRow(title: String, icon: ImageVector, color: Color, colo
 @Composable
 private fun PreferencesSettingsTab(
     colors: DashboardColors,
-    isCompact: Boolean,
     userDisplayName: String, onDisplayNameChange: (String) -> Unit,
     userRole: String, onUserRoleChange: (String) -> Unit,
     userAvatar: String?, onAvatarChange: (String?) -> Unit,
@@ -1144,95 +899,45 @@ private fun PreferencesSettingsTab(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Identité de l'Utilisateur", fontWeight = FontWeight.Bold, color = colors.textPrimary)
                     
-                    if (isCompact) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .background(colors.background)
+                                .clickable { /* Gallery picker */ },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .clip(CircleShape)
-                                    .background(colors.background)
-                                    .clickable { /* Gallery picker */ },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (userAvatar != null) {
-                                    Icon(Icons.Default.Person, null, modifier = Modifier.size(44.dp), tint = colors.textMuted)
-                                } else {
-                                    Icon(Icons.Default.AddAPhoto, null, modifier = Modifier.size(28.dp), tint = colors.textMuted)
-                                }
-                            }
-                            
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(userDisplayName, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = colors.textPrimary)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text(
-                                        userRole,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            
-                            Button(
-                                onClick = { /* Edit mode */ },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = colors.background, contentColor = colors.textPrimary),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
-                            ) {
-                                Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Modifier le profil", fontSize = 13.sp)
+                            if (userAvatar != null) {
+                                // Fallback to icon for now
+                                Icon(Icons.Default.Person, null, modifier = Modifier.size(40.dp), tint = colors.textMuted)
+                            } else {
+                                Icon(Icons.Default.AddAPhoto, null, modifier = Modifier.size(24.dp), tint = colors.textMuted)
                             }
                         }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(CircleShape)
-                                    .background(colors.background)
-                                    .clickable { /* Gallery picker */ },
-                                contentAlignment = Alignment.Center
+
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(userDisplayName, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textPrimary)
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                if (userAvatar != null) {
-                                    Icon(Icons.Default.Person, null, modifier = Modifier.size(40.dp), tint = colors.textMuted)
-                                } else {
-                                    Icon(Icons.Default.AddAPhoto, null, modifier = Modifier.size(24.dp), tint = colors.textMuted)
-                                }
+                                Text(
+                                    userRole,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
-                            
-                            Spacer(modifier = Modifier.width(20.dp))
-                            
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(userDisplayName, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textPrimary)
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text(
-                                        userRole,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            
-                            IconButton(onClick = { /* Edit mode */ }) {
-                                Icon(Icons.Default.Edit, "Modifier le profil", tint = colors.textMuted)
-                            }
+                        }
+
+                        IconButton(onClick = { /* Edit mode */ }) {
+                            Icon(Icons.Default.Edit, "Modifier le profil", tint = colors.textMuted)
                         }
                     }
 
@@ -1341,16 +1046,7 @@ private fun NewAcademicYearDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.card,
         title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Nouvelle Année Académique", fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, null, tint = colors.textMuted)
-                }
-            }
+            Text("Nouvelle Année Académique", fontWeight = FontWeight.Bold, color = colors.textPrimary)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1359,11 +1055,7 @@ private fun NewAcademicYearDialog(
                     onValueChange = { year = it },
                     label = "Année (ex: 2025-2026)",
                     colors = colors,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = {
-                        if (year.isNotEmpty()) onConfirm(year)
-                    })
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Text(
                     "L'application archivera les données de l'année actuelle avant de passer à la nouvelle.",
@@ -1402,16 +1094,7 @@ private fun ArchiveAcademicYearDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.card,
         title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Archiver l'Année Académique", fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, null, tint = colors.textMuted)
-                }
-            }
+            Text("Archiver l'Année Académique", fontWeight = FontWeight.Bold, color = colors.textPrimary)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1467,90 +1150,49 @@ private fun DirectorProfileField(
     onCivilityChange: (String) -> Unit,
     name: String,
     onNameChange: (String) -> Unit,
-    colors: DashboardColors,
-    isCompact: Boolean
+    colors: DashboardColors
 ) {
     val civilities = listOf("M.", "Mme", "Mlle", "Dr", "Pr", "Rév", "Abbé", "Frère", "Sœur", "Me", "Ing.")
     var showCivilityMenu by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-        
-        if (isCompact) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = { showCivilityMenu = true },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary)
-                    ) {
-                        Text(civility, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(18.dp))
-                    }
-                    DropdownMenu(
-                        expanded = showCivilityMenu,
-                        onDismissRequest = { showCivilityMenu = false },
-                        modifier = Modifier.background(colors.card).width(150.dp)
-                    ) {
-                        civilities.forEach { civ ->
-                            DropdownMenuItem(
-                                text = { Text(civ, color = colors.textPrimary) },
-                                onClick = {
-                                    onCivilityChange(civ)
-                                    showCivilityMenu = false
-                                }
-                            )
-                        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                OutlinedButton(
+                    onClick = { showCivilityMenu = true },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.height(56.dp).width(80.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary)
+                ) {
+                    Text(civility, fontSize = 14.sp)
+                    Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                }
+                DropdownMenu(
+                    expanded = showCivilityMenu,
+                    onDismissRequest = { showCivilityMenu = false },
+                    modifier = Modifier.background(colors.card)
+                ) {
+                    civilities.forEach { civ ->
+                        DropdownMenuItem(
+                            text = { Text(civ, color = colors.textPrimary) },
+                            onClick = {
+                                onCivilityChange(civ)
+                                showCivilityMenu = false
+                            }
+                        )
                     }
                 }
-                CustomSettingsField(
-                    value = name,
-                    onValueChange = onNameChange,
-                    label = "Nom du Responsable",
-                    colors = colors,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box {
-                    OutlinedButton(
-                        onClick = { showCivilityMenu = true },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.height(56.dp).width(80.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary)
-                    ) {
-                        Text(civility, fontSize = 14.sp)
-                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
-                    }
-                    DropdownMenu(
-                        expanded = showCivilityMenu,
-                        onDismissRequest = { showCivilityMenu = false },
-                        modifier = Modifier.background(colors.card)
-                    ) {
-                        civilities.forEach { civ ->
-                            DropdownMenuItem(
-                                text = { Text(civ, color = colors.textPrimary) },
-                                onClick = {
-                                    onCivilityChange(civ)
-                                    showCivilityMenu = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                CustomSettingsField(
-                    value = name,
-                    onValueChange = onNameChange,
-                    label = "Nom du Responsable",
-                    colors = colors,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            Spacer(modifier = Modifier.width(12.dp))
+            CustomSettingsField(
+                value = name,
+                onValueChange = onNameChange,
+                label = "Nom du Responsable",
+                colors = colors,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

@@ -23,10 +23,11 @@ import com.ecolix.presentation.components.*
 
 @Composable
 fun StudentsScreenContent(isDarkMode: Boolean) {
-    var state by remember(isDarkMode) { mutableStateOf(StudentsUiState.sample(isDarkMode)) }
+    val screenModel = remember { StudentsScreenModel() }
+    val state by screenModel.state.collectAsState()
 
     LaunchedEffect(isDarkMode) {
-        state = state.copy(isDarkMode = isDarkMode)
+        screenModel.onDarkModeChange(isDarkMode)
     }
     
     val filteredStudents = remember(state.searchQuery, state.selectedClassroom, state.selectedLevel, state.selectedGender, state.visibilityFilter) {
@@ -52,6 +53,54 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
             val matchLevel = state.selectedLevel == null || classroom.level == state.selectedLevel
             val matchSearch = state.searchQuery.isEmpty() || classroom.name.contains(state.searchQuery, ignoreCase = true)
             matchLevel && matchSearch
+        }
+    }
+
+    // SLICE FOR LAZY LOADING
+    val visibleStudents = remember(filteredStudents, state.loadedStudentsCount) {
+        filteredStudents.take(state.loadedStudentsCount)
+    }
+    val visibleClasses = remember(filteredClasses, state.loadedClassesCount) {
+        filteredClasses.take(state.loadedClassesCount)
+    }
+
+    // Scroll States
+    val studentsListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val classesGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+
+    // Detect Scroll for Students
+    val studentsEndReached by remember {
+        derivedStateOf {
+            val layoutInfo = studentsListState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            if (layoutInfo.totalItemsCount == 0) false
+            else {
+                val lastVisibleItem = visibleItemsInfo.lastOrNull()
+                lastVisibleItem != null && lastVisibleItem.index >= layoutInfo.totalItemsCount - 1
+            }
+        }
+    }
+    LaunchedEffect(studentsEndReached) {
+        if (studentsEndReached && filteredStudents.size > state.loadedStudentsCount) {
+            screenModel.loadMoreStudents()
+        }
+    }
+
+    // Detect Scroll for Classes
+    val classesEndReached by remember {
+        derivedStateOf {
+            val layoutInfo = classesGridState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            if (layoutInfo.totalItemsCount == 0) false
+            else {
+                val lastVisibleItem = visibleItemsInfo.lastOrNull()
+                lastVisibleItem != null && lastVisibleItem.index >= layoutInfo.totalItemsCount - 1
+            }
+        }
+    }
+    LaunchedEffect(classesEndReached) {
+        if (classesEndReached && filteredClasses.size > state.loadedClassesCount) {
+            screenModel.loadMoreClasses()
         }
     }
 
@@ -89,14 +138,14 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                     
                     ViewToggle(
                         currentMode = state.viewMode,
-                        onModeChange = { state = state.copy(viewMode = it, selectionMode = false, selectedStudentIds = emptySet()) },
+                        onModeChange = { screenModel.onViewModeChange(it) },
                         colors = state.colors
                     )
                 }
 
                 ActionBar(
-                    onAddStudentClick = { state = state.copy(viewMode = StudentsViewMode.STUDENT_FORM, selectedStudentId = null) },
-                    onAddClassClick = { state = state.copy(viewMode = StudentsViewMode.CLASS_FORM, selectedClassroom = null) },
+                    onAddStudentClick = { screenModel.onViewModeChange(StudentsViewMode.STUDENT_FORM) },
+                    onAddClassClick = { screenModel.onViewModeChange(StudentsViewMode.CLASS_FORM) },
                     colors = state.colors,
                     isCompact = false
                 )
@@ -116,13 +165,13 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                         ) {
                             SearchBar(
                                 query = state.searchQuery,
-                                onQueryChange = { state = state.copy(searchQuery = it) },
+                                onQueryChange = { screenModel.onSearchQueryChange(it) },
                                 colors = state.colors,
                                 modifier = Modifier.weight(1f)
                             )
                             if (state.viewMode == StudentsViewMode.STUDENTS) {
                                 IconButton(
-                                    onClick = { state = state.copy(selectionMode = !state.selectionMode, selectedStudentIds = emptySet()) },
+                                    onClick = { screenModel.updateState(state.copy(selectionMode = !state.selectionMode, selectedStudentIds = emptySet())) },
                                     colors = IconButtonDefaults.iconButtonColors(
                                         containerColor = if (state.selectionMode) MaterialTheme.colorScheme.primary else state.colors.card,
                                         contentColor = if (state.selectionMode) Color.White else state.colors.textPrimary
@@ -135,11 +184,11 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
 
                         AdvancedFilters(
                             selectedLevel = state.selectedLevel,
-                            onLevelChange = { state = state.copy(selectedLevel = it) },
+                            onLevelChange = { screenModel.onLevelChange(it) },
                             selectedGender = state.selectedGender,
-                            onGenderChange = { state = state.copy(selectedGender = it) },
+                            onGenderChange = { screenModel.onGenderChange(it) },
                             visibility = state.visibilityFilter,
-                            onVisibilityChange = { state = state.copy(visibilityFilter = it) },
+                            onVisibilityChange = { screenModel.onVisibilityChange(it) },
                             colors = state.colors,
                             isCompact = false
                         )
@@ -151,6 +200,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
             when (state.viewMode) {
                 StudentsViewMode.CLASSES -> {
                     LazyVerticalGrid(
+                        state = classesGridState,
                         columns = GridCells.Adaptive(minSize = 300.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp),
@@ -162,20 +212,29 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                 MobileStudentsHeader(
                                     state = state,
                                     isCompact = true,
-                                    onStateChange = { state = it }
+                                    onStateChange = { screenModel.updateState(it) }
                                 )
                             }
                         }
 
-                        items(filteredClasses) { classroom ->
+                        items(visibleClasses) { classroom ->
                             ClassCard(classroom, state.colors, onClick = {
-                                state = state.copy(viewMode = StudentsViewMode.CLASS_DETAILS, selectedClassroom = classroom.id)
+                                screenModel.updateState(state.copy(viewMode = StudentsViewMode.CLASS_DETAILS, selectedClassroom = classroom.id))
                             })
+                        }
+
+                        if (filteredClasses.size > state.loadedClassesCount) {
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                }
+                            }
                         }
                     }
                 }
                 StudentsViewMode.STUDENTS -> {
                     LazyColumn(
+                        state = studentsListState,
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = 80.dp) // Space for selection bar
@@ -185,7 +244,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                 MobileStudentsHeader(
                                     state = state,
                                     isCompact = true,
-                                    onStateChange = { state = it }
+                                    onStateChange = { screenModel.updateState(it) }
                                 )
                             }
                         }
@@ -198,7 +257,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             )
                         }
 
-                        items(filteredStudents) { student ->
+                        items(visibleStudents) { student ->
                             StudentRow(
                                 student = student,
                                 colors = state.colors,
@@ -208,12 +267,20 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                     val newSelection = state.selectedStudentIds.toMutableSet()
                                     if (newSelection.contains(student.id)) newSelection.remove(student.id)
                                     else newSelection.add(student.id)
-                                    state = state.copy(selectedStudentIds = newSelection)
+                                    screenModel.updateState(state.copy(selectedStudentIds = newSelection))
                                 },
-                                onClick = { state = state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id) }
+                                onClick = { screenModel.updateState(state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) }
                             )
                         }
                         
+                        if (filteredStudents.size > state.loadedStudentsCount) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                }
+                            }
+                        }
+
                         if (filteredStudents.isEmpty()) {
                             item {
                                 Box(
@@ -233,7 +300,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             student = student,
                             colors = state.colors,
                             isCompact = isCompact,
-                            onBack = { state = state.copy(viewMode = StudentsViewMode.STUDENTS) }
+                            onBack = { screenModel.onViewModeChange(StudentsViewMode.STUDENTS) }
                         )
                     }
                 }
@@ -245,9 +312,9 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             students = state.students.filter { it.classroom == classroom.name },
                             colors = state.colors,
                             isCompact = isCompact,
-                            onBack = { state = state.copy(viewMode = StudentsViewMode.CLASSES) },
+                            onBack = { screenModel.onViewModeChange(StudentsViewMode.CLASSES) },
                             onStudentClick = { studentId ->
-                                state = state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = studentId)
+                                screenModel.updateState(state.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = studentId))
                             }
                         )
                     }
@@ -260,10 +327,10 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                         currentAcademicYear = state.currentYear,
                         colors = state.colors,
                         isCompact = isCompact,
-                        onBack = { state = state.copy(viewMode = StudentsViewMode.STUDENTS) },
+                        onBack = { screenModel.onViewModeChange(StudentsViewMode.STUDENTS) },
                         onSave = { updatedStudent ->
                             // Update logic would go here
-                            state = state.copy(viewMode = StudentsViewMode.STUDENTS)
+                            screenModel.onViewModeChange(StudentsViewMode.STUDENTS)
                         }
                     )
                 }
@@ -273,13 +340,13 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                         classroom = classroom,
                         colors = state.colors,
                         isCompact = isCompact,
-                        onBack = { state = state.copy(viewMode = StudentsViewMode.CLASSES) },
+                        onBack = { screenModel.onViewModeChange(StudentsViewMode.CLASSES) },
                         onSave = { updatedClass ->
                             val newList = state.classrooms.toMutableList()
                             val index = newList.indexOfFirst { it.id == updatedClass.id }
                             if (index != -1) newList[index] = updatedClass
                             else newList.add(updatedClass)
-                            state = state.copy(classrooms = newList, viewMode = StudentsViewMode.CLASSES)
+                            screenModel.updateState(state.copy(classrooms = newList, viewMode = StudentsViewMode.CLASSES))
                         }
                     )
                 }
@@ -295,7 +362,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
         ) {
             SelectionActionBar(
                 selectedCount = state.selectedStudentIds.size,
-                onClearSelection = { state = state.copy(selectedStudentIds = emptySet()) },
+                onClearSelection = { screenModel.updateState(state.copy(selectedStudentIds = emptySet())) },
                 onDeleteSelected = { /* Logic for delete */ },
                 colors = state.colors,
                 isCompact = isCompact

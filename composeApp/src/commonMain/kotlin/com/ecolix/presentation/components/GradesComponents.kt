@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +106,50 @@ fun SpecificPeriodSelector(
                     text = label,
                     color = if (selected) Color.White else colors.textMuted,
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SpecificClassSelector(
+    selectedClass: String,
+    onClassChange: (String) -> Unit,
+    classrooms: List<String>,
+    colors: DashboardColors,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.height(44.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.textMuted)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(selectedClass, color = colors.textPrimary, style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(20.dp), tint = colors.textMuted)
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(colors.card)
+        ) {
+            classrooms.forEach { classroom ->
+                DropdownMenuItem(
+                    text = { Text(classroom, color = colors.textPrimary) },
+                    onClick = {
+                        onClassChange(classroom)
+                        expanded = false
+                    }
                 )
             }
         }
@@ -374,11 +421,12 @@ fun GradesActionBar(
                 onClick = onImportClick,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.height(48.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
+                border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary)
             ) {
                 Icon(Icons.Default.FileUpload, null, tint = colors.textPrimary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Importer Excel", color = colors.textPrimary)
+                Text("Importer Excel", color = colors.textPrimary, fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -558,3 +606,183 @@ fun BulletinItemCard(
         }
     }
 }
+
+@Composable
+fun PaginationControls(
+    currentPage: Int,
+    totalPages: Int,
+    onPageChange: (Int) -> Unit,
+    colors: DashboardColors,
+    modifier: Modifier = Modifier
+) {
+    if (totalPages <= 1) return
+
+    Row(
+        modifier = modifier.fillMaxWidth().padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedButton(
+            onClick = { onPageChange(currentPage - 1) },
+            enabled = currentPage > 0,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.height(36.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+            border = androidx.compose.foundation.BorderStroke(1.dp, if (currentPage > 0) colors.divider else colors.divider.copy(alpha = 0.5f)),
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Icon(Icons.Default.ChevronLeft, null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Précédent", fontSize = 12.sp)
+        }
+
+        Spacer(modifier = Modifier.width(24.dp))
+
+        Text(
+            text = "Page ${currentPage + 1} sur $totalPages",
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.textPrimary,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.width(24.dp))
+
+        OutlinedButton(
+            onClick = { onPageChange(currentPage + 1) },
+            enabled = currentPage < totalPages - 1,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.height(36.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+            border = androidx.compose.foundation.BorderStroke(1.dp, if (currentPage < totalPages - 1) colors.divider else colors.divider.copy(alpha = 0.5f)),
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Text("Suivant", fontSize = 12.sp)
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+@Composable
+fun MobileHeaderItems(
+    state: com.ecolix.data.models.GradesUiState,
+    onStateChange: (com.ecolix.data.models.GradesUiState) -> Unit,
+    onAddGrade: () -> Unit = {},
+    onOpenConfig: () -> Unit = {}
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Title & Description
+        Column {
+            Text(
+                text = "Notes & Bulletins",
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold, fontSize = 24.sp),
+                color = state.colors.textPrimary
+            )
+            Text(
+                text = "Suivi des performances académiques",
+                style = MaterialTheme.typography.bodyMedium,
+                color = state.colors.textMuted
+            )
+        }
+        
+        GradesViewToggle(
+            currentMode = state.viewMode,
+            onModeChange = { onStateChange(state.copy(viewMode = it)) },
+            colors = state.colors,
+            modifier = Modifier.fillMaxWidth(),
+            isFullWidth = true
+        )
+        
+        // Actions Section (Only for NOTES mode)
+        if (state.viewMode == com.ecolix.data.models.GradesViewMode.NOTES) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                GradesActionBar(
+                    onAddGradeClick = onAddGrade,
+                    onExportClick = { /* TODO: Export logic */ },
+                    onImportClick = { /* TODO: Import logic */ },
+                    onFilterClick = { /* TODO: Filter logic */ },
+                    colors = state.colors,
+                    modifier = Modifier.fillMaxWidth(),
+                    isCompact = true
+                )
+                
+                OutlinedButton(
+                    onClick = onOpenConfig,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, state.colors.divider)
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Settings, null, tint = state.colors.textPrimary, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Paramètres d'évaluation", color = state.colors.textPrimary, fontSize = 14.sp)
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Summary
+        AnimatedVisibility(visible = state.viewMode == com.ecolix.data.models.GradesViewMode.NOTES && state.searchQuery.isEmpty()) {
+            AcademicSummaryCards(summary = state.summary, colors = state.colors, isCompact = true)
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Search & Filters
+        SearchBar(
+            query = state.searchQuery,
+            onQueryChange = { onStateChange(state.copy(searchQuery = it)) },
+            colors = state.colors,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                PeriodModeToggle(
+                    currentMode = state.periodMode,
+                    onModeChange = { onStateChange(state.copy(periodMode = it, currentPeriod = if (it == PeriodMode.TRIMESTRE) "1er Trimestre" else "1er Semestre")) },
+                    colors = state.colors,
+                    modifier = Modifier.fillMaxWidth(),
+                    isFullWidth = true
+                )
+            }
+            
+            var showPeriodMenu by remember { mutableStateOf(false) }
+            val periods = if (state.periodMode == PeriodMode.TRIMESTRE) 
+                listOf("1er Trimestre", "2e Trimestre", "3e Trimestre")
+            else 
+                listOf("1er Semestre", "2e Semestre")
+
+            OutlinedButton(
+                onClick = { showPeriodMenu = true },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, state.colors.divider)
+            ) {
+                Text(state.currentPeriod, color = state.colors.textPrimary, fontSize = 12.sp, maxLines = 1)
+                Icon(Icons.Default.ArrowDropDown, null, tint = state.colors.textMuted, modifier = Modifier.size(16.dp))
+                
+                DropdownMenu(
+                    expanded = showPeriodMenu,
+                    onDismissRequest = { showPeriodMenu = false },
+                    modifier = Modifier.background(state.colors.card)
+                ) {
+                    periods.forEach { period ->
+                        DropdownMenuItem(
+                            text = { Text(period, color = state.colors.textPrimary) },
+                            onClick = { 
+                                onStateChange(state.copy(currentPeriod = period))
+                                showPeriodMenu = false 
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+

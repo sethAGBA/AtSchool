@@ -577,28 +577,4 @@ private fun StatusIndicator(status: String) {
     }
 }
 
-@Composable
-fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    colors: DashboardColors,
-    modifier: Modifier = Modifier
-) {
-    TextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.card),
-        placeholder = { Text("Rechercher...", color = colors.textMuted) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.textMuted) },
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = colors.card,
-            unfocusedContainerColor = colors.card,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-        ),
-        singleLine = true
-    )
-}
+

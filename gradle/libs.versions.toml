@@ -17,6 +17,7 @@ kotlinx-coroutines = "1.10.2"
 kotlinx-datetime = "0.6.0"
 ktor = "3.3.3"
 logback = "1.5.21"
+openhtmltopdf = "1.0.10"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -36,6 +37,9 @@ logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 ktor-serverCore = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
 ktor-serverNetty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor-serverTestHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
+openhtmltopdf-core = { module = "com.openhtmltopdf:openhtmltopdf-core", version.ref = "openhtmltopdf" }
+openhtmltopdf-pdfbox = { module = "com.openhtmltopdf:openhtmltopdf-pdfbox", version.ref = "openhtmltopdf" }
+openhtmltopdf-font = { module = "com.openhtmltopdf:openhtmltopdf-java2d", version.ref = "openhtmltopdf" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
