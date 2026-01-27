@@ -114,6 +114,7 @@ class DashboardScreen : Screen {
                                     16 -> StatsScreenContent(isDarkMode = isDarkMode)
                                     17 -> com.ecolix.presentation.screens.communication.CommunicationScreenContent(isDarkMode = isDarkMode)
                                     18 -> com.ecolix.presentation.screens.accounting.AccountingScreenContent(isDarkMode = isDarkMode)
+                                    19 -> com.ecolix.presentation.screens.exports.ExportScreenContent(isDarkMode = isDarkMode)
                                     else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                                 }
                             }
@@ -139,6 +140,7 @@ class DashboardScreen : Screen {
                             16 -> StatsScreenContent(isDarkMode = isDarkMode)
                             17 -> com.ecolix.presentation.screens.communication.CommunicationScreenContent(isDarkMode = isDarkMode)
                             18 -> com.ecolix.presentation.screens.accounting.AccountingScreenContent(isDarkMode = isDarkMode)
+                            19 -> com.ecolix.presentation.screens.exports.ExportScreenContent(isDarkMode = isDarkMode)
                             else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                         }
                     }
