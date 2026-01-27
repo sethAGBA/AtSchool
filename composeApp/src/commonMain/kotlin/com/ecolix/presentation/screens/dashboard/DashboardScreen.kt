@@ -101,8 +101,10 @@ class DashboardScreen : Screen {
                                     4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
                                     5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                                     6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
+                                    7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)
                                     8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
                                     9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
+                                    14 -> com.ecolix.presentation.screens.library.LibraryScreenContent(isDarkMode = isDarkMode)
                                     16 -> StatsScreenContent(isDarkMode = isDarkMode)
                                     else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                                 }
@@ -117,8 +119,10 @@ class DashboardScreen : Screen {
                             4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
                             5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                             6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
+                            7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)
                             8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
                             9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
+                            14 -> com.ecolix.presentation.screens.library.LibraryScreenContent(isDarkMode = isDarkMode)
                             16 -> StatsScreenContent(isDarkMode = isDarkMode)
                             else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                         }
