@@ -104,7 +104,9 @@ class DashboardScreen : Screen {
                                     7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)
                                     8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
                                     9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
+                                    10 -> com.ecolix.presentation.screens.inventory.InventoryScreenContent(isDarkMode = isDarkMode)
                                     14 -> com.ecolix.presentation.screens.library.LibraryScreenContent(isDarkMode = isDarkMode)
+                                    15 -> com.ecolix.presentation.screens.discipline.DisciplineScreenContent(isDarkMode = isDarkMode)
                                     16 -> StatsScreenContent(isDarkMode = isDarkMode)
                                     else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                                 }
@@ -122,7 +124,9 @@ class DashboardScreen : Screen {
                             7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)
                             8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
                             9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
+                            10 -> com.ecolix.presentation.screens.inventory.InventoryScreenContent(isDarkMode = isDarkMode)
                             14 -> com.ecolix.presentation.screens.library.LibraryScreenContent(isDarkMode = isDarkMode)
+                            15 -> com.ecolix.presentation.screens.discipline.DisciplineScreenContent(isDarkMode = isDarkMode)
                             16 -> StatsScreenContent(isDarkMode = isDarkMode)
                             else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                         }
