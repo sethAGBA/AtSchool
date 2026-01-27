@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -335,6 +336,7 @@ private fun getSidebarItems(): List<SidebarItemData> = listOf(
     SidebarItemData(11, "Audits", Icons.AutoMirrored.Filled.ReceiptLong),
     SidebarItemData(12, "Mode coffre fort", Icons.Filled.Lock),
     SidebarItemData(16, "Statistiques", Icons.Filled.BarChart),
+    SidebarItemData(18, "Comptabilité", Icons.Filled.AccountBalanceWallet),
     SidebarItemData(17, "Communication", Icons.Default.Email),
     SidebarItemData(5, "Parametres", Icons.Filled.Settings)
 )

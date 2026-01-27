@@ -106,12 +106,14 @@ class DashboardScreen : Screen {
                                     9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
                                     10 -> com.ecolix.presentation.screens.inventory.InventoryScreenContent(isDarkMode = isDarkMode)
                                     11 -> com.ecolix.presentation.screens.audits.AuditScreenContent(isDarkMode = isDarkMode)
+                             12 -> com.ecolix.presentation.screens.vault.VaultScreenContent(isDarkMode = isDarkMode)
                                     12 -> com.ecolix.presentation.screens.vault.VaultScreenContent(isDarkMode = isDarkMode)
                                     13 -> com.ecolix.presentation.screens.signatures.SignatureScreenContent(isDarkMode = isDarkMode)
                                     14 -> com.ecolix.presentation.screens.library.LibraryScreenContent(isDarkMode = isDarkMode)
                                     15 -> com.ecolix.presentation.screens.discipline.DisciplineScreenContent(isDarkMode = isDarkMode)
                                     16 -> StatsScreenContent(isDarkMode = isDarkMode)
                                     17 -> com.ecolix.presentation.screens.communication.CommunicationScreenContent(isDarkMode = isDarkMode)
+                                    18 -> com.ecolix.presentation.screens.accounting.AccountingScreenContent(isDarkMode = isDarkMode)
                                     else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                                 }
                             }
@@ -130,11 +132,13 @@ class DashboardScreen : Screen {
                             9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
                             10 -> com.ecolix.presentation.screens.inventory.InventoryScreenContent(isDarkMode = isDarkMode)
                             11 -> com.ecolix.presentation.screens.audits.AuditScreenContent(isDarkMode = isDarkMode)
+                            12 -> com.ecolix.presentation.screens.vault.VaultScreenContent(isDarkMode = isDarkMode)
                             13 -> com.ecolix.presentation.screens.signatures.SignatureScreenContent(isDarkMode = isDarkMode)
                             14 -> com.ecolix.presentation.screens.library.LibraryScreenContent(isDarkMode = isDarkMode)
                             15 -> com.ecolix.presentation.screens.discipline.DisciplineScreenContent(isDarkMode = isDarkMode)
                             16 -> StatsScreenContent(isDarkMode = isDarkMode)
                             17 -> com.ecolix.presentation.screens.communication.CommunicationScreenContent(isDarkMode = isDarkMode)
+                            18 -> com.ecolix.presentation.screens.accounting.AccountingScreenContent(isDarkMode = isDarkMode)
                             else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                         }
                     }
