@@ -325,6 +325,7 @@ private fun getSidebarItems(): List<SidebarItemData> = listOf(
     SidebarItemData(4, "Matieres", Icons.AutoMirrored.Filled.MenuBook),
     SidebarItemData(6, "Utilisateurs", Icons.Filled.AdminPanelSettings),
     SidebarItemData(7, "Emplois du Temps", Icons.Filled.CalendarMonth),
+    SidebarItemData(8, "Gestion Académique", Icons.Filled.School),
     SidebarItemData(9, "Paiements", Icons.Filled.Payments),
     SidebarItemData(14, "Bibliotheque", Icons.AutoMirrored.Filled.LibraryBooks),
     SidebarItemData(15, "Discipline", Icons.Filled.Gavel),

@@ -279,39 +279,6 @@ fun SubjectActionBar(
     }
 }
 
-@Composable
-private fun ActionButton(
-    icon: ImageVector,
-    label: String,
-    bg: Color,
-    contentColor: Color,
-    modifier: Modifier = Modifier,
-    border: Boolean = false,
-    colors: DashboardColors? = null,
-    onClick: () -> Unit = {}
-) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(bg)
-            .then(if (border && colors != null) Modifier.border(1.dp, colors.divider, RoundedCornerShape(12.dp)) else Modifier)
-            .clickable { onClick() }
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = contentColor)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            color = contentColor,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
 
 private fun getCategoryIcon(categoryName: String): ImageVector {
     return when (categoryName) {

@@ -394,66 +394,6 @@ fun StudentForm(
 }
 
 @Composable
-private fun SectionHeader(title: String, colors: DashboardColors) {
-    Column(modifier = Modifier.padding(bottom = 8.dp)) {
-        Text(
-            text = title.uppercase(),
-            style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.2.sp
-            ),
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(colors.divider.copy(alpha = 0.5f)))
-    }
-}
-
-@Composable
-private fun FormTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    colors: DashboardColors,
-    modifier: Modifier = Modifier,
-    placeholder: String = "",
-    icon: ImageVector? = null,
-    readOnly: Boolean = false,
-    isError: Boolean = false,
-    lines: Int = 1,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    onIconClick: (() -> Unit)? = null
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
-        modifier = modifier.fillMaxWidth(),
-        readOnly = readOnly,
-        isError = isError,
-        maxLines = lines,
-        minLines = lines,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        trailingIcon = icon?.let { 
-            { 
-               IconButton(onClick = { onIconClick?.invoke() }, enabled = onIconClick != null) {
-                   Icon(it, contentDescription = null, modifier = Modifier.size(18.dp), tint = if (isError) MaterialTheme.colorScheme.error else colors.textMuted) 
-               }
-            } 
-        },
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = colors.textPrimary,
-            unfocusedTextColor = colors.textPrimary,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = colors.divider,
-            errorBorderColor = MaterialTheme.colorScheme.error
-        )
-    )
-}
-
-@Composable
 private fun FormClassDropdown(
     selected: String,
     options: List<String>,
@@ -517,3 +457,4 @@ private fun GenderOption(
         Text(label, color = if (selected) MaterialTheme.colorScheme.primary else colors.textPrimary, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
     }
 }
+

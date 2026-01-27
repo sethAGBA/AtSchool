@@ -20,6 +20,7 @@ import com.ecolix.data.models.DashboardColors
 import com.ecolix.presentation.components.*
 import com.ecolix.data.models.DashboardUiState
 import com.ecolix.presentation.screens.settings.SettingsScreenContent
+import com.ecolix.presentation.screens.statistics.StatsScreenContent
 
 class DashboardScreen : Screen {
     @Composable
@@ -91,7 +92,7 @@ class DashboardScreen : Screen {
                                 isDarkMode = isDarkMode,
                                 onToggleTheme = { isDarkMode = !isDarkMode }
                             )
-                            Box(modifier = Modifier.weight(1f)) {
+                                Box(modifier = Modifier.weight(1f)) {
                                 when (selectedIndex) {
                                     0 -> DashboardContent(state = state, isWide = true, modifier = Modifier.fillMaxSize())
                                     1 -> com.ecolix.presentation.screens.eleves.StudentsScreenContent(isDarkMode = isDarkMode)
@@ -99,6 +100,10 @@ class DashboardScreen : Screen {
                                     3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
                                     4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
                                     5 -> SettingsScreenContent(isDarkMode = isDarkMode)
+                                    6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
+                                    8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
+                                    9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
+                                    16 -> StatsScreenContent(isDarkMode = isDarkMode)
                                     else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                                 }
                             }
@@ -111,6 +116,10 @@ class DashboardScreen : Screen {
                             3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
                             4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
                             5 -> SettingsScreenContent(isDarkMode = isDarkMode)
+                            6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
+                            8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
+                            9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
+                            16 -> StatsScreenContent(isDarkMode = isDarkMode)
                             else -> ScreenPlaceholder("Module en développement (Index $selectedIndex)", state.colors)
                         }
                     }

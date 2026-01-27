@@ -1,6 +1,7 @@
 package com.ecolix.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -21,11 +22,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.ImeAction
 
 @Composable
 fun CardContainer(
@@ -164,8 +172,8 @@ fun SearchableDropdownMenu(
             modifier = Modifier.padding(8.dp).fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(8.dp),
             singleLine = true,
-            leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Search, null, modifier = Modifier.size(16.dp)) },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+            leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(16.dp)) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                 focusedTextColor = colors.textPrimary,
                 unfocusedTextColor = colors.textPrimary,
@@ -207,7 +215,7 @@ fun ConfirmationDialog(
             ) {
                 Text(title, color = colors.textPrimary, fontWeight = FontWeight.Bold)
                 androidx.compose.material3.IconButton(onClick = onDismiss) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Close, null, tint = colors.textMuted)
+                    Icon(Icons.Default.Close, null, tint = colors.textMuted)
                 }
             }
         },
@@ -240,7 +248,7 @@ fun SearchBar(
         value = query,
         onValueChange = onQueryChange,
         placeholder = { Text("Rechercher...", fontSize = 14.sp) },
-        leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Search, null, tint = colors.textMuted) },
+        leadingIcon = { Icon(Icons.Default.Search, null, tint = colors.textMuted) },
         modifier = modifier.height(48.dp),
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
@@ -254,6 +262,94 @@ fun SearchBar(
             unfocusedLabelColor = colors.textMuted,
             focusedPlaceholderColor = colors.textMuted,
             unfocusedPlaceholderColor = colors.textMuted.copy(alpha = 0.7f)
+        )
+    )
+}
+@Composable
+fun ActionButton(
+    icon: ImageVector,
+    label: String,
+    bg: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+    border: Boolean = false,
+    colors: com.ecolix.data.models.DashboardColors? = null,
+    onClick: () -> Unit = {}
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .then(if (border && colors != null) Modifier.border(1.dp, colors.divider, RoundedCornerShape(12.dp)) else Modifier)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = contentColor)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = label, color = contentColor, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), maxLines = 1)
+    }
+}
+
+@Composable
+fun SectionHeader(title: String, colors: com.ecolix.data.models.DashboardColors) {
+    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp
+            ),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(colors.divider.copy(alpha = 0.5f)))
+    }
+}
+
+@Composable
+fun FormTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    colors: com.ecolix.data.models.DashboardColors,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    icon: ImageVector? = null,
+    readOnly: Boolean = false,
+    isError: Boolean = false,
+    lines: Int = 1,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    onIconClick: (() -> Unit)? = null
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
+        modifier = modifier.fillMaxWidth(),
+        readOnly = readOnly,
+        isError = isError,
+        maxLines = lines,
+        minLines = lines,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = visualTransformation,
+        trailingIcon = icon?.let { 
+            { 
+               IconButton(onClick = { onIconClick?.invoke() }, enabled = onIconClick != null) {
+                   Icon(it, contentDescription = null, modifier = Modifier.size(18.dp), tint = if (isError) MaterialTheme.colorScheme.error else colors.textMuted) 
+               }
+            } 
+        },
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = colors.textPrimary,
+            unfocusedTextColor = colors.textPrimary,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = colors.divider,
+            errorBorderColor = MaterialTheme.colorScheme.error
         )
     )
 }
