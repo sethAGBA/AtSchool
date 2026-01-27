@@ -46,7 +46,18 @@ enum class SessionType {
     STUDY,
     BREAK,
     SPORT,
-    OTHER
+    OTHER;
+
+    fun toFrench(): String = when (this) {
+        COURSE -> "Cours"
+        TD -> "TD"
+        TP -> "TP"
+        EXAM -> "Examen"
+        STUDY -> "Étude"
+        BREAK -> "Pause"
+        SPORT -> "Sport"
+        OTHER -> "Autre"
+    }
 }
 
 // Data Classes

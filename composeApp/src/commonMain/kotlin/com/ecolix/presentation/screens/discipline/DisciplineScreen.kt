@@ -229,7 +229,7 @@ private fun IncidentRow(incident: DisciplineIncident, colors: DashboardColors) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(severityColor))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(incident.type.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                Text(incident.type.toFrench(), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(incident.description, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -269,7 +269,7 @@ private fun SanctionRow(sanction: Sanction, colors: DashboardColors) {
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(statusColor.copy(alpha = 0.1f)).padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Text(sanction.status.name, style = MaterialTheme.typography.labelSmall, color = statusColor, fontWeight = FontWeight.Bold)
+                Text(sanction.status.toFrench(), style = MaterialTheme.typography.labelSmall, color = statusColor, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -331,7 +331,7 @@ private fun AttendanceRow(record: AttendanceRecord, colors: DashboardColors) {
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(typeColor.copy(alpha = 0.1f)).padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(if (record.type == AttendanceType.ABSENCE) "ABSENCE" else "RETARD", style = MaterialTheme.typography.labelSmall, color = typeColor, fontWeight = FontWeight.Bold)
+                        Text(record.type.toFrench(), style = MaterialTheme.typography.labelSmall, color = typeColor, fontWeight = FontWeight.Bold)
                     }
                 }
                 Text(record.classroom, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)

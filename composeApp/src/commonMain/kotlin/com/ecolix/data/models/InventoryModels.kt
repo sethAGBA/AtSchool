@@ -7,7 +7,14 @@ enum class ExpenseStatus {
     PAID,
     PENDING,
     CANCELLED,
-    PLANNED
+    PLANNED;
+
+    fun toFrench(): String = when (this) {
+        PAID -> "Payé"
+        PENDING -> "En attente"
+        CANCELLED -> "Annulé"
+        PLANNED -> "Prévu"
+    }
 }
 
 enum class ExpenseCategory {
@@ -17,7 +24,17 @@ enum class ExpenseCategory {
     SUPPLIES,
     RENT,
     TAXES,
-    OTHER
+    OTHER;
+
+    fun toFrench(): String = when (this) {
+        SALARIES -> "Salaires"
+        MAINTENANCE -> "Maintenance"
+        UTILITIES -> "Services"
+        SUPPLIES -> "Fournitures"
+        RENT -> "Loyer"
+        TAXES -> "Taxes"
+        OTHER -> "Autre"
+    }
 }
 
 // Inventory Enums
@@ -26,7 +43,15 @@ enum class ItemCondition {
     GOOD,
     FAIR,
     POOR,
-    BROKEN
+    BROKEN;
+
+    fun toFrench(): String = when (this) {
+        NEW -> "Neuf"
+        GOOD -> "Bon"
+        FAIR -> "Moyen"
+        POOR -> "Mauvais"
+        BROKEN -> "Hors service"
+    }
 }
 
 enum class ItemCategory {
@@ -36,7 +61,17 @@ enum class ItemCategory {
     CLEANING,
     SPORTS,
     LABORATORY,
-    OTHER
+    OTHER;
+
+    fun toFrench(): String = when (this) {
+        FURNITURE -> "Mobilier"
+        ELECTRONICS -> "Électronique"
+        STATIONERY -> "Papeterie"
+        CLEANING -> "Nettoyage"
+        SPORTS -> "Sports"
+        LABORATORY -> "Laboratoire"
+        OTHER -> "Autre"
+    }
 }
 
 enum class InventoryViewMode {

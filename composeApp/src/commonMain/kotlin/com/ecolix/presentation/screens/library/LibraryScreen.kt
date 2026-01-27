@@ -191,11 +191,11 @@ private fun BookCard(book: Book, colors: DashboardColors) {
 @Composable
 private fun BookStatusBadge(status: BookStatus) {
     val (label, color) = when (status) {
-        BookStatus.AVAILABLE -> "Disponible" to Color(0xFF10B981)
-        BookStatus.BORROWED -> "Emprunté" to Color(0xFF3B82F6)
-        BookStatus.RESERVED -> "Réservé" to Color(0xFFF59E0B)
-        BookStatus.LOST -> "Perdu" to Color(0xFFEF4444)
-        BookStatus.DAMAGED -> "Endommagé" to Color(0xFF71717A)
+        BookStatus.AVAILABLE -> status.toFrench() to Color(0xFF10B981)
+        BookStatus.BORROWED -> status.toFrench() to Color(0xFF3B82F6)
+        BookStatus.RESERVED -> status.toFrench() to Color(0xFFF59E0B)
+        BookStatus.LOST -> status.toFrench() to Color(0xFFEF4444)
+        BookStatus.DAMAGED -> status.toFrench() to Color(0xFF71717A)
     }
 
     Box(
@@ -287,9 +287,9 @@ private fun BorrowingRow(borrowing: Borrowing, colors: DashboardColors, isCompac
 @Composable
 private fun BorrowingStatusBadge(status: BorrowingStatus) {
     val (label, color) = when (status) {
-        BorrowingStatus.ONGOING -> "En cours" to Color(0xFF3B82F6)
-        BorrowingStatus.RETURNED -> "Rendu" to Color(0xFF10B981)
-        BorrowingStatus.OVERDUE -> "Retard" to Color(0xFFEF4444)
+        BorrowingStatus.ONGOING -> status.toFrench() to Color(0xFF3B82F6)
+        BorrowingStatus.RETURNED -> status.toFrench() to Color(0xFF10B981)
+        BorrowingStatus.OVERDUE -> status.toFrench() to Color(0xFFEF4444)
     }
 
     Box(

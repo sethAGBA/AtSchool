@@ -10,14 +10,32 @@ enum class IncidentType {
     CHEATING,
     VANDALISM,
     CELLPHONE_USE,
-    OTHER
+    OTHER;
+
+    fun toFrench(): String = when (this) {
+        LATE -> "Retard"
+        ABSENCE -> "Absence"
+        DISRESPECT -> "Manque de respect"
+        VIOLENCE -> "Violence"
+        CHEATING -> "Triche"
+        VANDALISM -> "Vandalisme"
+        CELLPHONE_USE -> "Usage de téléphone"
+        OTHER -> "Autre"
+    }
 }
 
 enum class Severity {
     LOW,
     MEDIUM,
     HIGH,
-    CRITICAL
+    CRITICAL;
+
+    fun toFrench(): String = when (this) {
+        LOW -> "Faible"
+        MEDIUM -> "Moyenne"
+        HIGH -> "Élevée"
+        CRITICAL -> "Critique"
+    }
 }
 
 enum class DisciplineViewMode {
@@ -57,7 +75,14 @@ enum class SanctionStatus {
     PENDING,
     ACTIVE,
     COMPLETED,
-    CANCELLED
+    CANCELLED;
+
+    fun toFrench(): String = when (this) {
+        PENDING -> "En attente"
+        ACTIVE -> "Active"
+        COMPLETED -> "Terminée"
+        CANCELLED -> "Annulée"
+    }
 }
 
 data class MeritPoint(
@@ -96,7 +121,12 @@ data class AttendanceRecord(
 
 enum class AttendanceType {
     ABSENCE,
-    LATE
+    LATE;
+
+    fun toFrench(): String = when (this) {
+        ABSENCE -> "ABSENCE"
+        LATE -> "RETARD"
+    }
 }
 
 data class DisciplineUiState(

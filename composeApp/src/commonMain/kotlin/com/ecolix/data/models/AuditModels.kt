@@ -4,7 +4,14 @@ enum class LogSeverity {
     INFO,
     WARNING,
     CRITICAL,
-    SECURITY
+    SECURITY;
+
+    fun toFrench(): String = when (this) {
+        INFO -> "Information"
+        WARNING -> "Avertissement"
+        CRITICAL -> "Critique"
+        SECURITY -> "Sécurité"
+    }
 }
 
 data class AuditLog(

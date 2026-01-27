@@ -251,7 +251,7 @@ private fun ExpenseRow(expense: Expense, colors: DashboardColors, isCompact: Boo
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(expense.title, fontWeight = FontWeight.Bold, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${expense.category.name} • ${expense.date}", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                Text("${expense.category.toFrench()} • ${expense.date}", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
             }
 
             if (!isCompact) {
@@ -293,7 +293,7 @@ private fun InventoryItemCard(item: InventoryItem, colors: DashboardColors) {
                 Text(item.name, fontWeight = FontWeight.Bold, color = colors.textPrimary, modifier = Modifier.weight(1f))
                 ConditionBadge(item.condition)
             }
-            Text(item.category.name, style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
+            Text(item.category.toFrench(), style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -352,10 +352,10 @@ private fun StatCard(title: String, value: String, icon: androidx.compose.ui.gra
 @Composable
 private fun StatusBadge(status: ExpenseStatus) {
     val (label, color) = when (status) {
-        ExpenseStatus.PAID -> "Payé" to Color(0xFF10B981)
-        ExpenseStatus.PENDING -> "En attente" to Color(0xFFF59E0B)
-        ExpenseStatus.CANCELLED -> "Annulé" to Color(0xFFEF4444)
-        ExpenseStatus.PLANNED -> "Prévu" to Color(0xFF3B82F6)
+        ExpenseStatus.PAID -> status.toFrench() to Color(0xFF10B981)
+        ExpenseStatus.PENDING -> status.toFrench() to Color(0xFFF59E0B)
+        ExpenseStatus.CANCELLED -> status.toFrench() to Color(0xFFEF4444)
+        ExpenseStatus.PLANNED -> status.toFrench() to Color(0xFF3B82F6)
     }
     Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(color.copy(alpha = 0.1f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
@@ -365,11 +365,11 @@ private fun StatusBadge(status: ExpenseStatus) {
 @Composable
 private fun ConditionBadge(condition: ItemCondition) {
     val (label, color) = when (condition) {
-        ItemCondition.NEW -> "Neuf" to Color(0xFF10B981)
-        ItemCondition.GOOD -> "Bon" to Color(0xFF10B981)
-        ItemCondition.FAIR -> "Moyen" to Color(0xFFF59E0B)
-        ItemCondition.POOR -> "Mauvais" to Color(0xFFEF4444)
-        ItemCondition.BROKEN -> "Hors service" to Color(0xFF1E293B)
+        ItemCondition.NEW -> condition.toFrench() to Color(0xFF10B981)
+        ItemCondition.GOOD -> condition.toFrench() to Color(0xFF10B981)
+        ItemCondition.FAIR -> condition.toFrench() to Color(0xFFF59E0B)
+        ItemCondition.POOR -> condition.toFrench() to Color(0xFFEF4444)
+        ItemCondition.BROKEN -> condition.toFrench() to Color(0xFF1E293B)
     }
     Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(color.copy(alpha = 0.1f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)

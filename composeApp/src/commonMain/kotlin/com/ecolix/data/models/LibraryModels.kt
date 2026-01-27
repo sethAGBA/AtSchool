@@ -7,7 +7,15 @@ enum class BookStatus {
     BORROWED,
     RESERVED,
     LOST,
-    DAMAGED
+    DAMAGED;
+
+    fun toFrench(): String = when (this) {
+        AVAILABLE -> "Disponible"
+        BORROWED -> "Emprunté"
+        RESERVED -> "Réservé"
+        LOST -> "Perdu"
+        DAMAGED -> "Endommagé"
+    }
 }
 
 enum class LibraryViewMode {
@@ -48,7 +56,13 @@ data class Borrowing(
 enum class BorrowingStatus {
     ONGOING,
     RETURNED,
-    OVERDUE
+    OVERDUE;
+
+    fun toFrench(): String = when (this) {
+        ONGOING -> "En cours"
+        RETURNED -> "Rendu"
+        OVERDUE -> "Retard"
+    }
 }
 
 data class LibraryCategory(
