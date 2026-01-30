@@ -1,0 +1,10 @@
+package com.ecolix.atschool.di
+
+import com.ecolix.atschool.api.*
+import org.koin.dsl.module
+
+val sharedModule = module {
+    single { createHttpClient() }
+    single { AuthApiService(get()) }
+    single { StudentApiService(get()) }
+}

@@ -1,0 +1,51 @@
+package com.ecolix.atschool.api
+
+import com.ecolix.atschool.data.Student
+import com.ecolix.atschool.data.StudentRepository
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import org.koin.ktor.ext.inject
+
+fun Route.studentRoutes() {
+    val repository by inject<StudentRepository>()
+
+    authenticate("auth-jwt") {
+        route("/students") {
+            get {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                
+                val students = repository.getAllStudents(tenantId)
+                call.respond(students)
+            }
+
+            get("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toLongOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+
+                val student = repository.getStudentById(id, tenantId)
+                if (student != null) {
+                    call.respond(student)
+                } else {
+                    call.respond(HttpStatusCode.NotFound)
+                }
+            }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val student = call.receive<Student>()
+                
+                // Force tenantId from JWT for security
+                val id = repository.addStudent(student.copy(tenantId = tenantId))
+                call.respond(HttpStatusCode.Created, mapOf("id" to id))
+            }
+        }
+    }
+}

@@ -1,11 +1,43 @@
 package com.ecolix.presentation.screens.eleves
 
 import cafe.adriel.voyager.core.model.StateScreenModel
+import cafe.adriel.voyager.core.model.screenModelScope
+import com.ecolix.atschool.api.StudentApiService
+import com.ecolix.atschool.api.StudentResponse
+import com.ecolix.data.models.Student
 import com.ecolix.data.models.StudentsUiState
 import com.ecolix.data.models.StudentsViewMode
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class StudentsScreenModel : StateScreenModel<StudentsUiState>(StudentsUiState.sample(false)) {
+class StudentsScreenModel(private val studentApiService: StudentApiService) : 
+    StateScreenModel<StudentsUiState>(StudentsUiState.sample(false)) {
+
+    init {
+        loadStudents()
+    }
+
+    private fun loadStudents() {
+        screenModelScope.launch {
+            studentApiService.getStudents().onSuccess { responses ->
+                val mappedStudents = responses.map { it.toUiStudent() }
+                mutableState.update { it.copy(students = mappedStudents) }
+            }
+        }
+    }
+
+    private fun StudentResponse.toUiStudent() = Student(
+        id = this.id?.toString() ?: "",
+        firstName = this.prenom,
+        lastName = this.nom,
+        gender = this.sexe,
+        classroom = "Non assigné",
+        academicYear = "2024-2025",
+        enrollmentDate = "",
+        status = "ACTIF",
+        matricule = this.matricule,
+        dateOfBirth = this.dateNaissance
+    )
 
     fun onDarkModeChange(isDark: Boolean) {
         mutableState.update { it.copy(isDarkMode = isDark) }

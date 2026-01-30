@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.ecolix.presentation.screens.dashboard.DashboardScreen
@@ -37,11 +38,20 @@ class LoginScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val screenModel = koinScreenModel<LoginScreenModel>()
+        val state by screenModel.state.collectAsState()
+
         var username by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var rememberMe by remember { mutableStateOf(false) }
         var passwordVisible by remember { mutableStateOf(false) }
         val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
+        LaunchedEffect(state) {
+            if (state is LoginState.Success) {
+                navigator.push(DashboardScreen())
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -128,6 +138,14 @@ class LoginScreen : Screen {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    if (state is LoginState.Error) {
+                        Text(
+                            text = (state as LoginState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
                     // Username
                     OutlinedTextField(
                         value = username,
@@ -184,7 +202,8 @@ class LoginScreen : Screen {
 
                     // Login Button
                     Button(
-                        onClick = { navigator.push(DashboardScreen()) },
+                        onClick = { screenModel.login(username, password) },
+                        enabled = state !is LoginState.Loading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -198,7 +217,7 @@ class LoginScreen : Screen {
                             Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                "Se connecter",
+                                if (state is LoginState.Loading) "Connexion en cours..." else "Se connecter",
                                 color = Color.White,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                             )
