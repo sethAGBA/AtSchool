@@ -26,18 +26,73 @@ class StudentsScreenModel(private val studentApiService: StudentApiService) :
         }
     }
 
-    private fun StudentResponse.toUiStudent() = Student(
-        id = this.id?.toString() ?: "",
-        firstName = this.prenom,
-        lastName = this.nom,
-        gender = this.sexe,
-        classroom = "Non assigné",
-        academicYear = "2024-2025",
-        enrollmentDate = "",
-        status = "ACTIF",
-        matricule = this.matricule,
-        dateOfBirth = this.dateNaissance
-    )
+    private fun StudentResponse.toUiStudent(): Student {
+        val formattedDate = if (this.dateNaissance.contains("-")) {
+            val parts = this.dateNaissance.split("-")
+            if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else this.dateNaissance
+        } else {
+            this.dateNaissance
+        }
+
+        return Student(
+            id = this.id?.toString() ?: "",
+            firstName = this.prenom,
+            lastName = this.nom,
+            gender = this.sexe,
+            classroom = "Non assigné",
+            academicYear = "2024-2025",
+            enrollmentDate = "",
+            status = "ACTIF",
+            matricule = this.matricule,
+            dateOfBirth = formattedDate
+        )
+    }
+
+    private fun Student.toResponse(): StudentResponse {
+        val normalizedDate = if (this.dateOfBirth?.contains("/") == true) {
+            val parts = this.dateOfBirth.split("/")
+            if (parts.size == 3) "${parts[2]}-${parts[1]}-${parts[0]}" else "2010-01-01"
+        } else {
+            this.dateOfBirth ?: "2010-01-01"
+        }
+
+        return StudentResponse(
+            id = this.id.toLongOrNull(),
+            tenantId = 0, // Tenant ID is handled by server from JWT
+            matricule = this.matricule ?: "MAT-${kotlin.random.Random.nextInt(10000)}",
+            nom = this.lastName,
+            prenom = this.firstName,
+            dateNaissance = normalizedDate,
+            sexe = this.gender
+        )
+    }
+
+    fun saveStudent(student: Student) {
+        screenModelScope.launch {
+            val response = student.toResponse()
+            val result = if (response.id == null) {
+                studentApiService.addStudent(response)
+            } else {
+                studentApiService.updateStudent(response.id!!, response)
+            }
+            
+            result.onSuccess {
+                loadStudents()
+                onViewModeChange(StudentsViewMode.STUDENTS)
+            }.onFailure {
+                it.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteStudent(id: String) {
+        screenModelScope.launch {
+            val longId = id.toLongOrNull() ?: return@launch
+            studentApiService.deleteStudent(longId).onSuccess {
+                loadStudents()
+            }
+        }
+    }
 
     fun onDarkModeChange(isDark: Boolean) {
         mutableState.update { it.copy(isDarkMode = isDark) }

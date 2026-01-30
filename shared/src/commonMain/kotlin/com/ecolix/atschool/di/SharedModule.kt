@@ -7,4 +7,5 @@ val sharedModule = module {
     single { createHttpClient() }
     single { AuthApiService(get()) }
     single { StudentApiService(get()) }
+    single { DashboardApiService(get()) }
 }

@@ -46,6 +46,25 @@ fun Route.studentRoutes() {
                 val id = repository.addStudent(student.copy(tenantId = tenantId))
                 call.respond(HttpStatusCode.Created, mapOf("id" to id))
             }
+
+            put("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@put call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toLongOrNull() ?: return@put call.respond(HttpStatusCode.BadRequest)
+                val student = call.receive<Student>()
+                
+                repository.updateStudent(student.copy(id = id, tenantId = tenantId), tenantId)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            delete("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toLongOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                
+                repository.deleteStudent(id, tenantId)
+                call.respond(HttpStatusCode.NoContent)
+            }
         }
     }
 }

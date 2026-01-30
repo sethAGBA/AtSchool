@@ -44,6 +44,52 @@ object DataSeeder {
                     }
                     logger.info("Created Default Admin: $adminEmail / admin")
                 }
+
+                // 3. Create basic structure
+                val cycleId = Cycles.insertAndGetId {
+                    it[Cycles.tenantId] = tenantId
+                    it[nom] = "Secondaire"
+                }
+
+                val niveauId = Niveaux.insertAndGetId {
+                    it[Niveaux.cycleId] = cycleId
+                    it[nom] = "6ème"
+                }
+
+                val classeId = Classes.insertAndGetId {
+                    it[Classes.tenantId] = tenantId
+                    it[Classes.niveauId] = niveauId
+                    it[code] = "6A"
+                    it[nom] = "6ème A"
+                }
+
+                // 4. Create sample students
+                Eleves.insert {
+                    it[Eleves.tenantId] = tenantId
+                    it[matricule] = "MAT001"
+                    it[nom] = "Diallo"
+                    it[prenom] = "Binta"
+                    it[dateNaissance] = kotlinx.datetime.LocalDate(2012, 5, 15)
+                    it[sexe] = "F"
+                }
+
+                Eleves.insert {
+                    it[Eleves.tenantId] = tenantId
+                    it[matricule] = "MAT002"
+                    it[nom] = "Traore"
+                    it[prenom] = "Moussa"
+                    it[dateNaissance] = kotlinx.datetime.LocalDate(2012, 8, 20)
+                    it[sexe] = "M"
+                }
+
+                // 5. Audit Log
+                AuditLogs.insert {
+                    it[AuditLogs.tenantId] = tenantId
+                    it[userId] = Users.selectAll().where { Users.email eq adminEmail }.single()[Users.id]
+                    it[action] = "Initialisation système"
+                    it[timestamp] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                    it[details] = "Initialisation des données par défaut"
+                }
             } else {
                 logger.info("Database already seeded. Skipping.")
             }

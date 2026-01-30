@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.ecolix.atschool.api.authRoutes
 import com.ecolix.atschool.api.studentRoutes
+import com.ecolix.atschool.api.dashboardRoutes
 import com.ecolix.atschool.api.structureRoutes
 import com.ecolix.atschool.api.academicRoutes
 import com.ecolix.atschool.data.DatabaseFactory
@@ -97,6 +98,7 @@ fun Application.module() {
         
         authRoutes()
         studentRoutes()
+        dashboardRoutes()
         structureRoutes()
         academicRoutes()
     }

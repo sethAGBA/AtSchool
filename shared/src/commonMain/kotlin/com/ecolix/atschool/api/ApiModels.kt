@@ -28,3 +28,19 @@ data class StudentResponse(
     val dateNaissance: String, // String for simplicity across platforms
     val sexe: String
 )
+@Serializable
+data class DashboardStatsResponse(
+    val totalStudents: Int,
+    val totalStaff: Int,
+    val totalClasses: Int,
+    val totalRevenue: Double,
+    val recentActivities: List<ActivityDto>
+)
+
+@Serializable
+data class ActivityDto(
+    val title: String,
+    val subtitle: String,
+    val time: String,
+    val type: String
+)

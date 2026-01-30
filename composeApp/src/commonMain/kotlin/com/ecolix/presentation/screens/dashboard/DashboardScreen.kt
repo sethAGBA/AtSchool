@@ -27,9 +27,19 @@ class DashboardScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = cafe.adriel.voyager.navigator.LocalNavigator.currentOrThrow
+        val screenModel: DashboardScreenModel = org.koin.compose.koinInject()
+        val state by screenModel.state.collectAsState()
+        
         var isDarkMode by remember { mutableStateOf(false) }
-        val state = remember(isDarkMode) { DashboardUiState.sample(isDarkMode) }
         var selectedIndex by remember { mutableStateOf(0) }
+
+        LaunchedEffect(Unit) {
+            screenModel.refreshStats()
+        }
+
+        LaunchedEffect(isDarkMode) {
+            screenModel.onDarkModeChange(isDarkMode)
+        }
 
         var showLogoutDialog by remember { mutableStateOf(false) }
 

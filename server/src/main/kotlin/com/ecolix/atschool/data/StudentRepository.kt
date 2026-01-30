@@ -40,6 +40,20 @@ class StudentRepository {
         } get Eleves.id
     }.value
 
+    fun updateStudent(student: Student, tenantId: Int) = transaction {
+        Eleves.update({ (Eleves.id eq student.id!!) and (Eleves.tenantId eq tenantId) }) {
+            it[matricule] = student.matricule
+            it[nom] = student.nom
+            it[prenom] = student.prenom
+            it[dateNaissance] = student.dateNaissance
+            it[sexe] = student.sexe
+        }
+    }
+
+    fun deleteStudent(id: Long, tenantId: Int) = transaction {
+        Eleves.deleteWhere { (Eleves.id eq id) and (Eleves.tenantId eq tenantId) }
+    }
+
     private fun ResultRow.toStudent() = Student(
         id = this[Eleves.id].value,
         tenantId = this[Eleves.tenantId].value,

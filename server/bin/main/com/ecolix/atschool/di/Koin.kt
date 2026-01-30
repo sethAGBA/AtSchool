@@ -8,6 +8,7 @@ import org.koin.core.qualifier.named
 val appModule = module {
     single { UserRepository() }
     single { StudentRepository() }
+    single { DashboardRepository() }
     single { EstablishmentRepository() }
     single { ClassRepository() }
     single { SubjectRepository() }

@@ -431,8 +431,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                         isCompact = isCompact,
                         onBack = { screenModel.onViewModeChange(StudentsViewMode.STUDENTS) },
                         onSave = { updatedStudent ->
-                            // Update logic
-                            screenModel.onViewModeChange(StudentsViewMode.STUDENTS)
+                            screenModel.saveStudent(updatedStudent)
                         }
                     )
                 }
@@ -463,7 +462,10 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
             SelectionActionBar(
                 selectedCount = uiState.selectedStudentIds.size,
                 onClearSelection = { screenModel.updateState(uiState.copy(selectedStudentIds = emptySet())) },
-                onDeleteSelected = { /* Logic for delete */ },
+                onDeleteSelected = { 
+                    uiState.selectedStudentIds.forEach { screenModel.deleteStudent(it) }
+                    screenModel.updateState(uiState.copy(selectedStudentIds = emptySet(), selectionMode = false))
+                },
                 colors = colors,
                 isCompact = isCompact
             )
