@@ -19,21 +19,35 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.plugin.Koin
 import org.koin.core.logger.Level
+import org.koin.dsl.module
 
-fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
-        .start(wait = true)
-}
+fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
     // 1. Dependency Injection
+    val jwtConfig = environment.config.config("jwt")
+    val jwtSecret = jwtConfig.property("secret").getString()
+    val jwtIssuer = jwtConfig.property("issuer").getString()
+    val jwtAudience = jwtConfig.property("audience").getString()
+    val jwtRealm = jwtConfig.property("realm").getString()
+
+    // 1. Dependency Injection
     install(Koin) {
         printLogger(Level.INFO)
-        modules(appModule)
+        modules(
+            module {
+                single(org.koin.core.qualifier.named("jwtSecret")) { jwtSecret }
+                single(org.koin.core.qualifier.named("jwtIssuer")) { jwtIssuer }
+                single(org.koin.core.qualifier.named("jwtAudience")) { jwtAudience }
+                single(org.koin.core.qualifier.named("jwtRealm")) { jwtRealm }
+            },
+            appModule
+        )
     }
 
     // 2. Database
-    DatabaseFactory.init()
+    val dbConfig = environment.config.config("database")
+    DatabaseFactory.init(dbConfig)
 
     // 3. Content Negotiation
     install(ContentNegotiation) {
@@ -41,10 +55,7 @@ fun Application.module() {
     }
 
     // 4. Authentication
-    val jwtSecret = System.getenv("JWT_SECRET") ?: "secret-key-atschool-2026"
-    val jwtIssuer = "http://0.0.0.0:8080/"
-    val jwtAudience = "atschool-users"
-    val jwtRealm = "Access to atschool"
+    // Config loaded above for DI
 
     install(Authentication) {
         jwt("auth-jwt") {

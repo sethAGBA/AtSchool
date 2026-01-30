@@ -7,7 +7,16 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.buildConfig)
 }
+
+buildConfig {
+   packageName("com.ecolix.atschool")
+   
+   // Default values (common mainly)
+   buildConfigField("String", "BASE_URL", "\"https://api.atschool.com/\"")
+}
+
 
 kotlin {
     androidTarget {

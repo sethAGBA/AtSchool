@@ -9,6 +9,9 @@ import io.ktor.client.plugins.auth.providers.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 
+import com.ecolix.atschool.BuildConfig
+import com.ecolix.atschool.getPlatform
+
 object TokenProvider {
     var token: String? = null
 }
@@ -37,7 +40,14 @@ fun createHttpClient(): HttpClient {
         }
         
         defaultRequest {
-            url("http://localhost:8080/") // Default API URL
+            var baseUrl = BuildConfig.BASE_URL
+            
+            // Fix for Android Emulator using 10.0.2.2 for localhost
+            if (baseUrl.contains("localhost") && getPlatform().name.contains("Android")) {
+                baseUrl = baseUrl.replace("localhost", "10.0.2.2")
+            }
+            
+            url(baseUrl)
         }
     }
 }

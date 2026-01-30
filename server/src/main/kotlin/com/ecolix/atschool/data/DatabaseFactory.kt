@@ -11,8 +11,8 @@ import org.slf4j.LoggerFactory
 object DatabaseFactory {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun init() {
-        val dataSource = createHikariDataSource()
+    fun init(config: io.ktor.server.config.ApplicationConfig) {
+        val dataSource = createHikariDataSource(config)
         Database.connect(dataSource)
         
         // Run Flyway migrations
@@ -39,18 +39,24 @@ object DatabaseFactory {
         }
     }
 
-    private fun createHikariDataSource(): HikariDataSource {
-        val config = HikariConfig().apply {
-            driverClassName = "org.postgresql.Driver"
-            jdbcUrl = System.getenv("JDBC_URL") ?: "jdbc:postgresql://localhost:5432/atschool"
-            username = System.getenv("DB_USER") ?: "postgres"
-            password = System.getenv("DB_PASSWORD") ?: "postgres"
-            maximumPoolSize = 10
+    private fun createHikariDataSource(config: io.ktor.server.config.ApplicationConfig): HikariDataSource {
+        val driver = config.property("driverClassName").getString()
+        val url = config.property("jdbcUrl").getString()
+        val user = config.property("user").getString()
+        val pwd = config.property("password").getString()
+        val poolSize = config.property("maximumPoolSize").getString().toInt()
+
+        val hikariConfig = HikariConfig().apply {
+            driverClassName = driver
+            jdbcUrl = url
+            username = user
+            password = pwd
+            maximumPoolSize = poolSize
             isAutoCommit = false
             transactionIsolation = "TRANSACTION_REPEATABLE_READ"
             validate()
         }
-        return HikariDataSource(config)
+        return HikariDataSource(hikariConfig)
     }
 
     private fun runFlyway(dataSource: HikariDataSource) {

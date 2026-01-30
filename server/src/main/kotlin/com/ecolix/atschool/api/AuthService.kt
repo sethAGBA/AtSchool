@@ -7,10 +7,12 @@ import com.ecolix.atschool.data.UserRepository
 import com.ecolix.atschool.security.PasswordUtils
 import java.util.*
 
-class AuthService(private val userRepository: UserRepository) {
-    private val jwtSecret = System.getenv("JWT_SECRET") ?: "secret-key-atschool-2026"
-    private val jwtIssuer = "http://0.0.0.0:8080/"
-    private val jwtAudience = "atschool-users"
+class AuthService(
+    private val userRepository: UserRepository,
+    private val jwtSecret: String,
+    private val jwtIssuer: String,
+    private val jwtAudience: String
+) {
 
     fun authenticate(email: String, password: String): String? {
         val user = userRepository.findByEmail(email) ?: return null

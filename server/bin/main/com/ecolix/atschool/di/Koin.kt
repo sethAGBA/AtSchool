@@ -3,6 +3,7 @@ package com.ecolix.atschool.di
 import com.ecolix.atschool.api.AuthService
 import com.ecolix.atschool.data.*
 import org.koin.dsl.module
+import org.koin.core.qualifier.named
 
 val appModule = module {
     single { UserRepository() }
@@ -12,5 +13,12 @@ val appModule = module {
     single { SubjectRepository() }
     single { EvaluationRepository() }
     single { GradeRepository() }
-    single { AuthService(get()) }
+    single { 
+        AuthService(
+            get(),
+            get(named("jwtSecret")),
+            get(named("jwtIssuer")),
+            get(named("jwtAudience"))
+        ) 
+    }
 }
