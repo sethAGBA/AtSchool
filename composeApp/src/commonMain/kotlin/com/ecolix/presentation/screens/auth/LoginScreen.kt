@@ -15,6 +15,9 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,12 +46,16 @@ class LoginScreen : Screen {
 
         var username by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
-        var rememberMe by remember { mutableStateOf(false) }
+        var rememberMe by remember { mutableStateOf(com.ecolix.atschool.api.TokenProvider.rememberMe) }
         var passwordVisible by remember { mutableStateOf(false) }
         val isDark = androidx.compose.foundation.isSystemInDarkTheme()
 
         LaunchedEffect(Unit) {
-            screenModel.reset()
+            if (com.ecolix.atschool.api.TokenProvider.token != null) {
+                navigator.push(DashboardScreen())
+            } else {
+                screenModel.reset()
+            }
         }
 
         LaunchedEffect(state) {
@@ -164,6 +171,7 @@ class LoginScreen : Screen {
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF6366F1),
                             focusedLabelColor = Color(0xFF6366F1)
@@ -188,6 +196,12 @@ class LoginScreen : Screen {
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                screenModel.login(username, password, rememberMe)
+                            }
+                        ),
                          colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF6366F1),
                             focusedLabelColor = Color(0xFF6366F1)
@@ -211,7 +225,7 @@ class LoginScreen : Screen {
 
                     // Login Button
                     Button(
-                        onClick = { screenModel.login(username, password) },
+                        onClick = { screenModel.login(username, password, rememberMe) },
                         enabled = state !is LoginState.Loading,
                         modifier = Modifier
                             .fillMaxWidth()

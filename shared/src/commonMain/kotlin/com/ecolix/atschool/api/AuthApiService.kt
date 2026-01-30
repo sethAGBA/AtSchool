@@ -6,11 +6,13 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 
 class AuthApiService(private val client: HttpClient) {
-    suspend fun login(request: LoginRequest): Result<LoginResponse> = runCatching {
+    suspend fun login(request: LoginRequest, rememberMe: Boolean = false): Result<LoginResponse> = runCatching {
         val response = client.post("auth/login") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }
+        
+        TokenProvider.rememberMe = rememberMe
 
         if (response.status == HttpStatusCode.OK) {
             val loginResponse: LoginResponse = response.body()

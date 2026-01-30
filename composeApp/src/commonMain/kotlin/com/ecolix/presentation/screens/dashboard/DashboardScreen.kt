@@ -34,26 +34,14 @@ class DashboardScreen : Screen {
         var showLogoutDialog by remember { mutableStateOf(false) }
 
         if (showLogoutDialog) {
-            AlertDialog(
-                onDismissRequest = { showLogoutDialog = false },
-                title = { Text("Déconnexion") },
-                text = { Text("Êtes-vous sûr de vouloir vous déconnecter ?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showLogoutDialog = false
-                            com.ecolix.atschool.api.TokenProvider.token = null
-                            navigator.replaceAll(com.ecolix.presentation.screens.auth.LoginScreen())
-                        }
-                    ) {
-                        Text("Se déconnecter", color = MaterialTheme.colorScheme.error)
-                    }
+            LogoutDialog(
+                onConfirm = {
+                    showLogoutDialog = false
+                    com.ecolix.atschool.api.TokenProvider.token = null
+                    navigator.replaceAll(com.ecolix.presentation.screens.auth.LoginScreen())
                 },
-                dismissButton = {
-                    TextButton(onClick = { showLogoutDialog = false }) {
-                        Text("Annuler")
-                    }
-                }
+                onDismiss = { showLogoutDialog = false },
+                colors = state.colors
             )
         }
 

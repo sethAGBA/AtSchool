@@ -13,7 +13,26 @@ import com.ecolix.atschool.BuildConfig
 import com.ecolix.atschool.getPlatform
 
 object TokenProvider {
-    var token: String? = null
+    private val settings = com.ecolix.atschool.util.Settings()
+    private const val KEY_TOKEN = "auth_token"
+    private const val KEY_REMEMBER_ME = "remember_me"
+
+    var rememberMe: Boolean
+        get() = settings.getBoolean(KEY_REMEMBER_ME, false)
+        set(value) {
+            settings.putBoolean(KEY_REMEMBER_ME, value)
+            if (!value) {
+                settings.putString(KEY_TOKEN, null)
+            }
+        }
+
+    var token: String? = settings.getString(KEY_TOKEN)
+        set(value) {
+            field = value
+            if (rememberMe) {
+                settings.putString(KEY_TOKEN, value)
+            }
+        }
 }
 
 fun createHttpClient(): HttpClient {

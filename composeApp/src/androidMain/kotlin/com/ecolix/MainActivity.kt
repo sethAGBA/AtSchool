@@ -11,6 +11,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        com.ecolix.atschool.util.AndroidContextProvider.context = applicationContext
 
         val composeView = ComposeView(this).apply {
             setContent { App() }
