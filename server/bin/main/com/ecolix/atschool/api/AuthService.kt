@@ -14,8 +14,8 @@ class AuthService(
     private val jwtAudience: String
 ) {
 
-    fun authenticate(email: String, password: String): String? {
-        val user = userRepository.findByEmail(email) ?: return null
+    fun authenticate(email: String, password: String, schoolCode: String): String? {
+        val user = userRepository.findByEmailAndCode(email, schoolCode) ?: return null
         
         return if (PasswordUtils.verifyPassword(password, user.passwordHash)) {
             generateToken(user)

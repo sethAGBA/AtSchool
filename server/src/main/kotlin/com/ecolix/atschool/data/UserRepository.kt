@@ -18,8 +18,9 @@ data class User(
 )
 
 class UserRepository {
-    fun findByEmail(email: String): User? = transaction {
-        Users.selectAll().where { Users.email eq email }
+    fun findByEmailAndCode(email: String, schoolCode: String): User? = transaction {
+        (Users innerJoin Tenants).selectAll()
+            .where { (Users.email eq email) and (Tenants.code eq schoolCode) }
             .map { it.toUser() }
             .singleOrNull()
     }

@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.kotlin.datetime.datetime
 object Tenants : IntIdTable("tenants") {
     val name = varchar("name", 100)
     val domain = varchar("domain", 100).uniqueIndex()
+    val code = varchar("code", 10).uniqueIndex()
     val createdAt = date("created_at")
 }
 

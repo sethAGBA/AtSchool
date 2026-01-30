@@ -23,6 +23,7 @@ object DataSeeder {
                 val tenantId = Tenants.insertAndGetId {
                     it[name] = "École Demo"
                     it[domain] = "demo.atschool.com"
+                    it[code] = "DEMO"
                     it[createdAt] = today // Exposed Date column usually takes LocalDate
                 }
 

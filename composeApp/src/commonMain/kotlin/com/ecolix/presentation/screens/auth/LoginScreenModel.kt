@@ -19,10 +19,10 @@ class LoginScreenModel(private val authService: AuthApiService) : ScreenModel {
     private val _state = MutableStateFlow<LoginState>(LoginState.Idle)
     val state = _state.asStateFlow()
 
-    fun login(email: String, password: String, rememberMe: Boolean = false) {
+    fun login(email: String, password: String, schoolCode: String, rememberMe: Boolean = false) {
         screenModelScope.launch {
             _state.value = LoginState.Loading
-            val result = authService.login(LoginRequest(email, password), rememberMe)
+            val result = authService.login(LoginRequest(email, password, schoolCode), rememberMe)
             result.onSuccess {
                 _state.value = LoginState.Success
             }.onFailure {

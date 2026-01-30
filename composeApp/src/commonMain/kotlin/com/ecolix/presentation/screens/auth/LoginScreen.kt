@@ -44,6 +44,7 @@ class LoginScreen : Screen {
         val screenModel = koinScreenModel<LoginScreenModel>()
         val state by screenModel.state.collectAsState()
 
+        var schoolCode by remember { mutableStateOf("") }
         var username by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var rememberMe by remember { mutableStateOf(com.ecolix.atschool.api.TokenProvider.rememberMe) }
@@ -162,6 +163,22 @@ class LoginScreen : Screen {
                         )
                     }
 
+                    // School Code
+                    OutlinedTextField(
+                        value = schoolCode,
+                        onValueChange = { schoolCode = it },
+                        label = { Text("Code École") },
+                        leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF6366F1),
+                            focusedLabelColor = Color(0xFF6366F1)
+                        )
+                    )
+
                     // Username
                     OutlinedTextField(
                         value = username,
@@ -199,7 +216,7 @@ class LoginScreen : Screen {
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = {
-                                screenModel.login(username, password, rememberMe)
+                                screenModel.login(username, password, schoolCode, rememberMe)
                             }
                         ),
                          colors = OutlinedTextFieldDefaults.colors(
@@ -225,7 +242,7 @@ class LoginScreen : Screen {
 
                     // Login Button
                     Button(
-                        onClick = { screenModel.login(username, password, rememberMe) },
+                        onClick = { screenModel.login(username, password, schoolCode, rememberMe) },
                         enabled = state !is LoginState.Loading,
                         modifier = Modifier
                             .fillMaxWidth()

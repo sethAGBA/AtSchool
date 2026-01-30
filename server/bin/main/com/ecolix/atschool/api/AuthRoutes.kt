@@ -9,26 +9,13 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.koin.ktor.ext.inject
 
-@Serializable
-data class LoginRequest(val email: String, val password: String)
-
-@Serializable
-data class RegisterRequest(
-    val email: String, 
-    val password: String, 
-    val tenantId: Int, 
-    val role: String,
-    val nom: String? = null,
-    val prenom: String? = null
-)
-
 fun Route.authRoutes() {
     val authService by inject<AuthService>()
 
     route("/auth") {
         post("/login") {
-            val request = call.receive<LoginRequest>()
-            val token = authService.authenticate(request.email, request.password)
+            val request = call.receive<com.ecolix.atschool.api.LoginRequest>()
+            val token = authService.authenticate(request.email, request.password, request.schoolCode)
             
             if (token != null) {
                 call.respond(mapOf("token" to token))
