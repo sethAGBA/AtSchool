@@ -15,6 +15,7 @@ import com.ecolix.atschool.getPlatform
 object TokenProvider {
     private val settings = com.ecolix.atschool.util.Settings()
     private const val KEY_TOKEN = "auth_token"
+    private const val KEY_ROLE = "auth_role"
     private const val KEY_REMEMBER_ME = "remember_me"
 
     var rememberMe: Boolean
@@ -23,6 +24,7 @@ object TokenProvider {
             settings.putBoolean(KEY_REMEMBER_ME, value)
             if (!value) {
                 settings.putString(KEY_TOKEN, null)
+                settings.putString(KEY_ROLE, null)
             }
         }
 
@@ -31,6 +33,14 @@ object TokenProvider {
             field = value
             if (rememberMe) {
                 settings.putString(KEY_TOKEN, value)
+            }
+        }
+
+    var role: String? = settings.getString(KEY_ROLE)
+        set(value) {
+            field = value
+            if (rememberMe) {
+                settings.putString(KEY_ROLE, value)
             }
         }
 }

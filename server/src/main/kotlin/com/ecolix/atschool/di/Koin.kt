@@ -14,6 +14,7 @@ val appModule = module {
     single { SubjectRepository() }
     single { EvaluationRepository() }
     single { GradeRepository() }
+    single { SuperAdminRepository() }
     single { 
         AuthService(
             get(),

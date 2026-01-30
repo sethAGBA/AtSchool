@@ -35,6 +35,7 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.ecolix.presentation.screens.dashboard.DashboardScreen
+import com.ecolix.presentation.screens.superadmin.SuperAdminScreen
 import com.ecolix.presentation.theme.*
 
 class LoginScreen : Screen {
@@ -53,7 +54,11 @@ class LoginScreen : Screen {
 
         LaunchedEffect(Unit) {
             if (com.ecolix.atschool.api.TokenProvider.token != null) {
-                navigator.push(DashboardScreen())
+                if (com.ecolix.atschool.api.TokenProvider.role == "SUPER_ADMIN") {
+                    navigator.push(SuperAdminScreen())
+                } else {
+                    navigator.push(DashboardScreen())
+                }
             } else {
                 screenModel.reset()
             }
@@ -63,7 +68,11 @@ class LoginScreen : Screen {
             if (state is LoginState.Success) {
                 // Verify we typically have a token (avoid stale Success state after logout)
                 if (com.ecolix.atschool.api.TokenProvider.token != null) {
-                    navigator.push(DashboardScreen())
+                    if (com.ecolix.atschool.api.TokenProvider.role == "SUPER_ADMIN") {
+                        navigator.push(SuperAdminScreen())
+                    } else {
+                        navigator.push(DashboardScreen())
+                    }
                 } else {
                     screenModel.reset()
                 }

@@ -29,7 +29,21 @@ object DataSeeder {
 
                 logger.info("Created Default Tenant: $tenantId")
 
-                // 2. Create Admin User
+                // 2. Create Super Admin (Global - attached to first tenant for convenience)
+                val superAdminEmail = "seth@atschool.com"
+                if (Users.selectAll().where { Users.email eq superAdminEmail }.count() == 0L) {
+                    Users.insert {
+                        it[Users.tenantId] = tenantId.value
+                        it[email] = superAdminEmail
+                        it[passwordHash] = PasswordUtils.hashPassword("superadmin")
+                        it[role] = "SUPER_ADMIN"
+                        it[nom] = "AGBA"
+                        it[prenom] = "Seth"
+                    }
+                    logger.info("Created Super Admin: $superAdminEmail / superadmin")
+                }
+
+                // 3. Create normal Admin for Demo
                 val adminEmail = "admin@atschool.com"
                 
                 // Check if user exists (should not if users table is empty, but safety first)
@@ -91,8 +105,25 @@ object DataSeeder {
                     it[timestamp] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                     it[details] = "Initialisation des données par défaut"
                 }
-            } else {
-                logger.info("Database already seeded. Skipping.")
+                logger.info("Database already seeded. Skipping main flow.")
+            }
+
+            // Always ensure Super Admin exists for the developer
+            val superAdminEmail = "seth@atschool.com"
+            if (Users.selectAll().where { Users.email eq superAdminEmail }.count() == 0L) {
+                // We need a tenantId even for superadmin, let's pick the first one
+                val firstTenantId = Tenants.selectAll().firstOrNull()?.get(Tenants.id)?.value
+                if (firstTenantId != null) {
+                    Users.insert {
+                        it[tenantId] = firstTenantId
+                        it[email] = superAdminEmail
+                        it[passwordHash] = PasswordUtils.hashPassword("superadmin")
+                        it[role] = "SUPER_ADMIN"
+                        it[nom] = "AGBA"
+                        it[prenom] = "Seth"
+                    }
+                    logger.info("Ensured Super Admin exists: $superAdminEmail")
+                }
             }
         }
     }

@@ -17,6 +17,7 @@ class AuthApiService(private val client: HttpClient) {
         if (response.status == HttpStatusCode.OK) {
             val loginResponse: LoginResponse = response.body()
             TokenProvider.token = loginResponse.token
+            TokenProvider.role = loginResponse.role
             loginResponse
         } else {
             // User-friendly error messages
@@ -40,5 +41,6 @@ class AuthApiService(private val client: HttpClient) {
 
     fun logout() {
         TokenProvider.token = null
+        TokenProvider.role = null
     }
 }

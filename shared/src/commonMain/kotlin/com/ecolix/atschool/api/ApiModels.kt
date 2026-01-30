@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class LoginRequest(val email: String, val password: String, val schoolCode: String)
 
 @Serializable
-data class LoginResponse(val token: String)
+data class LoginResponse(val token: String, val role: String)
 
 @Serializable
 data class RegisterRequest(
@@ -43,4 +43,28 @@ data class ActivityDto(
     val subtitle: String,
     val time: String,
     val type: String
+)
+
+@Serializable
+data class TenantDto(
+    val id: Int,
+    val name: String,
+    val domain: String,
+    val code: String,
+    val createdAt: String
+)
+
+@Serializable
+data class CreateTenantRequest(
+    val name: String,
+    val code: String,
+    val adminEmail: String,
+    val adminPassword: String
+)
+
+@Serializable
+data class GlobalStatsResponse(
+    val totalSchools: Int,
+    val totalStudents: Int,
+    val totalRevenue: Double
 )

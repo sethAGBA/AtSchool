@@ -15,10 +15,10 @@ fun Route.authRoutes() {
     route("/auth") {
         post("/login") {
             val request = call.receive<com.ecolix.atschool.api.LoginRequest>()
-            val token = authService.authenticate(request.email, request.password, request.schoolCode)
+            val loginResponse = authService.authenticate(request.email, request.password, request.schoolCode)
             
-            if (token != null) {
-                call.respond(mapOf("token" to token))
+            if (loginResponse != null) {
+                call.respond(loginResponse)
             } else {
                 call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
             }

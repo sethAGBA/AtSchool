@@ -14,11 +14,12 @@ class AuthService(
     private val jwtAudience: String
 ) {
 
-    fun authenticate(email: String, password: String, schoolCode: String): String? {
+    fun authenticate(email: String, password: String, schoolCode: String): LoginResponse? {
         val user = userRepository.findByEmailAndCode(email, schoolCode) ?: return null
         
         return if (PasswordUtils.verifyPassword(password, user.passwordHash)) {
-            generateToken(user)
+            val token = generateToken(user)
+            LoginResponse(token, user.role)
         } else {
             null
         }
