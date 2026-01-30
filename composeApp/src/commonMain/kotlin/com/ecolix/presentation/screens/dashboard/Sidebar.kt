@@ -60,7 +60,8 @@ fun Sidebar(
     selectedIndex: Int,
     onItemSelected: (Int) -> Unit,
     isDarkMode: Boolean,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    onLogout: () -> Unit
 ) {
     var isCollapsed by remember { mutableStateOf(false) }
     val width by animateDpAsState(if (isCollapsed) 80.dp else 280.dp, tween(300))
@@ -219,7 +220,7 @@ fun Sidebar(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFFE11D48))
-                .clickable { navigator.replaceAll(LoginScreen()) }
+                .clickable { onLogout() }
                 .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {

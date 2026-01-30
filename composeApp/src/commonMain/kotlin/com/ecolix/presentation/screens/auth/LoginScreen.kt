@@ -47,9 +47,18 @@ class LoginScreen : Screen {
         var passwordVisible by remember { mutableStateOf(false) }
         val isDark = androidx.compose.foundation.isSystemInDarkTheme()
 
+        LaunchedEffect(Unit) {
+            screenModel.reset()
+        }
+
         LaunchedEffect(state) {
             if (state is LoginState.Success) {
-                navigator.push(DashboardScreen())
+                // Verify we typically have a token (avoid stale Success state after logout)
+                if (com.ecolix.atschool.api.TokenProvider.token != null) {
+                    navigator.push(DashboardScreen())
+                } else {
+                    screenModel.reset()
+                }
             }
         }
 

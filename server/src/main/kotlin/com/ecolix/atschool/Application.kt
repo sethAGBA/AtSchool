@@ -48,6 +48,9 @@ fun Application.module() {
     // 2. Database
     val dbConfig = environment.config.config("database")
     DatabaseFactory.init(dbConfig)
+    
+    // Seed data if empty
+    com.ecolix.atschool.data.DataSeeder.seed()
 
     // 3. Content Negotiation
     install(ContentNegotiation) {
@@ -56,6 +59,16 @@ fun Application.module() {
 
     // 4. Authentication
     // Config loaded above for DI
+
+    install(io.ktor.server.plugins.cors.routing.CORS) {
+        allowMethod(io.ktor.http.HttpMethod.Options)
+        allowMethod(io.ktor.http.HttpMethod.Put)
+        allowMethod(io.ktor.http.HttpMethod.Delete)
+        allowMethod(io.ktor.http.HttpMethod.Patch)
+        allowHeader(io.ktor.http.HttpHeaders.Authorization)
+        allowHeader(io.ktor.http.HttpHeaders.ContentType)
+        anyHost() // Allow all hosts for development
+    }
 
     install(Authentication) {
         jwt("auth-jwt") {

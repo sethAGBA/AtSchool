@@ -165,3 +165,23 @@ J'ai défini une variable BASE_URL = "http://localhost:8080/".
 Magie Android : Dans ApiClient.kt, j'ai ajouté une petite logique qui détecte si on est sur Android ET si l'URL est localhost. Si c'est le cas, il remplace automatiquement par 10.0.2.2.
 Ça veut dire que vous n'avez rien à toucher. Ça marche sur iOS (localhost) et Android (10.0.2.2) sans changer de code !
 Votre application est maintenant prête pour le déploiement (en changeant les variables d'env) et pour le dévelopement local sans maux de tête. -->
+
+
+
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@atschool.com", "password":"admin"}'
+
+<!-- 
+
+
+  curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@ecolix.com",
+    "password": "monSuperMotDePasse",
+    "role": "ADMIN",
+    "tenantId": 1,
+    "nom": "Admin",
+    "prenom": "Principal"
+  }' -->

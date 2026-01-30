@@ -26,8 +26,13 @@ class LoginScreenModel(private val authService: AuthApiService) : ScreenModel {
             result.onSuccess {
                 _state.value = LoginState.Success
             }.onFailure {
+                it.printStackTrace() // Log the full error to console
                 _state.value = LoginState.Error(it.message ?: "Authentication failed")
             }
         }
+    }
+
+    fun reset() {
+        _state.value = LoginState.Idle
     }
 }

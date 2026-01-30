@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.currentOrThrow
 import com.ecolix.data.models.DashboardColors
 import com.ecolix.presentation.components.*
 import com.ecolix.data.models.DashboardUiState
@@ -25,9 +26,36 @@ import com.ecolix.presentation.screens.statistics.StatsScreenContent
 class DashboardScreen : Screen {
     @Composable
     override fun Content() {
+        val navigator = cafe.adriel.voyager.navigator.LocalNavigator.currentOrThrow
         var isDarkMode by remember { mutableStateOf(false) }
         val state = remember(isDarkMode) { DashboardUiState.sample(isDarkMode) }
         var selectedIndex by remember { mutableStateOf(0) }
+
+        var showLogoutDialog by remember { mutableStateOf(false) }
+
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                title = { Text("Déconnexion") },
+                text = { Text("Êtes-vous sûr de vouloir vous déconnecter ?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLogoutDialog = false
+                            com.ecolix.atschool.api.TokenProvider.token = null
+                            navigator.replaceAll(com.ecolix.presentation.screens.auth.LoginScreen())
+                        }
+                    ) {
+                        Text("Se déconnecter", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("Annuler")
+                    }
+                }
+            )
+        }
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val isWide = maxWidth > 800.dp
@@ -90,7 +118,8 @@ class DashboardScreen : Screen {
                                 selectedIndex = selectedIndex,
                                 onItemSelected = { selectedIndex = it },
                                 isDarkMode = isDarkMode,
-                                onToggleTheme = { isDarkMode = !isDarkMode }
+                                onToggleTheme = { isDarkMode = !isDarkMode },
+                                onLogout = { showLogoutDialog = true }
                             )
                                 Box(modifier = Modifier.weight(1f)) {
                                 when (selectedIndex) {

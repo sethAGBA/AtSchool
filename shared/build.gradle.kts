@@ -14,7 +14,7 @@ buildConfig {
    packageName("com.ecolix.atschool")
    
    // Default values (common mainly)
-   buildConfigField("String", "BASE_URL", "\"https://api.atschool.com/\"")
+   buildConfigField("String", "BASE_URL", "\"http://localhost:8080/\"")
 }
 
 
