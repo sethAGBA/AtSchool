@@ -92,8 +92,66 @@ Pour préparer une version de production de l'application mobile :
     ```
 3.  Synchronisez Gradle et compilez l'application.
 
+---
+
+## 3. Déploiement avec Docker (Recommandé)
+
+Le projet inclut une configuration Docker prête à l'emploi qui lance le serveur et une base de données PostgreSQL.
+
+### Pré-requis
+*   Docker Desktop installé et lancé.
+
+### Lancement Rapide (Dev)
+Pour lancer tout l'environnement (Serveur + Base de données) :
+
+```bash
+docker compose up --build
+```
+
+L'API sera accessible sur `http://localhost:8080`.
+
+### Mode Hybride (Dév recommandé)
+
+Pour développer le serveur confortablement (avec `./gradlew run` pour profiter du rechargement à chaud) tout en utilisant la vraie base de données Docker :
+
+1.  Coupez tout autre conteneur : `docker compose down`
+2.  Lancez **juste la DB** : `docker compose up -d db`
+3.  Lancez le serveur via Gradle : `./gradlew run`
+
+Cela évite le conflit de port sur le `8080`.
+L'application se connectera automatiquement à la DB Docker grâce à la config par défaut (`atschool`/`atschool_pass`).
+
+### Déploiement en Production
+
+Pour un déploiement sécurisé, **ne modifiez pas** `docker-compose.yml`. Créez plutôt un fichier `.env` à la racine du projet (ce fichier est ignoré par git pour la sécurité) :
+
+**Fichier `.env` :**
+```ini
+# Configuration Base de Données
+POSTGRES_USER=mon_admin_prod
+POSTGRES_PASSWORD=mon_mot_de_passe_secret_prod
+POSTGRES_DB=atschool_prod
+
+# Configuration Serveur
+# Doit correspondre à la config DB ci-dessus
+DB_USER=mon_admin_prod
+DB_PASSWORD=mon_mot_de_passe_secret_prod
+JDBC_URL=jdbc:postgresql://db:5432/atschool_prod
+
+# Sécurité API
+JWT_SECRET=une_phrase_secrete_tres_longue_et_aleatoire_pour_signer_les_tokens
+```
+
+Une fois ce fichier créé, lancez simplement Docker normalement. Il utilisera automatiquement vos valeurs secrètes au lieu des valeurs par défaut.
+
+```bash
+docker compose up -d --build
+```
+(L'option `-d` lance les conteneurs en arrière-plan).
 
 
+
+<!-- 
 
 Ce que j'ai fait :
 Serveur (Backend) :
@@ -106,4 +164,4 @@ J'ai ajouté le plugin BuildConfig à votre projet shared.
 J'ai défini une variable BASE_URL = "http://localhost:8080/".
 Magie Android : Dans ApiClient.kt, j'ai ajouté une petite logique qui détecte si on est sur Android ET si l'URL est localhost. Si c'est le cas, il remplace automatiquement par 10.0.2.2.
 Ça veut dire que vous n'avez rien à toucher. Ça marche sur iOS (localhost) et Android (10.0.2.2) sans changer de code !
-Votre application est maintenant prête pour le déploiement (en changeant les variables d'env) et pour le dévelopement local sans maux de tête.
+Votre application est maintenant prête pour le déploiement (en changeant les variables d'env) et pour le dévelopement local sans maux de tête. -->

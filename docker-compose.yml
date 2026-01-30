@@ -1,0 +1,42 @@
+services:
+  # Application Server
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-me}
+      - JDBC_URL=jdbc:postgresql://db:5432/atschool
+      - DB_USER=atschool
+      - DB_PASSWORD=atschool_pass
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - atschool-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=atschool
+      - POSTGRES_USER=atschool
+      - POSTGRES_PASSWORD=atschool_pass
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # Exposed for local tools (DBeaver, etc.)
+    networks:
+      - atschool-network
+
+volumes:
+  db_data:
+
+
+networks:
+  atschool-network:
+    driver: bridge
