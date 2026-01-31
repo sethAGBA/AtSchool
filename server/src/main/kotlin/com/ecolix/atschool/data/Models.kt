@@ -10,6 +10,9 @@ object Tenants : IntIdTable("tenants") {
     val name = varchar("name", 100)
     val domain = varchar("domain", 100).uniqueIndex()
     val code = varchar("code", 10).uniqueIndex()
+    val contactEmail = varchar("contact_email", 100).nullable()
+    val contactPhone = varchar("contact_phone", 50).nullable()
+    val address = text("address").nullable()
     val createdAt = date("created_at")
     val isActive = bool("is_active").default(true)
 }

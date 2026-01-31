@@ -51,6 +51,10 @@ data class TenantDto(
     val name: String,
     val domain: String,
     val code: String,
+    val adminEmail: String? = null,
+    val contactEmail: String? = null,
+    val contactPhone: String? = null,
+    val address: String? = null,
     val createdAt: String,
     val isActive: Boolean
 )
@@ -60,7 +64,10 @@ data class CreateTenantRequest(
     val name: String,
     val code: String,
     val adminEmail: String,
-    val adminPassword: String
+    val adminPassword: String,
+    val contactEmail: String? = null,
+    val contactPhone: String? = null,
+    val address: String? = null
 )
 
 @Serializable

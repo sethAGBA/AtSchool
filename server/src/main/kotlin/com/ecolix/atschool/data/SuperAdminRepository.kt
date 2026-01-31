@@ -12,14 +12,23 @@ import kotlinx.datetime.toLocalDateTime
 class SuperAdminRepository {
 
     fun listTenants(): List<TenantDto> = transaction {
-        Tenants.selectAll().map {
+        Tenants.selectAll().map { row ->
+            val tenantId = row[Tenants.id].value
+            val adminEmail = Users.select(Users.email)
+                .where { (Users.tenantId eq tenantId) and (Users.role eq "ADMIN") }
+                .singleOrNull()?.get(Users.email)
+
             TenantDto(
-                id = it[Tenants.id].value,
-                name = it[Tenants.name],
-                domain = it[Tenants.domain],
-                code = it[Tenants.code],
-                createdAt = it[Tenants.createdAt].toString(),
-                isActive = it[Tenants.isActive]
+                id = tenantId,
+                name = row[Tenants.name],
+                domain = row[Tenants.domain],
+                code = row[Tenants.code],
+                adminEmail = adminEmail,
+                contactEmail = row[Tenants.contactEmail],
+                contactPhone = row[Tenants.contactPhone],
+                address = row[Tenants.address],
+                createdAt = row[Tenants.createdAt].toString(),
+                isActive = row[Tenants.isActive]
             )
         }
     }
@@ -36,7 +45,15 @@ class SuperAdminRepository {
         }
     }
 
-    fun createTenant(name: String, code: String, adminEmail: String, password: String): Int = transaction {
+    fun createTenant(
+        name: String, 
+        code: String, 
+        adminEmail: String, 
+        password: String,
+        contactEmail: String? = null,
+        contactPhone: String? = null,
+        address: String? = null
+    ): Int = transaction {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         
         // 1. Create Tenant
@@ -44,6 +61,9 @@ class SuperAdminRepository {
             it[Tenants.name] = name
             it[Tenants.domain] = "${code.lowercase()}.atschool.com"
             it[Tenants.code] = code.uppercase()
+            it[Tenants.contactEmail] = contactEmail
+            it[Tenants.contactPhone] = contactPhone
+            it[Tenants.address] = address
             it[Tenants.createdAt] = today
             it[Tenants.isActive] = true
         }.value

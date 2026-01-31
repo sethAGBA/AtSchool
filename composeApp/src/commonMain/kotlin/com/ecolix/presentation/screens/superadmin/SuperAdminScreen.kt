@@ -10,8 +10,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -276,12 +278,53 @@ class SuperAdminScreen : Screen {
             onDismissRequest = onDismiss,
             title = { Text(tenant.name, fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Code: ${tenant.code}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Domaine: ${tenant.domain}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                    Text("Création: ${tenant.createdAt.take(10)}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Status Badge in details
+                    val statusColor = if (tenant.isActive) com.ecolix.presentation.theme.GreenAccent else Color.Red
+                    Surface(
+                        color = statusColor.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.size(8.dp).background(statusColor, CircleShape))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (tenant.isActive) "Établissement Actif" else "Établissement Inactif",
+                                color = statusColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DetailItem("Code École", tenant.code, Icons.Default.QrCode)
+                        DetailItem("Domaine", tenant.domain, Icons.Default.Language)
+                        
+                        tenant.adminEmail?.let {
+                            DetailItem("Email Admin", it, Icons.Default.AdminPanelSettings)
+                        }
+
+                        tenant.contactEmail?.let {
+                            DetailItem("Email Contact", it, Icons.Default.Email)
+                        }
+                        tenant.contactPhone?.let {
+                            DetailItem("Téléphone", it, Icons.Default.Phone)
+                        }
+                        tenant.address?.let {
+                            DetailItem("Adresse", it, Icons.Default.LocationOn)
+                        }
+                        
+                        DetailItem("Date d'ajout", tenant.createdAt.take(10), Icons.Default.CalendarToday)
+                    }
                     
-                    Divider()
+                    Divider(color = Color.LightGray.copy(alpha = 0.5f))
                     
                     if (!showPasswordReset) {
                         Button(
@@ -431,6 +474,15 @@ class SuperAdminScreen : Screen {
                     Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
 
+                tenant.contactEmail?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                        Spacer(Modifier.width(6.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Divider(color = Color.LightGray.copy(alpha = 0.3f))
                 Spacer(modifier = Modifier.height(16.dp))
@@ -487,6 +539,13 @@ class SuperAdminScreen : Screen {
                         Icon(Icons.Default.Language, contentDescription = null, size(12.dp), Color.Gray)
                         Spacer(Modifier.width(4.dp))
                         Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        
+                        tenant.contactEmail?.let {
+                            Spacer(Modifier.width(12.dp))
+                            Icon(Icons.Default.Email, contentDescription = null, size(12.dp), Color.Gray)
+                            Spacer(Modifier.width(4.dp))
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        }
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -513,17 +572,38 @@ class SuperAdminScreen : Screen {
     }
 
     @Composable
+    fun DetailItem(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+
+    @Composable
     fun CreateTenantDialog(onDismiss: () -> Unit, onConfirm: (CreateTenantRequest) -> Unit) {
         var name by remember { mutableStateOf("") }
         var code by remember { mutableStateOf("") }
-        var email by remember { mutableStateOf("") }
-        var password by remember { mutableStateOf("") }
+        var contactEmail by remember { mutableStateOf("") }
+        var contactPhone by remember { mutableStateOf("") }
+        var address by remember { mutableStateOf("") }
+        var adminEmail by remember { mutableStateOf("") }
+        var adminPassword by remember { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Nouvel Établissement", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Column(
+                    modifier = Modifier.padding(top = 8.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
@@ -534,23 +614,49 @@ class SuperAdminScreen : Screen {
                     OutlinedTextField(
                         value = code,
                         onValueChange = { code = it },
-                        label = { Text("Code unique (ex: EXCEL)") },
+                        label = { Text("Code unique (ex: DEMO)") },
+                        placeholder = { Text("Générera automatique : demo.atschool.com") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = contactEmail,
+                            onValueChange = { contactEmail = it },
+                            label = { Text("Email Contact") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = contactPhone,
+                            onValueChange = { contactPhone = it },
+                            label = { Text("Téléphone") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                    
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = { Text("Adresse") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
                     Divider()
                     Text("Premier Administrateur", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
+                        value = adminEmail,
+                        onValueChange = { adminEmail = it },
                         label = { Text("Email de l'admin") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) }
                     )
                     OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
+                        value = adminPassword,
+                        onValueChange = { adminPassword = it },
                         label = { Text("Mot de passe") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -560,10 +666,17 @@ class SuperAdminScreen : Screen {
             },
             confirmButton = {
                 Button(
-                    onClick = { onConfirm(CreateTenantRequest(name, code, email, password)) },
+                    onClick = { 
+                        onConfirm(CreateTenantRequest(
+                            name, code.uppercase(), adminEmail, adminPassword,
+                            contactEmail.ifBlank { null },
+                            contactPhone.ifBlank { null },
+                            address.ifBlank { null }
+                        )) 
+                    },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                    enabled = name.isNotBlank() && code.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+                    enabled = name.isNotBlank() && code.isNotBlank() && adminEmail.isNotBlank() && adminPassword.isNotBlank()
                 ) {
                     Text("Créer l'accès")
                 }

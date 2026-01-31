@@ -44,10 +44,13 @@ fun Route.superAdminRoutes() {
                 val request = call.receive<CreateTenantRequest>()
                 try {
                     val id = superAdminRepository.createTenant(
-                        request.name, 
-                        request.code, 
-                        request.adminEmail, 
-                        request.adminPassword
+                        name = request.name, 
+                        code = request.code, 
+                        adminEmail = request.adminEmail, 
+                        password = request.adminPassword,
+                        contactEmail = request.contactEmail,
+                        contactPhone = request.contactPhone,
+                        address = request.address
                     )
                     call.respond(HttpStatusCode.Created, mapOf("id" to id))
                 } catch (e: Exception) {
