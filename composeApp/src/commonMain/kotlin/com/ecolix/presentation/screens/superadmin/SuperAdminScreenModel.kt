@@ -10,11 +10,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class SuperAdminLayoutMode {
+    LIST, GRID
+}
+
 sealed class SuperAdminState {
     object Loading : SuperAdminState()
     data class Success(
         val tenants: List<TenantDto>,
-        val stats: GlobalStatsResponse
+        val stats: GlobalStatsResponse,
+        val layoutMode: SuperAdminLayoutMode = SuperAdminLayoutMode.LIST
     ) : SuperAdminState()
     data class Error(val message: String) : SuperAdminState()
 }
@@ -22,6 +27,9 @@ sealed class SuperAdminState {
 class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : ScreenModel {
     private val _state = MutableStateFlow<SuperAdminState>(SuperAdminState.Loading)
     val state = _state.asStateFlow()
+
+    private val _layoutMode = MutableStateFlow(SuperAdminLayoutMode.LIST)
+    val layoutMode = _layoutMode.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -31,6 +39,11 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
 
     init {
         refresh()
+    }
+
+    fun onLayoutModeChange(mode: SuperAdminLayoutMode) {
+        _layoutMode.value = mode
+        updateState()
     }
 
     fun onSearchQueryChange(query: String) {
@@ -64,7 +77,7 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
                         it.code.contains(_searchQuery.value, ignoreCase = true)
             }
         }
-        _state.value = SuperAdminState.Success(filteredTenants, stats)
+        _state.value = SuperAdminState.Success(filteredTenants, stats, _layoutMode.value)
     }
 
     fun createTenant(request: CreateTenantRequest, onComplete: (Boolean) -> Unit) {

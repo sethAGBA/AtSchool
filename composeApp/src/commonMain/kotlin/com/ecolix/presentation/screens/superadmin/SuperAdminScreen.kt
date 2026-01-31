@@ -1,13 +1,19 @@
 package com.ecolix.presentation.screens.superadmin
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -115,26 +121,65 @@ class SuperAdminScreen : Screen {
                             Spacer(modifier = Modifier.height(24.dp))
 
                             // Search & Filter
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { screenModel.onSearchQueryChange(it) },
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("Rechercher une école...") },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { screenModel.onSearchQueryChange("") }) {
-                                            Icon(Icons.Default.Close, contentDescription = "Effacer")
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { screenModel.onSearchQueryChange(it) },
+                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("Rechercher une école...") },
+                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                    trailingIcon = {
+                                        if (searchQuery.isNotEmpty()) {
+                                            IconButton(onClick = { screenModel.onSearchQueryChange("") }) {
+                                                Icon(Icons.Default.Close, contentDescription = "Effacer")
+                                            }
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(16.dp),
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = BluePrimary,
+                                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                                    )
+                                )
+
+                                // Layout Toggle
+                                Surface(
+                                    modifier = Modifier.height(56.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val isList = currentState.layoutMode == SuperAdminLayoutMode.LIST
+                                        IconButton(
+                                            onClick = { screenModel.onLayoutModeChange(SuperAdminLayoutMode.LIST) },
+                                            colors = IconButtonDefaults.iconButtonColors(
+                                                containerColor = if (isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
+                                                contentColor = if (isList) BluePrimary else Color.Gray
+                                            )
+                                        ) {
+                                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Liste")
+                                        }
+                                        IconButton(
+                                            onClick = { screenModel.onLayoutModeChange(SuperAdminLayoutMode.GRID) },
+                                            colors = IconButtonDefaults.iconButtonColors(
+                                                containerColor = if (!isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
+                                                contentColor = if (!isList) BluePrimary else Color.Gray
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.GridView, contentDescription = "Grille")
                                         }
                                     }
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = BluePrimary,
-                                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-                                )
-                            )
+                                }
+                            }
 
                             Spacer(modifier = Modifier.height(24.dp))
 
@@ -150,15 +195,36 @@ class SuperAdminScreen : Screen {
                                     Text("Aucun établissement trouvé", color = Color.Gray)
                                 }
                             } else {
-                                LazyColumn(
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    contentPadding = PaddingValues(bottom = 80.dp)
-                                ) {
-                                    items(currentState.tenants) { tenant ->
-                                        TenantListItem(
-                                            tenant = tenant,
-                                            onClick = { selectedTenant = tenant }
-                                        )
+                                AnimatedContent(
+                                    targetState = currentState.layoutMode,
+                                    transitionSpec = { fadeIn() togetherWith fadeOut() }
+                                ) { mode ->
+                                    if (mode == SuperAdminLayoutMode.GRID) {
+                                        LazyVerticalGrid(
+                                            columns = GridCells.Adaptive(minSize = 300.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                            contentPadding = PaddingValues(bottom = 80.dp)
+                                        ) {
+                                            items(currentState.tenants) { tenant ->
+                                                TenantCard(
+                                                    tenant = tenant,
+                                                    onClick = { selectedTenant = tenant }
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        LazyColumn(
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                            contentPadding = PaddingValues(bottom = 80.dp)
+                                        ) {
+                                            items(currentState.tenants) { tenant ->
+                                                TenantListItem(
+                                                    tenant = tenant,
+                                                    onClick = { selectedTenant = tenant }
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -300,6 +366,90 @@ class SuperAdminScreen : Screen {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = color)
                 Text(label, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+        }
+    }
+
+    @Composable
+    fun TenantCard(tenant: com.ecolix.atschool.api.TenantDto, onClick: () -> Unit) {
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { onClick() },
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = (if (tenant.isActive) BluePrimary else Color.Gray).copy(alpha = 0.1f),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = tenant.code.take(2),
+                                fontWeight = FontWeight.Bold,
+                                color = if (tenant.isActive) BluePrimary else Color.Gray,
+                                fontSize = 18.sp
+                            )
+                        }
+                    }
+
+                    val statusColor = if (tenant.isActive) com.ecolix.presentation.theme.GreenAccent else Color.Red
+                    Box(
+                        modifier = Modifier
+                            .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            if (tenant.isActive) "ACTIF" else "INACTIF",
+                            color = statusColor,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = tenant.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = if (tenant.isActive) Color.Unspecified else Color.Gray
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                    Spacer(Modifier.width(6.dp))
+                    Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                   modifier = Modifier.fillMaxWidth(),
+                   horizontalArrangement = Arrangement.SpaceBetween,
+                   verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Code École", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(tenant.code, fontWeight = FontWeight.Medium, color = BluePrimary)
+                    }
+                    Text(
+                        text = tenant.createdAt.take(10),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                }
             }
         }
     }
