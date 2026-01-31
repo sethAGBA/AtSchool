@@ -34,7 +34,8 @@ object DatabaseFactory {
                 Evaluations,
                 Notes,
                 Paiements,
-                AuditLogs
+                AuditLogs,
+                Announcements
             )
         }
     }

@@ -32,9 +32,10 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.ecolix.atschool.api.CreateTenantRequest
 import com.ecolix.presentation.screens.auth.LoginScreen
 import com.ecolix.presentation.theme.BluePrimary
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 
 class SuperAdminScreen : Screen {
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
     @Composable
     override fun Content() {
         val screenModel = koinScreenModel<SuperAdminScreenModel>()
@@ -46,7 +47,6 @@ class SuperAdminScreen : Screen {
 
         Scaffold(
             topBar = {
-// ... existing TopAppBar ...
                 TopAppBar(
                     title = {
                         Column {
@@ -89,7 +89,7 @@ class SuperAdminScreen : Screen {
                     }
                     is SuperAdminState.Error -> {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.align(Alignment.Center)) {
-                            Icon(Icons.Default.ErrorOutline, contentDescription = null, size(64.dp), Color.Red)
+                            Icon(Icons.Default.ErrorOutline, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.Red)
                             Spacer(Modifier.height(8.dp))
                             Text(currentState.message, color = MaterialTheme.colorScheme.error)
                             Button(onClick = { screenModel.refresh() }, colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)) {
@@ -99,135 +99,50 @@ class SuperAdminScreen : Screen {
                     }
                     is SuperAdminState.Success -> {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            // High Level Stats
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                StatCard(
-                                    label = "Écoles actives",
-                                    value = currentState.stats.totalSchools.toString(),
-                                    icon = Icons.Default.School,
-                                    color = BluePrimary,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                StatCard(
-                                    label = "Utilisateurs total",
-                                    value = (currentState.stats.totalStudents + currentState.stats.totalSchools).toString(), // Demo math
-                                    icon = Icons.Default.Group,
-                                    color = com.ecolix.presentation.theme.PinkAccent,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            // Search & Filter
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = searchQuery,
-                                    onValueChange = { screenModel.onSearchQueryChange(it) },
-                                    modifier = Modifier.weight(1f),
-                                    placeholder = { Text("Rechercher une école...") },
-                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                    trailingIcon = {
-                                        if (searchQuery.isNotEmpty()) {
-                                            IconButton(onClick = { screenModel.onSearchQueryChange("") }) {
-                                                Icon(Icons.Default.Close, contentDescription = "Effacer")
-                                            }
-                                        }
-                                    },
-                                    shape = RoundedCornerShape(16.dp),
-                                    singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = BluePrimary,
-                                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                            // TOP NAVIGATION TABS
+                            val selectedTab by screenModel.selectedTab.collectAsState()
+                            TabRow(
+                                selectedTabIndex = selectedTab.ordinal,
+                                containerColor = Color.Transparent,
+                                contentColor = BluePrimary,
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
+                                        color = BluePrimary
                                     )
-                                )
-
-                                // Layout Toggle
-                                Surface(
-                                    modifier = Modifier.height(56.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = MaterialTheme.colorScheme.surface,
-                                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val isList = currentState.layoutMode == SuperAdminLayoutMode.LIST
-                                        IconButton(
-                                            onClick = { screenModel.onLayoutModeChange(SuperAdminLayoutMode.LIST) },
-                                            colors = IconButtonDefaults.iconButtonColors(
-                                                containerColor = if (isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
-                                                contentColor = if (isList) BluePrimary else Color.Gray
+                                },
+                                divider = {}
+                            ) {
+                                SuperAdminTab.values().forEach { tab ->
+                                    Tab(
+                                        selected = selectedTab == tab,
+                                        onClick = { screenModel.onTabChange(tab) },
+                                        text = {
+                                            Text(
+                                                when(tab) {
+                                                    SuperAdminTab.SCHOOLS -> "Établissements"
+                                                    SuperAdminTab.ANNOUNCEMENTS -> "Communications"
+                                                    SuperAdminTab.LOGS -> "Historique"
+                                                },
+                                                fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
                                             )
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Liste")
                                         }
-                                        IconButton(
-                                            onClick = { screenModel.onLayoutModeChange(SuperAdminLayoutMode.GRID) },
-                                            colors = IconButtonDefaults.iconButtonColors(
-                                                containerColor = if (!isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
-                                                contentColor = if (!isList) BluePrimary else Color.Gray
-                                            )
-                                        ) {
-                                            Icon(Icons.Default.GridView, contentDescription = "Grille")
-                                        }
-                                    }
+                                    )
                                 }
                             }
 
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            Text(
-                                text = "Établissements (${currentState.tenants.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            if (currentState.tenants.isEmpty()) {
-                                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                                    Text("Aucun établissement trouvé", color = Color.Gray)
+                            AnimatedContent(
+                                targetState = selectedTab,
+                                transitionSpec = {
+                                    fadeIn() with fadeOut()
                                 }
-                            } else {
-                                AnimatedContent(
-                                    targetState = currentState.layoutMode,
-                                    transitionSpec = { fadeIn() togetherWith fadeOut() }
-                                ) { mode ->
-                                    if (mode == SuperAdminLayoutMode.GRID) {
-                                        LazyVerticalGrid(
-                                            columns = GridCells.Adaptive(minSize = 300.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                                            contentPadding = PaddingValues(bottom = 80.dp)
-                                        ) {
-                                            items(currentState.tenants) { tenant ->
-                                                TenantCard(
-                                                    tenant = tenant,
-                                                    onClick = { selectedTenant = tenant }
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        LazyColumn(
-                                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                                            contentPadding = PaddingValues(bottom = 80.dp)
-                                        ) {
-                                            items(currentState.tenants) { tenant ->
-                                                TenantListItem(
-                                                    tenant = tenant,
-                                                    onClick = { selectedTenant = tenant }
-                                                )
-                                            }
-                                        }
-                                    }
+                            ) { tab ->
+                                when(tab) {
+                                    SuperAdminTab.SCHOOLS -> SchoolsTabContent(currentState, screenModel)
+                                    SuperAdminTab.ANNOUNCEMENTS -> AnnouncementsTabContent(currentState, screenModel)
+                                    SuperAdminTab.LOGS -> LogsTabContent(currentState)
                                 }
                             }
                         }
@@ -259,8 +174,202 @@ class SuperAdminScreen : Screen {
                     screenModel.resetAdminPassword(tenant.id, password) { success ->
                         if (success) selectedTenant = null
                     }
+                },
+                onUpdateSubscription = { date ->
+                    screenModel.updateSubscription(tenant.id, date)
+                    selectedTenant = null
                 }
             )
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+    @Composable
+    fun SchoolsTabContent(state: SuperAdminState.Success, screenModel: SuperAdminScreenModel) {
+        val layoutMode by screenModel.layoutMode.collectAsState()
+        val searchQuery by screenModel.searchQuery.collectAsState()
+
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                StatCard(
+                    title = "Écoles",
+                    value = state.stats.totalSchools.toString(),
+                    icon = Icons.Default.School,
+                    color = BluePrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Élèves",
+                    value = state.stats.totalStudents.toString(),
+                    icon = Icons.Default.Groups,
+                    color = com.ecolix.presentation.theme.GreenAccent,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Revenus",
+                    value = "${state.stats.totalRevenue} €",
+                    icon = Icons.Default.Payments,
+                    color = Color(0xFF9C27B0),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Action Bar: Search + Export + Add + View Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { screenModel.onSearchQueryChange(it) },
+                        placeholder = { Text("Rechercher une école...") },
+                        modifier = Modifier.width(300.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = BluePrimary,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        ),
+                        singleLine = true
+                    )
+                    
+                    Spacer(Modifier.width(12.dp))
+                    
+                    Button(
+                        onClick = { /* Export implementation */ },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray.copy(alpha = 0.1f)),
+                        contentPadding = PaddingValues(horizontal = 16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.DarkGray)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Exporter", color = Color.DarkGray)
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    var showCreateDialog by remember { mutableStateOf(false) }
+                    Button(
+                        onClick = { showCreateDialog = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Nouvel Établissement")
+                    }
+
+                    if (showCreateDialog) {
+                        CreateTenantDialog(
+                            onDismiss = { showCreateDialog = false },
+                            onConfirm = { request ->
+                                screenModel.createTenant(request) { success ->
+                                    if (success) showCreateDialog = false
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    ViewToggle(layoutMode) { screenModel.onLayoutModeChange(it) }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Scrollable Schools List/Grid
+            var selectedTenant by remember { mutableStateOf<com.ecolix.atschool.api.TenantDto?>(null) }
+            
+            AnimatedContent(targetState = layoutMode) { mode ->
+                if (mode == SuperAdminLayoutMode.LIST) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.tenants) { tenant ->
+                            TenantListItem(tenant) { selectedTenant = tenant }
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(300.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(state.tenants) { tenant ->
+                            TenantCard(tenant) { selectedTenant = tenant }
+                        }
+                    }
+                }
+            }
+
+            selectedTenant?.let { tenant ->
+                TenantDetailsDialog(
+                    tenant = tenant,
+                    onDismiss = { selectedTenant = null },
+                    onToggleStatus = { isActive ->
+                        screenModel.toggleTenantStatus(tenant.id, isActive)
+                        selectedTenant = null
+                    },
+                    onResetPassword = { newPass ->
+                        screenModel.resetAdminPassword(tenant.id, newPass) { success ->
+                            if (success) selectedTenant = null
+                        }
+                    },
+                    onUpdateSubscription = { date ->
+                         screenModel.updateSubscription(tenant.id, date)
+                         selectedTenant = null
+                    }
+                )
+            }
+        }
+    }
+
+    @Composable
+    fun ViewToggle(layoutMode: SuperAdminLayoutMode, onLayoutModeChange: (SuperAdminLayoutMode) -> Unit) {
+        Surface(
+            modifier = Modifier.height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+        ) {
+            Row(
+                modifier = Modifier.padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val isList = layoutMode == SuperAdminLayoutMode.LIST
+                IconButton(
+                    onClick = { onLayoutModeChange(SuperAdminLayoutMode.LIST) },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = if (isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
+                        contentColor = if (isList) BluePrimary else Color.Gray
+                    )
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Liste")
+                }
+                IconButton(
+                    onClick = { onLayoutModeChange(SuperAdminLayoutMode.GRID) },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = if (!isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
+                        contentColor = if (!isList) BluePrimary else Color.Gray
+                    )
+                ) {
+                    Icon(Icons.Default.GridView, contentDescription = "Grille")
+                }
+            }
         }
     }
 
@@ -269,9 +378,11 @@ class SuperAdminScreen : Screen {
         tenant: com.ecolix.atschool.api.TenantDto,
         onDismiss: () -> Unit,
         onToggleStatus: (Boolean) -> Unit,
-        onResetPassword: (String) -> Unit
+        onResetPassword: (String) -> Unit,
+        onUpdateSubscription: (String?) -> Unit
     ) {
         var showPasswordReset by remember { mutableStateOf(false) }
+        var showSubscriptionDialog by remember { mutableStateOf(false) }
         var newPassword by remember { mutableStateOf("") }
 
         AlertDialog(
@@ -322,6 +433,19 @@ class SuperAdminScreen : Screen {
                         }
                         
                         DetailItem("Date d'ajout", tenant.createdAt.take(10), Icons.Default.CalendarToday)
+                        
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                             Column(modifier = Modifier.weight(1f)) {
+                                 Text("Abonnement", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                 val expiry = tenant.subscriptionExpiresAt ?: "Non défini"
+                                 Text(expiry, fontWeight = FontWeight.Bold, color = if (tenant.subscriptionExpiresAt == null) Color.Red else BluePrimary)
+                             }
+                             TextButton(onClick = { showSubscriptionDialog = true }) {
+                                 Text("Modifier")
+                             }
+                        }
                     }
                     
                     Divider(color = Color.LightGray.copy(alpha = 0.5f))
@@ -387,10 +511,35 @@ class SuperAdminScreen : Screen {
             },
             shape = RoundedCornerShape(24.dp)
         )
+
+        if (showSubscriptionDialog) {
+            var dateInput by remember { mutableStateOf(tenant.subscriptionExpiresAt ?: "2026-12-31") }
+            AlertDialog(
+                onDismissRequest = { showSubscriptionDialog = false },
+                title = { Text("Fin d'abonnement") },
+                text = {
+                    OutlinedTextField(
+                        value = dateInput,
+                        onValueChange = { dateInput = it },
+                        label = { Text("Format: YYYY-MM-DD") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = { 
+                        onUpdateSubscription(dateInput.ifBlank { null })
+                        showSubscriptionDialog = false 
+                    }) { Text("Mettre à jour") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSubscriptionDialog = false }) { Text("Annuler") }
+                }
+            )
+        }
     }
 
     @Composable
-    fun StatCard(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier) {
+    fun StatCard(title: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier) {
         Card(
             modifier = modifier,
             shape = RoundedCornerShape(20.dp),
@@ -408,7 +557,7 @@ class SuperAdminScreen : Screen {
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = color)
-                Text(label, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(title, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
         }
     }
@@ -536,13 +685,13 @@ class SuperAdminScreen : Screen {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(tenant.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (tenant.isActive) Color.Unspecified else Color.Gray)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Language, contentDescription = null, size(12.dp), Color.Gray)
+                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.Gray)
                         Spacer(Modifier.width(4.dp))
                         Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         
                         tenant.contactEmail?.let {
                             Spacer(Modifier.width(12.dp))
-                            Icon(Icons.Default.Email, contentDescription = null, size(12.dp), Color.Gray)
+                            Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.Gray)
                             Spacer(Modifier.width(4.dp))
                             Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
@@ -563,7 +712,9 @@ class SuperAdminScreen : Screen {
                         )
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text(tenant.createdAt.take(10), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    tenant.subscriptionExpiresAt?.let {
+                        Text("Expire: $it", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    }
                 }
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = Color.LightGray)
@@ -689,6 +840,200 @@ class SuperAdminScreen : Screen {
         )
     }
 
-    // Helper for easier size declaration
-    private fun size(dp: androidx.compose.ui.unit.Dp) = Modifier.size(dp)
+    @Composable
+    fun AnnouncementsTabContent(state: SuperAdminState.Success, screenModel: SuperAdminScreenModel) {
+        var showCreateAnnouncement by remember { mutableStateOf(false) }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Communications Globales", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                
+                Button(
+                    onClick = { showCreateAnnouncement = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
+                ) {
+                    Icon(Icons.Default.Campaign, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nouvelle Annonce")
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            if (state.announcements.isEmpty()) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Text("Aucune annonce publiée", color = Color.Gray)
+                }
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(state.announcements) { announcement ->
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                        ) {
+                            Column(Modifier.padding(20.dp).fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            color = BluePrimary.copy(alpha = 0.1f),
+                                            shape = CircleShape,
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(Icons.Default.Campaign, null, modifier = Modifier.size(16.dp), tint = BluePrimary)
+                                            }
+                                        }
+                                        Spacer(Modifier.width(12.dp))
+                                        Text(announcement.createdAt, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                    }
+                                    
+                                    val statusColor = if (announcement.isActive) com.ecolix.presentation.theme.GreenAccent else Color.Gray
+                                    Text(
+                                        if (announcement.isActive) "ACTIVE" else "PASSÉE",
+                                        color = statusColor,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                
+                                Spacer(Modifier.height(16.dp))
+                                Text(announcement.content, style = MaterialTheme.typography.bodyLarge)
+                                
+                                if (announcement.targetRole != null || announcement.expiresAt != null) {
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        announcement.targetRole?.let {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Person, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("Cible: $it", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                            }
+                                        }
+                                        announcement.expiresAt?.let {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Event, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("Expire: $it", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showCreateAnnouncement) {
+            var content by remember { mutableStateOf("") }
+            var targetRole by remember { mutableStateOf<String?>(null) }
+            var expiresAt by remember { mutableStateOf("2026-12-31") }
+
+            AlertDialog(
+                onDismissRequest = { showCreateAnnouncement = false },
+                title = { Text("Diffuser une annonce") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        OutlinedTextField(
+                            value = content,
+                            onValueChange = { content = it },
+                            label = { Text("Message") },
+                            modifier = Modifier.fillMaxWidth().height(100.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = targetRole ?: "",
+                                onValueChange = { targetRole = it.ifBlank { null } },
+                                label = { Text("Rôle (Optionnel)") },
+                                placeholder = { Text("ex: ADMIN") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = expiresAt,
+                                onValueChange = { expiresAt = it },
+                                label = { Text("Expiration") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+                        Text("L'annonce sera visible sur le dashboard des écoles ciblées.", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            screenModel.createAnnouncement(com.ecolix.atschool.api.CreateAnnouncementRequest(content, targetRole, expiresAt)) {
+                                if (it) showCreateAnnouncement = false
+                            }
+                        },
+                        enabled = content.isNotBlank(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Publier") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCreateAnnouncement = false }) { Text("Annuler") }
+                }
+            )
+        }
+    }
+
+    @Composable
+    fun LogsTabContent(state: SuperAdminState.Success) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Text("Historique des Actions", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(24.dp))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+            ) {
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    items(state.logs) { log ->
+                        Column(Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(log.actorEmail, fontWeight = FontWeight.Bold, color = BluePrimary)
+                                        Spacer(Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .background(Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(log.action, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(log.details ?: "Pas de détails", style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Text(
+                                    log.timestamp.replace("T", " ").take(16),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray
+                                )
+                            }
+                            Divider(modifier = Modifier.padding(top = 12.dp), color = Color.LightGray.copy(alpha = 0.2f))
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

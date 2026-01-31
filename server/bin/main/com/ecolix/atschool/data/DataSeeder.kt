@@ -98,11 +98,10 @@ object DataSeeder {
 
                 // 5. Audit Log
                 AuditLogs.insert {
-                    it[AuditLogs.tenantId] = tenantId
-                    it[userId] = Users.selectAll().where { Users.email eq adminEmail }.single()[Users.id]
-                    it[action] = "Initialisation système"
-                    it[timestamp] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                    it[details] = "Initialisation des données par défaut"
+                    it[AuditLogs.actorEmail] = adminEmail
+                    it[AuditLogs.action] = "Initialisation système"
+                    it[AuditLogs.timestamp] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                    it[AuditLogs.details] = "Initialisation des données par défaut"
                 }
                 logger.info("Database already seeded. Skipping main flow.")
             }

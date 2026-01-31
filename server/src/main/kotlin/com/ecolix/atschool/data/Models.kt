@@ -1,5 +1,6 @@
 package com.ecolix.atschool.data
 
+import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
@@ -13,8 +14,25 @@ object Tenants : IntIdTable("tenants") {
     val contactEmail = varchar("contact_email", 100).nullable()
     val contactPhone = varchar("contact_phone", 50).nullable()
     val address = text("address").nullable()
+    val subscriptionExpiresAt = date("subscription_expires_at").nullable()
     val createdAt = date("created_at")
     val isActive = bool("is_active").default(true)
+}
+
+object Announcements : IntIdTable("announcements") {
+    val content = text("content")
+    val targetRole = varchar("target_role", 20).nullable() // null = everyone
+    val expiresAt = date("expires_at").nullable()
+    val createdAt = date("created_at")
+    val isActive = bool("is_active").default(true)
+}
+
+object AuditLogs : LongIdTable("audit_logs") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE).nullable()
+    val actorEmail = varchar("actor_email", 100)
+    val action = varchar("action", 100)
+    val details = text("details").nullable()
+    val timestamp = datetime("timestamp")
 }
 
 object Establishments : IntIdTable("establishments") {
@@ -108,11 +126,9 @@ object Paiements : LongIdTable("paiements") {
     val modePaiement = varchar("mode_paiement", 50) // ESPECES, CHEQUE, TRANSFERT
 }
 
-object AuditLogs : LongIdTable("audit_logs") {
-    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
-    val userId = reference("user_id", Users, onDelete = ReferenceOption.CASCADE)
-    val action = varchar("action", 255)
-    val timestamp = datetime("timestamp")
-    val details = text("details").nullable()
-    val ipAddress = varchar("ip_address", 45).nullable()
-}
+@Serializable
+data class GlobalStatsResponse(
+    val totalSchools: Int,
+    val totalStudents: Int,
+    val totalRevenue: Double
+)

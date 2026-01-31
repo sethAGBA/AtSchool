@@ -55,8 +55,35 @@ data class TenantDto(
     val contactEmail: String? = null,
     val contactPhone: String? = null,
     val address: String? = null,
+    val subscriptionExpiresAt: String? = null,
     val createdAt: String,
     val isActive: Boolean
+)
+
+@Serializable
+data class AnnouncementDto(
+    val id: Int,
+    val content: String,
+    val targetRole: String? = null,
+    val expiresAt: String? = null,
+    val createdAt: String,
+    val isActive: Boolean
+)
+
+@Serializable
+data class CreateAnnouncementRequest(
+    val content: String,
+    val targetRole: String? = null,
+    val expiresAt: String? = null
+)
+
+@Serializable
+data class AuditLogDto(
+    val id: Long,
+    val actorEmail: String,
+    val action: String,
+    val details: String? = null,
+    val timestamp: String
 )
 
 @Serializable
@@ -76,6 +103,9 @@ data class GlobalStatsResponse(
     val totalStudents: Int,
     val totalRevenue: Double
 )
+
+@Serializable
+data class UpdateSubscriptionRequest(val expiresAt: String?)
 
 @Serializable
 data class UpdateTenantStatusRequest(

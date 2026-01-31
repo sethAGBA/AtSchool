@@ -6,6 +6,8 @@ import com.ecolix.atschool.api.CreateTenantRequest
 import com.ecolix.atschool.api.GlobalStatsResponse
 import com.ecolix.atschool.api.SuperAdminApiService
 import com.ecolix.atschool.api.TenantDto
+import com.ecolix.atschool.api.AnnouncementDto
+import com.ecolix.atschool.api.AuditLogDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -14,11 +16,18 @@ enum class SuperAdminLayoutMode {
     LIST, GRID
 }
 
+enum class SuperAdminTab {
+    SCHOOLS, ANNOUNCEMENTS, LOGS
+}
+
 sealed class SuperAdminState {
     object Loading : SuperAdminState()
     data class Success(
         val tenants: List<TenantDto>,
         val stats: GlobalStatsResponse,
+        val announcements: List<AnnouncementDto> = emptyList(),
+        val logs: List<AuditLogDto> = emptyList(),
+        val selectedTab: SuperAdminTab = SuperAdminTab.SCHOOLS,
         val layoutMode: SuperAdminLayoutMode = SuperAdminLayoutMode.LIST
     ) : SuperAdminState()
     data class Error(val message: String) : SuperAdminState()
@@ -31,14 +40,24 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
     private val _layoutMode = MutableStateFlow(SuperAdminLayoutMode.LIST)
     val layoutMode = _layoutMode.asStateFlow()
 
+    private val _selectedTab = MutableStateFlow(SuperAdminTab.SCHOOLS)
+    val selectedTab = _selectedTab.asStateFlow()
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
     private val _allTenants = MutableStateFlow<List<TenantDto>>(emptyList())
+    private val _announcements = MutableStateFlow<List<AnnouncementDto>>(emptyList())
+    private val _logs = MutableStateFlow<List<AuditLogDto>>(emptyList())
     private val _stats = MutableStateFlow<GlobalStatsResponse?>(null)
 
     init {
         refresh()
+    }
+    
+    fun onTabChange(tab: SuperAdminTab) {
+        _selectedTab.value = tab
+        updateState()
     }
 
     fun onLayoutModeChange(mode: SuperAdminLayoutMode) {
@@ -56,10 +75,14 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
             _state.value = SuperAdminState.Loading
             val tenantsResult = apiService.getTenants()
             val statsResult = apiService.getGlobalStats()
+            val announcementsResult = apiService.getAnnouncements()
+            val logsResult = apiService.getAuditLogs()
 
             if (tenantsResult.isSuccess && statsResult.isSuccess) {
                 _allTenants.value = tenantsResult.getOrThrow()
                 _stats.value = statsResult.getOrThrow()
+                _announcements.value = announcementsResult.getOrDefault(emptyList())
+                _logs.value = logsResult.getOrDefault(emptyList())
                 updateState()
             } else {
                 _state.value = SuperAdminState.Error("Erreur de chargement des données")
@@ -77,7 +100,14 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
                         it.code.contains(_searchQuery.value, ignoreCase = true)
             }
         }
-        _state.value = SuperAdminState.Success(filteredTenants, stats, _layoutMode.value)
+        _state.value = SuperAdminState.Success(
+            tenants = filteredTenants,
+            stats = stats,
+            announcements = _announcements.value,
+            logs = _logs.value,
+            selectedTab = _selectedTab.value,
+            layoutMode = _layoutMode.value
+        )
     }
 
     fun createTenant(request: CreateTenantRequest, onComplete: (Boolean) -> Unit) {
@@ -105,6 +135,27 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
         screenModelScope.launch {
             val result = apiService.resetAdminPassword(tenantId, newPassword)
             if (result.isSuccess) {
+                onComplete(true)
+            } else {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateSubscription(tenantId: Int, expiresAt: String?) {
+        screenModelScope.launch {
+            val result = apiService.updateSubscription(tenantId, expiresAt)
+            if (result.isSuccess) {
+                refresh()
+            }
+        }
+    }
+
+    fun createAnnouncement(request: com.ecolix.atschool.api.CreateAnnouncementRequest, onComplete: (Boolean) -> Unit) {
+        screenModelScope.launch {
+            val result = apiService.createAnnouncement(request)
+            if (result.isSuccess) {
+                refresh()
                 onComplete(true)
             } else {
                 onComplete(false)

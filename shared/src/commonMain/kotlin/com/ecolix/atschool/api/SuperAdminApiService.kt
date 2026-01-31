@@ -38,4 +38,26 @@ class SuperAdminApiService(private val client: HttpClient) {
             contentType(ContentType.Application.Json)
         }
     }
+
+    suspend fun updateSubscription(id: Int, expiresAt: String?): Result<Unit> = runCatching {
+        client.patch("superadmin/tenants/$id/subscription") {
+            setBody(UpdateSubscriptionRequest(expiresAt))
+            contentType(ContentType.Application.Json)
+        }
+    }
+
+    suspend fun getAnnouncements(): Result<List<AnnouncementDto>> = runCatching {
+        client.get("superadmin/announcements").body()
+    }
+
+    suspend fun createAnnouncement(request: CreateAnnouncementRequest): Result<Unit> = runCatching {
+        client.post("superadmin/announcements") {
+            setBody(request)
+            contentType(ContentType.Application.Json)
+        }
+    }
+
+    suspend fun getAuditLogs(): Result<List<AuditLogDto>> = runCatching {
+        client.get("superadmin/logs").body()
+    }
 }

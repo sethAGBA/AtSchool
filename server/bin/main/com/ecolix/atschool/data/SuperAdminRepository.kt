@@ -1,13 +1,18 @@
 package com.ecolix.atschool.data
 
 import com.ecolix.atschool.api.TenantDto
+import com.ecolix.atschool.api.AnnouncementDto
+import com.ecolix.atschool.api.AuditLogDto
 import com.ecolix.atschool.security.PasswordUtils
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.kotlin.datetime.datetime
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 class SuperAdminRepository {
 
@@ -27,9 +32,61 @@ class SuperAdminRepository {
                 contactEmail = row[Tenants.contactEmail],
                 contactPhone = row[Tenants.contactPhone],
                 address = row[Tenants.address],
+                subscriptionExpiresAt = row[Tenants.subscriptionExpiresAt]?.toString(),
                 createdAt = row[Tenants.createdAt].toString(),
                 isActive = row[Tenants.isActive]
             )
+        }
+    }
+
+    fun auditLog(actorEmail: String, action: String, details: String? = null, tenantId: Int? = null) = transaction {
+        AuditLogs.insert {
+            it[AuditLogs.tenantId] = tenantId
+            it[AuditLogs.actorEmail] = actorEmail
+            it[AuditLogs.action] = action
+            it[AuditLogs.details] = details
+            it[AuditLogs.timestamp] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        }
+    }
+
+    fun listAuditLogs(): List<AuditLogDto> = transaction {
+        AuditLogs.selectAll().orderBy(AuditLogs.timestamp, SortOrder.DESC).limit(100).map {
+            AuditLogDto(
+                id = it[AuditLogs.id].value,
+                actorEmail = it[AuditLogs.actorEmail],
+                action = it[AuditLogs.action],
+                details = it[AuditLogs.details],
+                timestamp = it[AuditLogs.timestamp].toString()
+            )
+        }
+    }
+
+    fun createAnnouncement(content: String, targetRole: String?, expiresAt: kotlinx.datetime.LocalDate?) = transaction {
+        Announcements.insert {
+            it[Announcements.content] = content
+            it[Announcements.targetRole] = targetRole
+            it[Announcements.expiresAt] = expiresAt
+            it[Announcements.createdAt] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            it[Announcements.isActive] = true
+        }
+    }
+
+    fun listAnnouncements(): List<AnnouncementDto> = transaction {
+        Announcements.selectAll().orderBy(Announcements.createdAt, SortOrder.DESC).map {
+            AnnouncementDto(
+                id = it[Announcements.id].value,
+                content = it[Announcements.content],
+                targetRole = it[Announcements.targetRole],
+                expiresAt = it[Announcements.expiresAt]?.toString(),
+                createdAt = it[Announcements.createdAt].toString(),
+                isActive = it[Announcements.isActive]
+            )
+        }
+    }
+
+    fun updateSubscription(tenantId: Int, expiresAt: kotlinx.datetime.LocalDate?) = transaction {
+        Tenants.update({ Tenants.id eq tenantId }) {
+            it[Tenants.subscriptionExpiresAt] = expiresAt
         }
     }
 
