@@ -55,6 +55,20 @@ fun Route.superAdminRoutes() {
                 }
             }
 
+            patch("/tenants/{id}/status") {
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@patch call.respond(HttpStatusCode.BadRequest)
+                val request = call.receive<UpdateTenantStatusRequest>()
+                superAdminRepository.toggleTenantStatus(id, request.isActive)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            post("/tenants/{id}/reset-password") {
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                val request = call.receive<ResetPasswordRequest>()
+                superAdminRepository.resetAdminPassword(id, request.newPassword)
+                call.respond(HttpStatusCode.OK)
+            }
+
             get("/stats") {
                 val stats = superAdminRepository.getGlobalStats()
                 call.respond(GlobalStatsResponse(

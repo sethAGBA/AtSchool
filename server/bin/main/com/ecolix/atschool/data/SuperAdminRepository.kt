@@ -18,8 +18,21 @@ class SuperAdminRepository {
                 name = it[Tenants.name],
                 domain = it[Tenants.domain],
                 code = it[Tenants.code],
-                createdAt = it[Tenants.createdAt].toString()
+                createdAt = it[Tenants.createdAt].toString(),
+                isActive = it[Tenants.isActive]
             )
+        }
+    }
+
+    fun toggleTenantStatus(tenantId: Int, isActive: Boolean) = transaction {
+        Tenants.update({ Tenants.id eq tenantId }) {
+            it[Tenants.isActive] = isActive
+        }
+    }
+
+    fun resetAdminPassword(tenantId: Int, newPassword: String) = transaction {
+        Users.update({ (Users.tenantId eq tenantId) and (Users.role eq "ADMIN") }) {
+            it[Users.passwordHash] = PasswordUtils.hashPassword(newPassword)
         }
     }
 
@@ -32,6 +45,7 @@ class SuperAdminRepository {
             it[Tenants.domain] = "${code.lowercase()}.atschool.com"
             it[Tenants.code] = code.uppercase()
             it[Tenants.createdAt] = today
+            it[Tenants.isActive] = true
         }.value
 
         // 2. Create Admin User for this Tenant

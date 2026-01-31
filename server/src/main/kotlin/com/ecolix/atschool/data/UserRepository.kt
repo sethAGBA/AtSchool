@@ -14,7 +14,8 @@ data class User(
     val role: String,
     val nom: String? = null,
     val prenom: String? = null,
-    val isMfaEnabled: Boolean = false
+    val isMfaEnabled: Boolean = false,
+    val isTenantActive: Boolean = true
 )
 
 class UserRepository {
@@ -22,7 +23,7 @@ class UserRepository {
         val normalizedCode = schoolCode.uppercase()
         (Users innerJoin Tenants).selectAll()
             .where { (Users.email eq email) and (Tenants.code eq normalizedCode) }
-            .map { it.toUser() }
+            .map { it.toUser(includeTenantInfo = true) }
             .singleOrNull()
     }
 
@@ -44,7 +45,7 @@ class UserRepository {
         } get Users.id
     }.value
 
-    private fun ResultRow.toUser() = User(
+    private fun ResultRow.toUser(includeTenantInfo: Boolean = false) = User(
         id = this[Users.id].value,
         tenantId = this[Users.tenantId].value,
         email = this[Users.email],
@@ -52,6 +53,7 @@ class UserRepository {
         role = this[Users.role],
         nom = this[Users.nom],
         prenom = this[Users.prenom],
-        isMfaEnabled = this[Users.isMfaEnabled]
+        isMfaEnabled = this[Users.isMfaEnabled],
+        isTenantActive = if (includeTenantInfo) this[Tenants.isActive] else true
     )
 }

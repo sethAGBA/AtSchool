@@ -11,6 +11,7 @@ object Tenants : IntIdTable("tenants") {
     val domain = varchar("domain", 100).uniqueIndex()
     val code = varchar("code", 10).uniqueIndex()
     val createdAt = date("created_at")
+    val isActive = bool("is_active").default(true)
 }
 
 object Establishments : IntIdTable("establishments") {

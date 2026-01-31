@@ -24,4 +24,18 @@ class SuperAdminApiService(private val client: HttpClient) {
     suspend fun getGlobalStats(): Result<GlobalStatsResponse> = runCatching {
         client.get("superadmin/stats").body()
     }
+
+    suspend fun updateTenantStatus(id: Int, isActive: Boolean): Result<Unit> = runCatching {
+        client.patch("superadmin/tenants/$id/status") {
+            setBody(UpdateTenantStatusRequest(isActive))
+            contentType(ContentType.Application.Json)
+        }
+    }
+
+    suspend fun resetAdminPassword(tenantId: Int, newPassword: String): Result<Unit> = runCatching {
+        client.post("superadmin/tenants/$tenantId/reset-password") {
+            setBody(ResetPasswordRequest(newPassword))
+            contentType(ContentType.Application.Json)
+        }
+    }
 }

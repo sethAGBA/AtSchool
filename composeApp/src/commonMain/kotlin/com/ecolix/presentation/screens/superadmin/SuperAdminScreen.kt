@@ -1,6 +1,7 @@
 package com.ecolix.presentation.screens.superadmin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,9 +34,11 @@ class SuperAdminScreen : Screen {
         val searchQuery by screenModel.searchQuery.collectAsState()
         val navigator = LocalNavigator.currentOrThrow
         var showCreateDialog by remember { mutableStateOf(false) }
+        var selectedTenant by remember { mutableStateOf<com.ecolix.atschool.api.TenantDto?>(null) }
 
         Scaffold(
             topBar = {
+// ... existing TopAppBar ...
                 TopAppBar(
                     title = {
                         Column {
@@ -152,7 +155,10 @@ class SuperAdminScreen : Screen {
                                     contentPadding = PaddingValues(bottom = 80.dp)
                                 ) {
                                     items(currentState.tenants) { tenant ->
-                                        TenantListItem(tenant = tenant)
+                                        TenantListItem(
+                                            tenant = tenant,
+                                            onClick = { selectedTenant = tenant }
+                                        )
                                     }
                                 }
                             }
@@ -172,6 +178,106 @@ class SuperAdminScreen : Screen {
                 }
             )
         }
+
+        selectedTenant?.let { tenant ->
+            TenantDetailsDialog(
+                tenant = tenant,
+                onDismiss = { selectedTenant = null },
+                onToggleStatus = { isActive ->
+                    screenModel.toggleTenantStatus(tenant.id, isActive)
+                    selectedTenant = null
+                },
+                onResetPassword = { password ->
+                    screenModel.resetAdminPassword(tenant.id, password) { success ->
+                        if (success) selectedTenant = null
+                    }
+                }
+            )
+        }
+    }
+
+    @Composable
+    fun TenantDetailsDialog(
+        tenant: com.ecolix.atschool.api.TenantDto,
+        onDismiss: () -> Unit,
+        onToggleStatus: (Boolean) -> Unit,
+        onResetPassword: (String) -> Unit
+    ) {
+        var showPasswordReset by remember { mutableStateOf(false) }
+        var newPassword by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(tenant.name, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Code: ${tenant.code}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Domaine: ${tenant.domain}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("Création: ${tenant.createdAt.take(10)}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    
+                    Divider()
+                    
+                    if (!showPasswordReset) {
+                        Button(
+                            onClick = { onToggleStatus(!tenant.isActive) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (tenant.isActive) Color.Red.copy(alpha = 0.1f) else Color.Green.copy(alpha = 0.1f),
+                                contentColor = if (tenant.isActive) Color.Red else com.ecolix.presentation.theme.GreenAccent
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                if (tenant.isActive) Icons.Default.Block else Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (tenant.isActive) "Désactiver l'école" else "Activer l'école")
+                        }
+
+                        OutlinedButton(
+                            onClick = { showPasswordReset = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                             Icon(Icons.Default.LockReset, contentDescription = null, modifier = Modifier.size(18.dp))
+                             Spacer(Modifier.width(8.dp))
+                             Text("Réinitialiser mot de passe admin")
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Nouveau mot de passe pour l'admin", style = MaterialTheme.typography.bodySmall)
+                            OutlinedTextField(
+                                value = newPassword,
+                                onValueChange = { newPassword = it },
+                                label = { Text("Mot de passe") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { showPasswordReset = false }, modifier = Modifier.weight(1f)) {
+                                    Text("Annuler")
+                                }
+                                Button(
+                                    onClick = { onResetPassword(newPassword) },
+                                    enabled = newPassword.length >= 6,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Valider")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Fermer") }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
     }
 
     @Composable
@@ -199,9 +305,9 @@ class SuperAdminScreen : Screen {
     }
 
     @Composable
-    fun TenantListItem(tenant: com.ecolix.atschool.api.TenantDto) {
+    fun TenantListItem(tenant: com.ecolix.atschool.api.TenantDto, onClick: () -> Unit) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().clickable { onClick() },
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -212,21 +318,21 @@ class SuperAdminScreen : Screen {
             ) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = BluePrimary.copy(alpha = 0.1f),
+                    color = (if (tenant.isActive) BluePrimary else Color.Gray).copy(alpha = 0.1f),
                     modifier = Modifier.size(56.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = tenant.code.take(2),
                             fontWeight = FontWeight.Bold,
-                            color = BluePrimary,
+                            color = if (tenant.isActive) BluePrimary else Color.Gray,
                             fontSize = 20.sp
                         )
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(tenant.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(tenant.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (tenant.isActive) Color.Unspecified else Color.Gray)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Language, contentDescription = null, size(12.dp), Color.Gray)
                         Spacer(Modifier.width(4.dp))
@@ -234,12 +340,18 @@ class SuperAdminScreen : Screen {
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
+                    val statusColor = if (tenant.isActive) com.ecolix.presentation.theme.GreenAccent else Color.Red
                     Box(
                         modifier = Modifier
-                            .background(com.ecolix.presentation.theme.GreenAccent.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                            .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text("Actif", color = com.ecolix.presentation.theme.GreenAccent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (tenant.isActive) "Actif" else "Inactif",
+                            color = statusColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(tenant.createdAt.take(10), style = MaterialTheme.typography.bodySmall, color = Color.Gray)

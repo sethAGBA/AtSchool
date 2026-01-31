@@ -51,7 +51,8 @@ data class TenantDto(
     val name: String,
     val domain: String,
     val code: String,
-    val createdAt: String
+    val createdAt: String,
+    val isActive: Boolean
 )
 
 @Serializable
@@ -67,4 +68,14 @@ data class GlobalStatsResponse(
     val totalSchools: Int,
     val totalStudents: Int,
     val totalRevenue: Double
+)
+
+@Serializable
+data class UpdateTenantStatusRequest(
+    val isActive: Boolean
+)
+
+@Serializable
+data class ResetPasswordRequest(
+    val newPassword: String
 )

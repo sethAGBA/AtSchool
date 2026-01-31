@@ -78,4 +78,24 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
             }
         }
     }
+
+    fun toggleTenantStatus(tenantId: Int, isActive: Boolean) {
+        screenModelScope.launch {
+            val result = apiService.updateTenantStatus(tenantId, isActive)
+            if (result.isSuccess) {
+                refresh()
+            }
+        }
+    }
+
+    fun resetAdminPassword(tenantId: Int, newPassword: String, onComplete: (Boolean) -> Unit) {
+        screenModelScope.launch {
+            val result = apiService.resetAdminPassword(tenantId, newPassword)
+            if (result.isSuccess) {
+                onComplete(true)
+            } else {
+                onComplete(false)
+            }
+        }
+    }
 }

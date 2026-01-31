@@ -17,6 +17,10 @@ class AuthService(
     fun authenticate(email: String, password: String, schoolCode: String): LoginResponse? {
         val user = userRepository.findByEmailAndCode(email, schoolCode) ?: return null
         
+        if (!user.isTenantActive && user.role != "SUPER_ADMIN") {
+            return null // Inactive school, only superadmin can pass if hosted elsewhere
+        }
+
         return if (PasswordUtils.verifyPassword(password, user.passwordHash)) {
             val token = generateToken(user)
             LoginResponse(token, user.role)

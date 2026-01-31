@@ -18,9 +18,9 @@ object DatabaseFactory {
         // Run Flyway migrations
         runFlyway(dataSource)
 
-        // Initialize tables if they don't exist (optional fallback)
+        // Initialize tables if they don't exist
         transaction {
-            SchemaUtils.create(
+            SchemaUtils.createMissingTablesAndColumns(
                 Tenants,
                 Establishments,
                 Users,
