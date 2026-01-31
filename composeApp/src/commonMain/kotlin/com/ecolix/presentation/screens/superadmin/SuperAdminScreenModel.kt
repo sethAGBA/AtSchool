@@ -23,8 +23,19 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
     private val _state = MutableStateFlow<SuperAdminState>(SuperAdminState.Loading)
     val state = _state.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    private val _allTenants = MutableStateFlow<List<TenantDto>>(emptyList())
+    private val _stats = MutableStateFlow<GlobalStatsResponse?>(null)
+
     init {
         refresh()
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+        updateState()
     }
 
     fun refresh() {
@@ -34,14 +45,26 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
             val statsResult = apiService.getGlobalStats()
 
             if (tenantsResult.isSuccess && statsResult.isSuccess) {
-                _state.value = SuperAdminState.Success(
-                    tenantsResult.getOrThrow(),
-                    statsResult.getOrThrow()
-                )
+                _allTenants.value = tenantsResult.getOrThrow()
+                _stats.value = statsResult.getOrThrow()
+                updateState()
             } else {
                 _state.value = SuperAdminState.Error("Erreur de chargement des données")
             }
         }
+    }
+
+    private fun updateState() {
+        val stats = _stats.value ?: return
+        val filteredTenants = if (_searchQuery.value.isEmpty()) {
+            _allTenants.value
+        } else {
+            _allTenants.value.filter {
+                it.name.contains(_searchQuery.value, ignoreCase = true) ||
+                        it.code.contains(_searchQuery.value, ignoreCase = true)
+            }
+        }
+        _state.value = SuperAdminState.Success(filteredTenants, stats)
     }
 
     fun createTenant(request: CreateTenantRequest, onComplete: (Boolean) -> Unit) {

@@ -19,8 +19,17 @@ fun Route.superAdminRoutes() {
             intercept(ApplicationCallPipeline.Call) {
                 val principal = call.principal<JWTPrincipal>()
                 val role = principal?.payload?.getClaim("role")?.asString()
+                val email = principal?.payload?.getClaim("email")?.asString()
                 
+                // Add server-side logging to help debug
+                if (principal == null) {
+                    application.log.error("SuperAdmin Check: Principal is NULL despite Authentication Success log!")
+                } else {
+                    application.log.info("SuperAdmin Check: user=$email, role=$role")
+                }
+
                 if (role != "SUPER_ADMIN") {
+                    application.log.warn("Forbidden Access Attempt: $email (role: $role)")
                     call.respond(HttpStatusCode.Forbidden, "Accès réservé au Super Administrateur")
                     finish()
                 }

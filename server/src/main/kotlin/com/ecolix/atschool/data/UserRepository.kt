@@ -19,8 +19,9 @@ data class User(
 
 class UserRepository {
     fun findByEmailAndCode(email: String, schoolCode: String): User? = transaction {
+        val normalizedCode = schoolCode.uppercase()
         (Users innerJoin Tenants).selectAll()
-            .where { (Users.email eq email) and (Tenants.code eq schoolCode) }
+            .where { (Users.email eq email) and (Tenants.code eq normalizedCode) }
             .map { it.toUser() }
             .singleOrNull()
     }

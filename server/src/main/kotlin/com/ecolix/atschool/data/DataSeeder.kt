@@ -4,9 +4,8 @@ import com.ecolix.atschool.security.PasswordUtils
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -108,10 +107,10 @@ object DataSeeder {
                 logger.info("Database already seeded. Skipping main flow.")
             }
 
-            // Always ensure Super Admin exists for the developer
             val superAdminEmail = "seth@atschool.com"
-            if (Users.selectAll().where { Users.email eq superAdminEmail }.count() == 0L) {
-                // We need a tenantId even for superadmin, let's pick the first one
+            val existingSuperAdmin = Users.selectAll().where { Users.email eq superAdminEmail }.singleOrNull()
+            
+            if (existingSuperAdmin == null) {
                 val firstTenantId = Tenants.selectAll().firstOrNull()?.get(Tenants.id)?.value
                 if (firstTenantId != null) {
                     Users.insert {
@@ -122,8 +121,14 @@ object DataSeeder {
                         it[nom] = "AGBA"
                         it[prenom] = "Seth"
                     }
-                    logger.info("Ensured Super Admin exists: $superAdminEmail")
+                    logger.info("Created Super Admin: $superAdminEmail")
                 }
+            } else if (existingSuperAdmin[Users.role] != "SUPER_ADMIN") {
+                // Update existing user to Super Admin
+                Users.update({ Users.email eq superAdminEmail }) {
+                    it[role] = "SUPER_ADMIN"
+                }
+                logger.info("Updated existing user to Super Admin: $superAdminEmail")
             }
         }
     }
