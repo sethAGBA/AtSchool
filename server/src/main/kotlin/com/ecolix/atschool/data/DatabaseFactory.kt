@@ -37,6 +37,7 @@ object DatabaseFactory {
                 AuditLogs,
                 Announcements,
                 SubscriptionPayments,
+                SubscriptionPlans,
                 Notifications,
                 SupportTickets,
                 AdminPermissions

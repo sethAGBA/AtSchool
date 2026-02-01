@@ -119,6 +119,25 @@ data class ResetPasswordRequest(
 
 // Payment DTOs
 @Serializable
+data class SubscriptionPlanDto(
+    val id: Int,
+    val name: String,
+    val price: Double,
+    val currency: String,
+    val description: String,
+    val isPopular: Boolean,
+    val createdAt: String
+)
+
+@Serializable
+data class CreatePlanRequest(
+    val name: String,
+    val price: Double,
+    val description: String,
+    val isPopular: Boolean = false
+)
+
+@Serializable
 data class SubscriptionPaymentDto(
     val id: Long,
     val tenantId: Int,

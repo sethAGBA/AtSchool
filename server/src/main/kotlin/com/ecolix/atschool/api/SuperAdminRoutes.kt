@@ -139,8 +139,48 @@ fun Route.superAdminRoutes() {
                     notes = request.notes
                 )
                 
-                superAdminRepository.auditLog(actor, "RECORD_PAYMENT", "Payment recorded for tenant ${request.tenantId}: ${request.amount} FCFA", request.tenantId)
                 call.respond(HttpStatusCode.Created, mapOf("id" to paymentId))
+            }
+
+            get("/plans") {
+                val plans = advancedRepo.listPlans()
+                call.respond(plans)
+            }
+
+            post("/plans") {
+                val request = call.receive<CreatePlanRequest>()
+                val principal = call.principal<JWTPrincipal>()
+                val actor = principal?.payload?.getClaim("email")?.asString() ?: "Unknown"
+                
+                val planId = advancedRepo.createPlan(request)
+                superAdminRepository.auditLog(actor, "CREATE_PLAN", "New plan created: ${request.name}")
+                call.respond(HttpStatusCode.Created, mapOf("id" to planId))
+            }
+
+            delete("/plans/{id}") {
+                val planId = call.parameters["id"]?.toIntOrNull() 
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid plan ID")
+                
+                advancedRepo.deletePlan(planId)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            patch("/plans/{id}") {
+                val planId = call.parameters["id"]?.toIntOrNull() 
+                    ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid plan ID")
+                val request = call.receive<CreatePlanRequest>() // Reuse CreatePlanRequest for updates
+                val principal = call.principal<JWTPrincipal>()
+                val actor = principal?.payload?.getClaim("email")?.asString() ?: "Unknown"
+
+                advancedRepo.updatePlan(
+                    id = planId,
+                    name = request.name,
+                    price = request.price,
+                    description = request.description,
+                    isPopular = request.isPopular
+                )
+                superAdminRepository.auditLog(actor, "UPDATE_PLAN", "Plan #$planId updated")
+                call.respond(HttpStatusCode.OK)
             }
 
             get("/payments") {

@@ -156,8 +156,8 @@ class SuperAdminScreen : Screen {
                                     SuperAdminTab.ANNOUNCEMENTS -> AnnouncementsTabContent(currentState, screenModel)
                                     SuperAdminTab.LOGS -> LogsTabContent(currentState)
                                     SuperAdminTab.ANALYTICS -> AnalyticsTabContent(currentState.growthMetrics)
-                                    SuperAdminTab.BILLING -> BillingTabContent(currentState.payments, currentState.tenants, screenModel)
-                                    SuperAdminTab.SYSTEM -> SystemHealthContent()
+                                    SuperAdminTab.BILLING -> BillingTabContent(currentState.payments, currentState.tenants, currentState.plans, screenModel)
+                                    SuperAdminTab.SYSTEM -> SystemHealthContent(currentState.tenants, screenModel)
                                     SuperAdminTab.SUPPORT -> SupportTabContent(currentState.tickets)
                                 }
                             }
@@ -181,6 +181,7 @@ class SuperAdminScreen : Screen {
         selectedTenant?.let { tenant ->
             TenantDetailsDialog(
                 tenant = tenant,
+                screenModel = screenModel,
                 onDismiss = { selectedTenant = null },
                 onToggleStatus = { isActive ->
                     screenModel.toggleTenantStatus(tenant.id, isActive)
@@ -335,7 +336,9 @@ class SuperAdminScreen : Screen {
             selectedTenant?.let { tenant ->
                 TenantDetailsDialog(
                     tenant = tenant,
-                    onDismiss = { selectedTenant = null },
+                    screenModel = screenModel,
+                    onDismiss = { 
+                        selectedTenant = null },
                     onToggleStatus = { isActive ->
                         screenModel.toggleTenantStatus(tenant.id, isActive)
                         selectedTenant = null
@@ -392,6 +395,7 @@ class SuperAdminScreen : Screen {
     @Composable
     fun TenantDetailsDialog(
         tenant: com.ecolix.atschool.api.TenantDto,
+        screenModel: SuperAdminScreenModel,
         onDismiss: () -> Unit,
         onToggleStatus: (Boolean) -> Unit,
         onResetPassword: (String) -> Unit,
@@ -399,6 +403,7 @@ class SuperAdminScreen : Screen {
     ) {
         var showPasswordReset by remember { mutableStateOf(false) }
         var showSubscriptionDialog by remember { mutableStateOf(false) }
+        var showNotificationDialog by remember { mutableStateOf(false) }
         var newPassword by remember { mutableStateOf("") }
 
         AlertDialog(
@@ -485,6 +490,16 @@ class SuperAdminScreen : Screen {
                             Text(if (tenant.isActive) "Désactiver l'école" else "Activer l'école")
                         }
 
+                         OutlinedButton(
+                            onClick = { showNotificationDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                             Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(18.dp))
+                             Spacer(Modifier.width(8.dp))
+                             Text("Notifier l'école")
+                        }
+
                         OutlinedButton(
                             onClick = { showPasswordReset = true },
                             modifier = Modifier.fillMaxWidth(),
@@ -549,6 +564,18 @@ class SuperAdminScreen : Screen {
                 },
                 dismissButton = {
                     TextButton(onClick = { showSubscriptionDialog = false }) { Text("Annuler") }
+                }
+            )
+        }
+        if (showNotificationDialog) {
+            SendNotificationDialog(
+                tenants = emptyList(), // Not used for list when target is fixed
+                targetTenantId = tenant.id,
+                onDismiss = { showNotificationDialog = false },
+                onConfirm = { tenantId, userId, title, msg, type, priority ->
+                    screenModel.sendNotification(tenantId, userId, title, msg, type, priority) {
+                        showNotificationDialog = false
+                    }
                 }
             )
         }

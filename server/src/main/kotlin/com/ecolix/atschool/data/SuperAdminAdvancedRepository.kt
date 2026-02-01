@@ -82,13 +82,52 @@ class SuperAdminAdvancedRepository {
             }
     }
 
-    fun updatePaymentStatus(paymentId: Long, status: String, invoiceNumber: String? = null) = transaction {
-        SubscriptionPayments.update({ SubscriptionPayments.id eq paymentId }) {
-            it[SubscriptionPayments.status] = status
-            if (invoiceNumber != null) {
-                it[SubscriptionPayments.invoiceNumber] = invoiceNumber
-            }
+
+
+    // ==================== PLAN MANAGEMENT ====================
+
+    fun listPlans(): List<SubscriptionPlanDto> = transaction {
+        SubscriptionPlans.selectAll().orderBy(SubscriptionPlans.price to SortOrder.ASC).map {
+            SubscriptionPlanDto(
+                id = it[SubscriptionPlans.id].value,
+                name = it[SubscriptionPlans.name],
+                price = it[SubscriptionPlans.price],
+                currency = it[SubscriptionPlans.currency],
+                description = it[SubscriptionPlans.description],
+                isPopular = it[SubscriptionPlans.isPopular],
+                createdAt = it[SubscriptionPlans.createdAt].toString()
+            )
         }
+    }
+
+    fun createPlan(request: CreatePlanRequest): Int = transaction {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        SubscriptionPlans.insert {
+            it[name] = request.name
+            it[price] = request.price
+            it[description] = request.description
+            it[isPopular] = request.isPopular
+            it[createdAt] = now
+        }[SubscriptionPlans.id].value
+    }
+
+    fun updatePlan(
+        id: Int,
+        name: String? = null,
+        price: Double? = null,
+        description: String? = null,
+        isPopular: Boolean? = null
+    ) = transaction {
+        SubscriptionPlans.update({ SubscriptionPlans.id eq id }) {
+            if (name != null) it[SubscriptionPlans.name] = name
+            if (price != null) it[SubscriptionPlans.price] = price
+            if (description != null) it[SubscriptionPlans.description] = description
+            if (isPopular != null) it[SubscriptionPlans.isPopular] = isPopular
+        }
+    }
+
+    fun deletePlan(id: Int) = transaction {
+        SubscriptionPlans.deleteWhere { SubscriptionPlans.id eq id }
     }
 
     fun getExpiringSubscriptions(daysThreshold: Int = 30): List<TenantDto> = transaction {

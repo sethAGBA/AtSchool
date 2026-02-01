@@ -92,10 +92,13 @@ fun AnalyticsCard(title: String, value: String, icon: ImageVector, color: Color,
 fun BillingTabContent(
     payments: List<com.ecolix.atschool.api.SubscriptionPaymentDto>,
     tenants: List<com.ecolix.atschool.api.TenantDto>,
+    plans: List<com.ecolix.atschool.api.SubscriptionPlanDto>,
     screenModel: SuperAdminScreenModel
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showCreatePlanDialog by remember { mutableStateOf(false) }
     var editingPayment by remember { mutableStateOf<com.ecolix.atschool.api.SubscriptionPaymentDto?>(null) }
+    var editingPlan by remember { mutableStateOf<com.ecolix.atschool.api.SubscriptionPlanDto?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -107,14 +110,25 @@ fun BillingTabContent(
                 Text("Facturation et Abonnements", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Gestion des revenus et factures", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(
-                onClick = { showCreateDialog = true },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
-            ) {
-                Icon(Icons.Default.Add, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Nouveau Paiement")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { showCreatePlanDialog = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Icon(Icons.Default.AddCircle, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nouveau Plan")
+                }
+                Button(
+                    onClick = { showCreateDialog = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
+                ) {
+                    Icon(Icons.Default.Add, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nouveau Paiement")
+                }
             }
         }
 
@@ -139,15 +153,47 @@ fun BillingTabContent(
             )
         }
 
+        if (showCreatePlanDialog || editingPlan != null) {
+            CreatePlanDialog(
+                existingPlan = editingPlan,
+                onDismiss = { 
+                    showCreatePlanDialog = false 
+                    editingPlan = null
+                },
+                onConfirm = { name, price, desc, popular ->
+                    if (editingPlan != null) {
+                        screenModel.updatePlan(editingPlan!!.id, name, price, desc, popular) {
+                            editingPlan = null
+                        }
+                    } else {
+                        screenModel.createPlan(name, price, desc, popular) {
+                            showCreatePlanDialog = false
+                        }
+                    }
+                }
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
 
         // Plans Section
         Text("Plans d'abonnement", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            PricingPlanCard("Basique", "29 FCFA/mois", "Pour petites écoles", false, Modifier.weight(1f))
-            PricingPlanCard("Business", "99 FCFA/mois", "Fonctionnalités complètes", true, Modifier.weight(1f))
-            PricingPlanCard("Entreprise", "Sur devis", "Réseaux d'écoles", false, Modifier.weight(1f))
+            plans.forEach { plan ->
+                PricingPlanCard(
+                    title = plan.name,
+                    price = "${plan.price} ${plan.currency}/mois",
+                    subtitle = plan.description,
+                    isPopular = plan.isPopular,
+                    onEdit = { editingPlan = plan },
+                    onDelete = { screenModel.deletePlan(plan.id) {} },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (plans.isEmpty()) {
+                PricingPlanCard("Plan Standard", "À venir", "Configuration requise", false, {}, {}, Modifier.weight(1f))
+            }
         }
 
         Spacer(Modifier.height(32.dp))
@@ -185,7 +231,15 @@ fun ScrollableColumn(modifier: Modifier = Modifier, content: @Composable ColumnS
 }
 
 @Composable
-fun PricingPlanCard(title: String, price: String, subtitle: String, isPopular: Boolean, modifier: Modifier = Modifier) {
+fun PricingPlanCard(
+    title: String,
+    price: String,
+    subtitle: String,
+    isPopular: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -193,16 +247,27 @@ fun PricingPlanCard(title: String, price: String, subtitle: String, isPopular: B
         border = if (isPopular) BorderStroke(2.dp, BluePrimary) else null
     ) {
         Column(Modifier.padding(16.dp)) {
-            if (isPopular) {
-                Text("POPULAIRE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BluePrimary)
-                Spacer(Modifier.height(4.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    if (isPopular) {
+                        Text("POPULAIRE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BluePrimary)
+                    }
+                    Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                }
             }
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Text(price, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(price, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             Spacer(Modifier.height(16.dp))
-            OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                Text("Modifier")
+            OutlinedButton(
+                onClick = onEdit,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("Modifier", fontSize = 12.sp)
             }
         }
     }
@@ -357,9 +422,35 @@ fun CreatePaymentDialog(
 }
 
 @Composable
-fun SystemHealthContent() {
+fun SystemHealthContent(tenants: List<com.ecolix.atschool.api.TenantDto>, screenModel: SuperAdminScreenModel) {
+    var showNotifDialog by remember { mutableStateOf(false) }
+
     Column(Modifier.fillMaxSize()) {
-        Text("Santé du Système", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Santé du Système", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Button(
+                onClick = { showNotifDialog = true },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
+            ) {
+                Icon(Icons.Default.NotificationsActive, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Notifier")
+            }
+        }
+        
+        if (showNotifDialog) {
+            SendNotificationDialog(
+                tenants = tenants,
+                onDismiss = { showNotifDialog = false },
+                onConfirm = { tenantId, userId, title, msg, type, priority ->
+                    screenModel.sendNotification(tenantId, userId, title, msg, type, priority) {
+                        showNotifDialog = false
+                    }
+                }
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
         
         Card(
@@ -461,4 +552,111 @@ fun TicketItem(ticket: com.ecolix.atschool.api.SupportTicketDto) {
             }
         }
     }
+}
+@Composable
+fun CreatePlanDialog(
+    existingPlan: com.ecolix.atschool.api.SubscriptionPlanDto? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Double, String, Boolean) -> Unit
+) {
+    var name by remember { mutableStateOf(existingPlan?.name ?: "") }
+    var price by remember { mutableStateOf(existingPlan?.price?.toString() ?: "") }
+    var description by remember { mutableStateOf(existingPlan?.description ?: "") }
+    var isPopular by remember { mutableStateOf(existingPlan?.isPopular ?: false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (existingPlan != null) "Modifier l'Offre" else "Nouvelle Offre d'Abonnement") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nom du Plan (ex: Business)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Prix par mois (FCFA)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description courte") }, modifier = Modifier.fillMaxWidth())
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = isPopular, onCheckedChange = { isPopular = it })
+                    Text("Plan Populaire (Mise en avant)")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(name, price.toDoubleOrNull() ?: 0.0, description, isPopular) }) { 
+                Text(if (existingPlan != null) "Mettre à jour" else "Créer l'offre") 
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler") }
+        }
+    )
+}
+
+@Composable
+fun SendNotificationDialog(
+    tenants: List<com.ecolix.atschool.api.TenantDto>,
+    targetTenantId: Int? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (Int?, Long?, String, String, String, String) -> Unit
+) {
+    var selectedTenantId by remember { mutableStateOf(targetTenantId) }
+    var title by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf("INFO") }
+    var priority by remember { mutableStateOf("NORMAL") }
+    var expandedTenants by remember { mutableStateOf(false) }
+    var expandedTypes by remember { mutableStateOf(false) }
+    var expandedPriorities by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Envoyer une Notification") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Target Selection
+                Box {
+                    OutlinedButton(
+                        onClick = { expandedTenants = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (selectedTenantId == null) "🌍 Tous les Établissements" else "🏢 ${tenants.find { it.id == selectedTenantId }?.name}")
+                    }
+                    DropdownMenu(expanded = expandedTenants, onDismissRequest = { expandedTenants = false }) {
+                        DropdownMenuItem(text = { Text("🌍 Tous les Établissements") }, onClick = { selectedTenantId = null; expandedTenants = false })
+                        tenants.forEach { tenant ->
+                            DropdownMenuItem(text = { Text("🏢 ${tenant.name}") }, onClick = { selectedTenantId = tenant.id; expandedTenants = false })
+                        }
+                    }
+                }
+
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Titre") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = message, onValueChange = { message = it }, label = { Text("Message") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Type
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { expandedTypes = true }, modifier = Modifier.fillMaxWidth()) { Text("Type: $type") }
+                        DropdownMenu(expanded = expandedTypes, onDismissRequest = { expandedTypes = false }) {
+                            listOf("INFO", "WARNING", "ALERT", "SUCCESS").forEach { t ->
+                                DropdownMenuItem(text = { Text(t) }, onClick = { type = t; expandedTypes = false })
+                            }
+                        }
+                    }
+                    // Priority
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { expandedPriorities = true }, modifier = Modifier.fillMaxWidth()) { Text("Prio: $priority") }
+                        DropdownMenu(expanded = expandedPriorities, onDismissRequest = { expandedPriorities = false }) {
+                            listOf("LOW", "NORMAL", "HIGH", "URGENT").forEach { p ->
+                                DropdownMenuItem(text = { Text(p) }, onClick = { priority = p; expandedPriorities = false })
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selectedTenantId, null, title, message, type, priority) }) { Text("Envoyer") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler") }
+        }
+    )
 }

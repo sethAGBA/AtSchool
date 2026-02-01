@@ -69,8 +69,11 @@ class SuperAdminApiService(private val client: HttpClient) {
         client.get("superadmin/tickets").body()
     }
 
-    suspend fun getGrowthMetrics(): Result<GrowthMetricsDto> = runCatching {
-        client.get("superadmin/analytics/growth").body()
+    suspend fun getGrowthMetrics(startDate: String = "", endDate: String = ""): Result<GrowthMetricsDto> = runCatching {
+        client.get("superadmin/analytics/growth") {
+            parameter("startDate", startDate)
+            parameter("endDate", endDate)
+        }.body()
     }
 
     suspend fun createPayment(request: CreatePaymentRequest): Result<Unit> = runCatching {
@@ -87,6 +90,47 @@ class SuperAdminApiService(private val client: HttpClient) {
         client.patch("superadmin/payments/$id") {
             contentType(ContentType.Application.Json)
             setBody(UpdatePaymentStatusRequest(status, invoiceNumber))
+        }
+    }
+
+    suspend fun sendNotification(request: CreateNotificationRequest): Result<Unit> = runCatching {
+        val response = client.post("superadmin/notifications") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.Created) {
+            throw Exception("Erreur lors de l'envoi de la notification")
+        }
+    }
+
+    suspend fun getPlans(): Result<List<SubscriptionPlanDto>> = runCatching {
+        client.get("superadmin/plans").body()
+    }
+
+    suspend fun createPlan(request: CreatePlanRequest): Result<Unit> = runCatching {
+        val response = client.post("superadmin/plans") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.Created) {
+            throw Exception("Erreur lors de la création du plan")
+        }
+    }
+
+    suspend fun updatePlan(id: Int, request: CreatePlanRequest): Result<Unit> = runCatching {
+        val response = client.patch("superadmin/plans/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw Exception("Erreur lors de la mise à jour du plan")
+        }
+    }
+
+    suspend fun deletePlan(id: Int): Result<Unit> = runCatching {
+        val response = client.delete("superadmin/plans/$id")
+        if (response.status != HttpStatusCode.OK) {
+            throw Exception("Erreur lors de la suppression du plan")
         }
     }
 }

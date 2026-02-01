@@ -126,6 +126,15 @@ object Paiements : LongIdTable("paiements") {
     val modePaiement = varchar("mode_paiement", 50) // ESPECES, CHEQUE, TRANSFERT
 }
 
+object SubscriptionPlans : IntIdTable("subscription_plans") {
+    val name = varchar("name", 100)
+    val price = double("price")
+    val currency = varchar("currency", 4).default("FCFA")
+    val description = text("description")
+    val isPopular = bool("is_popular").default(false)
+    val createdAt = datetime("created_at")
+}
+
 object SubscriptionPayments : LongIdTable("subscription_payments") {
     val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
     val amount = double("amount")

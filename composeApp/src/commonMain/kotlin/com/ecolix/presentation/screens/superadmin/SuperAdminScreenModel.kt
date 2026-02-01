@@ -14,6 +14,9 @@ import com.ecolix.atschool.api.GrowthMetricsDto
 import com.ecolix.atschool.api.CreatePaymentRequest
 import com.ecolix.atschool.api.UpdatePaymentStatusRequest
 import com.ecolix.atschool.api.CreateAnnouncementRequest
+import com.ecolix.atschool.api.CreateNotificationRequest
+import com.ecolix.atschool.api.CreatePlanRequest
+import com.ecolix.atschool.api.SubscriptionPlanDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -34,6 +37,7 @@ sealed class SuperAdminState {
         val announcements: List<AnnouncementDto> = emptyList(),
         val logs: List<AuditLogDto> = emptyList(),
         val payments: List<SubscriptionPaymentDto> = emptyList(),
+        val plans: List<SubscriptionPlanDto> = emptyList(),
         val tickets: List<SupportTicketDto> = emptyList(),
         val growthMetrics: GrowthMetricsDto? = null,
         val selectedTab: SuperAdminTab = SuperAdminTab.SCHOOLS,
@@ -59,6 +63,7 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
     private val _announcements = MutableStateFlow<List<AnnouncementDto>>(emptyList())
     private val _logs = MutableStateFlow<List<AuditLogDto>>(emptyList())
     private val _payments = MutableStateFlow<List<SubscriptionPaymentDto>>(emptyList())
+    private val _plans = MutableStateFlow<List<SubscriptionPlanDto>>(emptyList())
     private val _tickets = MutableStateFlow<List<SupportTicketDto>>(emptyList())
     private val _growthMetrics = MutableStateFlow<GrowthMetricsDto?>(null)
     private val _stats = MutableStateFlow<GlobalStatsResponse?>(null)
@@ -85,25 +90,31 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
     fun refresh() {
         screenModelScope.launch {
             _state.value = SuperAdminState.Loading
-            val tenantsResult = apiService.getTenants()
-            val statsResult = apiService.getGlobalStats()
-            val announcementsResult = apiService.getAnnouncements()
-            val logsResult = apiService.getAuditLogs()
-            val paymentsResult = apiService.getPayments()
-            val ticketsResult = apiService.getTickets()
-            val growthResult = apiService.getGrowthMetrics()
+            try {
+                val tenantsResult = apiService.getTenants()
+                val statsResult = apiService.getGlobalStats()
+                val announcementsResult = apiService.getAnnouncements()
+                val logsResult = apiService.getAuditLogs()
+                val paymentsResult = apiService.getPayments()
+                val plansResult = apiService.getPlans()
+                val ticketsResult = apiService.getTickets()
+                val growthResult = apiService.getGrowthMetrics()
 
-            if (tenantsResult.isSuccess && statsResult.isSuccess) {
-                _allTenants.value = tenantsResult.getOrThrow()
-                _stats.value = statsResult.getOrThrow()
+                val schools = tenantsResult.getOrThrow()
+                val stats = statsResult.getOrThrow()
+                
+                _allTenants.value = schools
                 _announcements.value = announcementsResult.getOrDefault(emptyList())
                 _logs.value = logsResult.getOrDefault(emptyList())
                 _payments.value = paymentsResult.getOrDefault(emptyList())
+                _plans.value = plansResult.getOrDefault(emptyList())
                 _tickets.value = ticketsResult.getOrDefault(emptyList())
                 _growthMetrics.value = growthResult.getOrNull()
+                _stats.value = stats
+
                 updateState()
-            } else {
-                _state.value = SuperAdminState.Error("Erreur de chargement des données")
+            } catch (e: Exception) {
+                _state.value = SuperAdminState.Error(e.message ?: "Erreur inconnue")
             }
         }
     }
@@ -124,6 +135,7 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
             announcements = _announcements.value,
             logs = _logs.value,
             payments = _payments.value,
+            plans = _plans.value,
             tickets = _tickets.value,
             growthMetrics = _growthMetrics.value,
             selectedTab = _selectedTab.value,
@@ -200,6 +212,53 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
         screenModelScope.launch {
             apiService.updatePaymentStatus(paymentId, status, invoiceNumber).onSuccess {
                 refresh()
+            }
+        }
+    }
+
+    fun sendNotification(tenantId: Int?, userId: Long?, title: String, message: String, type: String, priority: String, onComplete: (Boolean) -> Unit) {
+        screenModelScope.launch {
+            val request = CreateNotificationRequest(tenantId, userId, title, message, type, priority)
+            apiService.sendNotification(request).onSuccess {
+                refresh()
+                onComplete(true)
+            }.onFailure {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun createPlan(name: String, price: Double, description: String, isPopular: Boolean, onComplete: (Boolean) -> Unit) {
+        screenModelScope.launch {
+            val request = CreatePlanRequest(name, price, description, isPopular)
+            apiService.createPlan(request).onSuccess {
+                refresh()
+                onComplete(true)
+            }.onFailure {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updatePlan(id: Int, name: String, price: Double, description: String, isPopular: Boolean, onComplete: (Boolean) -> Unit) {
+        screenModelScope.launch {
+            val request = CreatePlanRequest(name, price, description, isPopular)
+            apiService.updatePlan(id, request).onSuccess {
+                refresh()
+                onComplete(true)
+            }.onFailure {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deletePlan(id: Int, onComplete: (Boolean) -> Unit) {
+        screenModelScope.launch {
+            apiService.deletePlan(id).onSuccess {
+                refresh()
+                onComplete(true)
+            }.onFailure {
+                onComplete(false)
             }
         }
     }
