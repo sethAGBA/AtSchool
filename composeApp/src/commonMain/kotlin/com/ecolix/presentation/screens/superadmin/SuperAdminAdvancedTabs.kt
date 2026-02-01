@@ -99,6 +99,7 @@ fun BillingTabContent(
     var showCreatePlanDialog by remember { mutableStateOf(false) }
     var editingPayment by remember { mutableStateOf<com.ecolix.atschool.api.SubscriptionPaymentDto?>(null) }
     var editingPlan by remember { mutableStateOf<com.ecolix.atschool.api.SubscriptionPlanDto?>(null) }
+    var planToDelete by remember { mutableStateOf<com.ecolix.atschool.api.SubscriptionPlanDto?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -174,6 +175,33 @@ fun BillingTabContent(
             )
         }
 
+        if (planToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { planToDelete = null },
+                title = { Text("Confirmer la suppression") },
+                text = { Text("Êtes-vous sûr de vouloir supprimer le plan '${planToDelete?.name}' ? Cette action est irréversible.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            planToDelete?.let { plan ->
+                                screenModel.deletePlan(plan.id) {
+                                    planToDelete = null
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Supprimer")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { planToDelete = null }) {
+                        Text("Annuler")
+                    }
+                }
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
 
         // Plans Section
@@ -187,7 +215,7 @@ fun BillingTabContent(
                     subtitle = plan.description,
                     isPopular = plan.isPopular,
                     onEdit = { editingPlan = plan },
-                    onDelete = { screenModel.deletePlan(plan.id) {} },
+                    onDelete = { planToDelete = plan },
                     modifier = Modifier.weight(1f)
                 )
             }

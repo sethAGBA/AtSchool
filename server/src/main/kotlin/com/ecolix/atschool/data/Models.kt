@@ -29,10 +29,13 @@ object Announcements : IntIdTable("announcements") {
 
 object AuditLogs : LongIdTable("audit_logs") {
     val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE).nullable()
+    val userId = reference("user_id", Users, onDelete = ReferenceOption.CASCADE).nullable()
     val actorEmail = varchar("actor_email", 100)
     val action = varchar("action", 100)
     val details = text("details").nullable()
     val timestamp = datetime("timestamp")
+
+
 }
 
 object Establishments : IntIdTable("establishments") {

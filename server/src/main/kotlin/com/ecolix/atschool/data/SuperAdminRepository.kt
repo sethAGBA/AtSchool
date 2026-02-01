@@ -40,8 +40,12 @@ class SuperAdminRepository {
     }
 
     fun auditLog(actorEmail: String, action: String, details: String? = null, tenantId: Int? = null) = transaction {
+        val user = Users.selectAll().where { Users.email eq actorEmail }.singleOrNull()
+        val actorUserId = user?.get(Users.id)
+
         AuditLogs.insert {
             it[AuditLogs.tenantId] = tenantId
+            it[AuditLogs.userId] = actorUserId
             it[AuditLogs.actorEmail] = actorEmail
             it[AuditLogs.action] = action
             it[AuditLogs.details] = details

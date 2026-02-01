@@ -910,15 +910,15 @@ class SuperAdminScreen : Screen {
 
             if (state.announcements.isEmpty()) {
                 Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Text("Aucune annonce publiée", color = Color.Gray)
+                    Text("Aucune annonce publiée", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(state.announcements) { announcement ->
                         Card(
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                         ) {
                             Column(Modifier.padding(20.dp).fillMaxWidth()) {
                                 Row(
@@ -936,10 +936,10 @@ class SuperAdminScreen : Screen {
                                             }
                                         }
                                         Spacer(Modifier.width(12.dp))
-                                        Text(announcement.createdAt, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                        Text(announcement.createdAt, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     
-                                    val statusColor = if (announcement.isActive) com.ecolix.presentation.theme.GreenAccent else Color.Gray
+                                    val statusColor = if (announcement.isActive) com.ecolix.presentation.theme.GreenAccent else MaterialTheme.colorScheme.onSurfaceVariant
                                     Text(
                                         if (announcement.isActive) "ACTIVE" else "PASSÉE",
                                         color = statusColor,
@@ -956,16 +956,16 @@ class SuperAdminScreen : Screen {
                                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                         announcement.targetRole?.let {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Person, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                                                Icon(Icons.Default.Person, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 Spacer(Modifier.width(4.dp))
-                                                Text("Cible: $it", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                                Text("Cible: $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
                                         announcement.expiresAt?.let {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Event, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                                                Icon(Icons.Default.Event, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 Spacer(Modifier.width(4.dp))
-                                                Text("Expire: $it", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                                Text("Expire: $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
                                     }
@@ -1040,8 +1040,8 @@ class SuperAdminScreen : Screen {
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             ) {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(state.logs) { log ->
@@ -1069,10 +1069,10 @@ class SuperAdminScreen : Screen {
                                 Text(
                                     log.timestamp.replace("T", " ").take(16),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Divider(modifier = Modifier.padding(top = 12.dp), color = Color.LightGray.copy(alpha = 0.2f))
+                            Divider(modifier = Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                         }
                     }
                 }
