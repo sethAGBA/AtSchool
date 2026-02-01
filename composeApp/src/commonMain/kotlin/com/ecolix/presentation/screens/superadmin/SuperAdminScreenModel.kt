@@ -8,6 +8,9 @@ import com.ecolix.atschool.api.SuperAdminApiService
 import com.ecolix.atschool.api.TenantDto
 import com.ecolix.atschool.api.AnnouncementDto
 import com.ecolix.atschool.api.AuditLogDto
+import com.ecolix.atschool.api.SubscriptionPaymentDto
+import com.ecolix.atschool.api.SupportTicketDto
+import com.ecolix.atschool.api.GrowthMetricsDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -17,7 +20,7 @@ enum class SuperAdminLayoutMode {
 }
 
 enum class SuperAdminTab {
-    SCHOOLS, ANNOUNCEMENTS, LOGS
+    SCHOOLS, ANNOUNCEMENTS, LOGS, ANALYTICS, BILLING, SYSTEM, SUPPORT
 }
 
 sealed class SuperAdminState {
@@ -27,6 +30,9 @@ sealed class SuperAdminState {
         val stats: GlobalStatsResponse,
         val announcements: List<AnnouncementDto> = emptyList(),
         val logs: List<AuditLogDto> = emptyList(),
+        val payments: List<SubscriptionPaymentDto> = emptyList(),
+        val tickets: List<SupportTicketDto> = emptyList(),
+        val growthMetrics: GrowthMetricsDto? = null,
         val selectedTab: SuperAdminTab = SuperAdminTab.SCHOOLS,
         val layoutMode: SuperAdminLayoutMode = SuperAdminLayoutMode.LIST
     ) : SuperAdminState()
@@ -49,6 +55,9 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
     private val _allTenants = MutableStateFlow<List<TenantDto>>(emptyList())
     private val _announcements = MutableStateFlow<List<AnnouncementDto>>(emptyList())
     private val _logs = MutableStateFlow<List<AuditLogDto>>(emptyList())
+    private val _payments = MutableStateFlow<List<SubscriptionPaymentDto>>(emptyList())
+    private val _tickets = MutableStateFlow<List<SupportTicketDto>>(emptyList())
+    private val _growthMetrics = MutableStateFlow<GrowthMetricsDto?>(null)
     private val _stats = MutableStateFlow<GlobalStatsResponse?>(null)
 
     init {
@@ -77,12 +86,18 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
             val statsResult = apiService.getGlobalStats()
             val announcementsResult = apiService.getAnnouncements()
             val logsResult = apiService.getAuditLogs()
+            val paymentsResult = apiService.getPayments()
+            val ticketsResult = apiService.getTickets()
+            val growthResult = apiService.getGrowthMetrics()
 
             if (tenantsResult.isSuccess && statsResult.isSuccess) {
                 _allTenants.value = tenantsResult.getOrThrow()
                 _stats.value = statsResult.getOrThrow()
                 _announcements.value = announcementsResult.getOrDefault(emptyList())
                 _logs.value = logsResult.getOrDefault(emptyList())
+                _payments.value = paymentsResult.getOrDefault(emptyList())
+                _tickets.value = ticketsResult.getOrDefault(emptyList())
+                _growthMetrics.value = growthResult.getOrNull()
                 updateState()
             } else {
                 _state.value = SuperAdminState.Error("Erreur de chargement des données")
@@ -105,6 +120,9 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
             stats = stats,
             announcements = _announcements.value,
             logs = _logs.value,
+            payments = _payments.value,
+            tickets = _tickets.value,
+            growthMetrics = _growthMetrics.value,
             selectedTab = _selectedTab.value,
             layoutMode = _layoutMode.value
         )

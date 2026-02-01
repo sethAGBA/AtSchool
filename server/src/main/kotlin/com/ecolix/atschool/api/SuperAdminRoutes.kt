@@ -139,7 +139,7 @@ fun Route.superAdminRoutes() {
                     notes = request.notes
                 )
                 
-                superAdminRepository.auditLog(actor, "RECORD_PAYMENT", "Payment recorded for tenant ${request.tenantId}: ${request.amount} EUR", request.tenantId)
+                superAdminRepository.auditLog(actor, "RECORD_PAYMENT", "Payment recorded for tenant ${request.tenantId}: ${request.amount} FCFA", request.tenantId)
                 call.respond(HttpStatusCode.Created, mapOf("id" to paymentId))
             }
 

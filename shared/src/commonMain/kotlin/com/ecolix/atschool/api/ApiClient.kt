@@ -8,6 +8,8 @@ import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 
 import com.ecolix.atschool.BuildConfig
 import com.ecolix.atschool.getPlatform
@@ -60,6 +62,7 @@ fun createHttpClient(): HttpClient {
             level = LogLevel.ALL
         }
         
+        /*
         install(Auth) {
             bearer {
                 loadTokens {
@@ -67,6 +70,7 @@ fun createHttpClient(): HttpClient {
                 }
             }
         }
+        */
         
         defaultRequest {
             var baseUrl = BuildConfig.BASE_URL
@@ -77,6 +81,10 @@ fun createHttpClient(): HttpClient {
             }
             
             url(baseUrl)
+
+            TokenProvider.token?.let {
+                header(HttpHeaders.Authorization, "Bearer $it")
+            }
         }
     }
 }

@@ -86,7 +86,7 @@ class SuperAdminScreen : Screen {
                     containerColor = BluePrimary,
                     contentColor = Color.White,
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Nouvelle École") }
+                    text = { Text("Nouvel Établissement") }
                 )
             }
         ) { padding ->
@@ -131,6 +131,10 @@ class SuperAdminScreen : Screen {
                                                     SuperAdminTab.SCHOOLS -> "Établissements"
                                                     SuperAdminTab.ANNOUNCEMENTS -> "Communications"
                                                     SuperAdminTab.LOGS -> "Historique"
+                                                    SuperAdminTab.ANALYTICS -> "Dashboard"
+                                                    SuperAdminTab.BILLING -> "Facturation"
+                                                    SuperAdminTab.SYSTEM -> "Système"
+                                                    SuperAdminTab.SUPPORT -> "Support"
                                                 },
                                                 fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
                                             )
@@ -151,6 +155,10 @@ class SuperAdminScreen : Screen {
                                     SuperAdminTab.SCHOOLS -> SchoolsTabContent(currentState, screenModel)
                                     SuperAdminTab.ANNOUNCEMENTS -> AnnouncementsTabContent(currentState, screenModel)
                                     SuperAdminTab.LOGS -> LogsTabContent(currentState)
+                                    SuperAdminTab.ANALYTICS -> AnalyticsTabContent(currentState.growthMetrics)
+                                    SuperAdminTab.BILLING -> BillingTabContent(currentState.payments)
+                                    SuperAdminTab.SYSTEM -> SystemHealthContent()
+                                    SuperAdminTab.SUPPORT -> SupportTabContent(currentState.tickets)
                                 }
                             }
                         }
@@ -218,7 +226,7 @@ class SuperAdminScreen : Screen {
                 )
                 StatCard(
                     title = "Revenus",
-                    value = "${state.stats.totalRevenue} €",
+                    value = "${state.stats.totalRevenue} FCFA",
                     icon = Icons.Default.Payments,
                     color = Color(0xFF9C27B0),
                     modifier = Modifier.weight(1f)

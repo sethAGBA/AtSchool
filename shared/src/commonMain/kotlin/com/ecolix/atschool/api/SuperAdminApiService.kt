@@ -60,4 +60,16 @@ class SuperAdminApiService(private val client: HttpClient) {
     suspend fun getAuditLogs(): Result<List<AuditLogDto>> = runCatching {
         client.get("superadmin/logs").body()
     }
+
+    suspend fun getPayments(): Result<List<SubscriptionPaymentDto>> = runCatching {
+        client.get("superadmin/payments").body()
+    }
+
+    suspend fun getTickets(): Result<List<SupportTicketDto>> = runCatching {
+        client.get("superadmin/tickets").body()
+    }
+
+    suspend fun getGrowthMetrics(): Result<GrowthMetricsDto> = runCatching {
+        client.get("superadmin/analytics/growth").body()
+    }
 }

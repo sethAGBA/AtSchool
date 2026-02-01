@@ -129,7 +129,7 @@ object Paiements : LongIdTable("paiements") {
 object SubscriptionPayments : LongIdTable("subscription_payments") {
     val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
     val amount = double("amount")
-    val currency = varchar("currency", 3).default("EUR")
+    val currency = varchar("currency", 4).default("FCFA")
     val paymentDate = datetime("payment_date")
     val paymentMethod = varchar("payment_method", 50) // CARD, TRANSFER, CASH, CHECK
     val status = varchar("status", 20).default("PENDING") // PENDING, PAID, FAILED, REFUNDED
