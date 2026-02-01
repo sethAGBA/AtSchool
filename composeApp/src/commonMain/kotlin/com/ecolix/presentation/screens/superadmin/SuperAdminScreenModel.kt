@@ -11,6 +11,9 @@ import com.ecolix.atschool.api.AuditLogDto
 import com.ecolix.atschool.api.SubscriptionPaymentDto
 import com.ecolix.atschool.api.SupportTicketDto
 import com.ecolix.atschool.api.GrowthMetricsDto
+import com.ecolix.atschool.api.CreatePaymentRequest
+import com.ecolix.atschool.api.UpdatePaymentStatusRequest
+import com.ecolix.atschool.api.CreateAnnouncementRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -169,7 +172,7 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
         }
     }
 
-    fun createAnnouncement(request: com.ecolix.atschool.api.CreateAnnouncementRequest, onComplete: (Boolean) -> Unit) {
+    fun createAnnouncement(request: CreateAnnouncementRequest, onComplete: (Boolean) -> Unit) {
         screenModelScope.launch {
             val result = apiService.createAnnouncement(request)
             if (result.isSuccess) {
@@ -177,6 +180,26 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
                 onComplete(true)
             } else {
                 onComplete(false)
+            }
+        }
+    }
+
+    fun recordPayment(tenantId: Int, amount: Double, paymentMethod: String, notes: String?, onComplete: (Boolean) -> Unit) {
+        screenModelScope.launch {
+            val request = CreatePaymentRequest(tenantId, amount, paymentMethod, notes)
+            apiService.createPayment(request).onSuccess {
+                refresh()
+                onComplete(true)
+            }.onFailure {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updatePaymentStatus(paymentId: Long, status: String, invoiceNumber: String? = null) {
+        screenModelScope.launch {
+            apiService.updatePaymentStatus(paymentId, status, invoiceNumber).onSuccess {
+                refresh()
             }
         }
     }

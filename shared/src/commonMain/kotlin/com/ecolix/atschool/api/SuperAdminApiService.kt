@@ -72,4 +72,21 @@ class SuperAdminApiService(private val client: HttpClient) {
     suspend fun getGrowthMetrics(): Result<GrowthMetricsDto> = runCatching {
         client.get("superadmin/analytics/growth").body()
     }
+
+    suspend fun createPayment(request: CreatePaymentRequest): Result<Unit> = runCatching {
+        val response = client.post("superadmin/payments") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.Created) {
+            throw Exception("Erreur lors de l'enregistrement du paiement")
+        }
+    }
+
+    suspend fun updatePaymentStatus(id: Long, status: String, invoiceNumber: String? = null): Result<Unit> = runCatching {
+        client.patch("superadmin/payments/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdatePaymentStatusRequest(status, invoiceNumber))
+        }
+    }
 }

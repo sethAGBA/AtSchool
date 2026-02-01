@@ -152,9 +152,13 @@ fun Route.superAdminRoutes() {
             patch("/payments/{id}") {
                 val paymentId = call.parameters["id"]?.toLongOrNull() 
                     ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid payment ID")
-                val request = call.receive<UpdatePaymentStatusRequest>()
+                val request = call.receive<UpdatePaymentStatusRequest>() // Reusing but could be UpdatePaymentRequest
                 
-                advancedRepo.updatePaymentStatus(paymentId, request.status, request.invoiceNumber)
+                advancedRepo.updatePayment(
+                    paymentId = paymentId,
+                    status = request.status,
+                    invoiceNumber = request.invoiceNumber
+                )
                 call.respond(HttpStatusCode.OK)
             }
 

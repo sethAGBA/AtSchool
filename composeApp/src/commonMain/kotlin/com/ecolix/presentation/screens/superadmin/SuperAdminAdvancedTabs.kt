@@ -89,7 +89,14 @@ fun AnalyticsCard(title: String, value: String, icon: ImageVector, color: Color,
 }
 
 @Composable
-fun BillingTabContent(payments: List<com.ecolix.atschool.api.SubscriptionPaymentDto>) {
+fun BillingTabContent(
+    payments: List<com.ecolix.atschool.api.SubscriptionPaymentDto>,
+    tenants: List<com.ecolix.atschool.api.TenantDto>,
+    screenModel: SuperAdminScreenModel
+) {
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var editingPayment by remember { mutableStateOf<com.ecolix.atschool.api.SubscriptionPaymentDto?>(null) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -100,11 +107,36 @@ fun BillingTabContent(payments: List<com.ecolix.atschool.api.SubscriptionPayment
                 Text("Facturation et Abonnements", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Gestion des revenus et factures", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(onClick = {}, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)) {
+            Button(
+                onClick = { showCreateDialog = true },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
+            ) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Nouveau Plan")
+                Text("Nouveau Paiement")
             }
+        }
+
+        if (showCreateDialog || editingPayment != null) {
+            CreatePaymentDialog(
+                tenants = tenants,
+                existingPayment = editingPayment,
+                onDismiss = { 
+                    showCreateDialog = false 
+                    editingPayment = null
+                },
+                onConfirm = { tenantId, amount, method, notes, invoiceNumber ->
+                    if (editingPayment != null) {
+                        screenModel.updatePaymentStatus(editingPayment!!.id, "PAID", invoiceNumber) // Simplified for now
+                        editingPayment = null
+                    } else {
+                        screenModel.recordPayment(tenantId, amount, method, notes) {
+                            showCreateDialog = false
+                        }
+                    }
+                }
+            )
         }
 
         Spacer(Modifier.height(24.dp))
@@ -125,7 +157,15 @@ fun BillingTabContent(payments: List<com.ecolix.atschool.api.SubscriptionPayment
         
         ScrollableColumn(Modifier.weight(1f)) {
             payments.forEach { payment ->
-                PaymentItem(payment)
+                PaymentItem(
+                    payment = payment,
+                    onStatusChange = { newStatus ->
+                        screenModel.updatePaymentStatus(payment.id, newStatus)
+                    },
+                    onEdit = {
+                        editingPayment = payment
+                    }
+                )
                 Spacer(Modifier.height(8.dp))
             }
             if (payments.isEmpty()) {
@@ -169,7 +209,11 @@ fun PricingPlanCard(title: String, price: String, subtitle: String, isPopular: B
 }
 
 @Composable
-fun PaymentItem(payment: com.ecolix.atschool.api.SubscriptionPaymentDto) {
+fun PaymentItem(
+    payment: com.ecolix.atschool.api.SubscriptionPaymentDto,
+    onStatusChange: (String) -> Unit,
+    onEdit: () -> Unit
+) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -191,16 +235,125 @@ fun PaymentItem(payment: com.ecolix.atschool.api.SubscriptionPaymentDto) {
                 Text("${payment.amount} ${payment.currency}", fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(12.dp))
                 val isPaid = payment.status == "PAID"
-                Box(
-                    modifier = Modifier
-                        .background((if (isPaid) GreenAccent else OrangeSecondary).copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(payment.status, color = if (isPaid) GreenAccent else OrangeSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, "Edit", tint = BluePrimary, modifier = Modifier.size(18.dp))
+                }
+
+                IconButton(onClick = { 
+                    onStatusChange(if (isPaid) "PENDING" else "PAID") 
+                }) {
+                    Box(
+                        modifier = Modifier
+                            .background((if (isPaid) GreenAccent else OrangeSecondary).copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(payment.status, color = if (isPaid) GreenAccent else OrangeSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+fun CreatePaymentDialog(
+    tenants: List<com.ecolix.atschool.api.TenantDto>,
+    existingPayment: com.ecolix.atschool.api.SubscriptionPaymentDto? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Double, String, String?, String?) -> Unit
+) {
+    var selectedTenantId by remember { mutableStateOf(existingPayment?.tenantId ?: tenants.firstOrNull()?.id ?: 0) }
+    var amount by remember { mutableStateOf(existingPayment?.amount?.toString() ?: "") }
+    var method by remember { mutableStateOf(existingPayment?.paymentMethod ?: "TRANSFER") }
+    var notes by remember { mutableStateOf(existingPayment?.notes ?: "") }
+    var invoiceNumber by remember { mutableStateOf(existingPayment?.invoiceNumber ?: "") }
+    var expandedTenants by remember { mutableStateOf(false) }
+    var expandedMethods by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (existingPayment != null) "Modifier le Paiement" else "Nouvel Enregistrement de Paiement") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (existingPayment == null) {
+                    // Tenant Selection (Only for new)
+                    Box {
+                        OutlinedButton(
+                            onClick = { expandedTenants = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(tenants.find { it.id == selectedTenantId }?.name ?: "Sélectionner École")
+                        }
+                        DropdownMenu(expanded = expandedTenants, onDismissRequest = { expandedTenants = false }) {
+                            tenants.forEach { tenant ->
+                                DropdownMenuItem(
+                                    text = { Text(tenant.name) },
+                                    onClick = {
+                                        selectedTenantId = tenant.id
+                                        expandedTenants = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = invoiceNumber,
+                        onValueChange = { invoiceNumber = it },
+                        label = { Text("Numéro de Facture") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Montant (FCFA)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Method Selection
+                Box {
+                    OutlinedButton(
+                        onClick = { expandedMethods = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Méthode: $method")
+                    }
+                    DropdownMenu(expanded = expandedMethods, onDismissRequest = { expandedMethods = false }) {
+                        listOf("TRANSFER", "CASH", "CHECK", "CARD").forEach { m ->
+                            DropdownMenuItem(
+                                text = { Text(m) },
+                                onClick = {
+                                    method = m
+                                    expandedMethods = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes (Optionnel)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val amt = amount.toDoubleOrNull() ?: 0.0
+                onConfirm(selectedTenantId, amt, method, notes.takeIf { it.isNotBlank() }, invoiceNumber.takeIf { it.isNotBlank() })
+            }) {
+                Text(if (existingPayment != null) "Mettre à jour" else "Enregistrer")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler") }
+        }
+    )
 }
 
 @Composable

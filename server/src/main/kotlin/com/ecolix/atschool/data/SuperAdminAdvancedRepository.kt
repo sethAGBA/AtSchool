@@ -17,16 +17,42 @@ class SuperAdminAdvancedRepository {
         notes: String? = null
     ): Long = transaction {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val year = now.year
         
+        // Count payments for this year for the invoice number
+        val count = SubscriptionPayments.selectAll()
+            .where { SubscriptionPayments.createdAt.greaterEq(LocalDateTime(year, 1, 1, 0, 0)) }
+            .count()
+        
+        val autoInvoiceNumber = "INV-$year-${(count + 1).toString().padStart(4, '0')}"
+
         SubscriptionPayments.insert {
             it[SubscriptionPayments.tenantId] = tenantId
             it[SubscriptionPayments.amount] = amount
             it[SubscriptionPayments.paymentMethod] = paymentMethod
             it[SubscriptionPayments.paymentDate] = now
-            it[SubscriptionPayments.status] = "PAID"
+            it[SubscriptionPayments.status] = "PENDING"
+            it[SubscriptionPayments.invoiceNumber] = autoInvoiceNumber
             it[SubscriptionPayments.notes] = notes
             it[createdAt] = now
         }[SubscriptionPayments.id].value
+    }
+
+    fun updatePayment(
+        paymentId: Long,
+        amount: Double? = null,
+        paymentMethod: String? = null,
+        status: String? = null,
+        notes: String? = null,
+        invoiceNumber: String? = null
+    ) = transaction {
+        SubscriptionPayments.update({ SubscriptionPayments.id eq paymentId }) {
+            if (amount != null) it[SubscriptionPayments.amount] = amount
+            if (paymentMethod != null) it[SubscriptionPayments.paymentMethod] = paymentMethod
+            if (status != null) it[SubscriptionPayments.status] = status
+            if (notes != null) it[SubscriptionPayments.notes] = notes
+            if (invoiceNumber != null) it[SubscriptionPayments.invoiceNumber] = invoiceNumber
+        }
     }
 
     fun getPaymentHistory(tenantId: Int? = null): List<SubscriptionPaymentDto> = transaction {

@@ -156,7 +156,7 @@ class SuperAdminScreen : Screen {
                                     SuperAdminTab.ANNOUNCEMENTS -> AnnouncementsTabContent(currentState, screenModel)
                                     SuperAdminTab.LOGS -> LogsTabContent(currentState)
                                     SuperAdminTab.ANALYTICS -> AnalyticsTabContent(currentState.growthMetrics)
-                                    SuperAdminTab.BILLING -> BillingTabContent(currentState.payments)
+                                    SuperAdminTab.BILLING -> BillingTabContent(currentState.payments, currentState.tenants, screenModel)
                                     SuperAdminTab.SYSTEM -> SystemHealthContent()
                                     SuperAdminTab.SUPPORT -> SupportTabContent(currentState.tickets)
                                 }
