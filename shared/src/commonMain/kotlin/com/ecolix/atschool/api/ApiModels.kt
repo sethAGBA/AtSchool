@@ -116,3 +116,143 @@ data class UpdateTenantStatusRequest(
 data class ResetPasswordRequest(
     val newPassword: String
 )
+
+// Payment DTOs
+@Serializable
+data class SubscriptionPaymentDto(
+    val id: Long,
+    val tenantId: Int,
+    val tenantName: String,
+    val amount: Double,
+    val currency: String,
+    val paymentDate: String,
+    val paymentMethod: String,
+    val status: String,
+    val invoiceNumber: String?,
+    val notes: String?,
+    val createdAt: String
+)
+
+@Serializable
+data class CreatePaymentRequest(
+    val tenantId: Int,
+    val amount: Double,
+    val paymentMethod: String,
+    val notes: String? = null
+)
+
+@Serializable
+data class UpdatePaymentStatusRequest(
+    val status: String,
+    val invoiceNumber: String? = null
+)
+
+// Notification DTOs
+@Serializable
+data class NotificationDto(
+    val id: Long,
+    val tenantId: Int?,
+    val userId: Long?,
+    val title: String,
+    val message: String,
+    val type: String,
+    val priority: String,
+    val isRead: Boolean,
+    val createdAt: String,
+    val expiresAt: String?
+)
+
+@Serializable
+data class CreateNotificationRequest(
+    val tenantId: Int? = null,
+    val userId: Long? = null,
+    val title: String,
+    val message: String,
+    val type: String = "INFO",
+    val priority: String = "NORMAL",
+    val expiresAt: String? = null
+)
+
+// Support Ticket DTOs
+@Serializable
+data class SupportTicketDto(
+    val id: Long,
+    val tenantId: Int,
+    val tenantName: String,
+    val userId: Long,
+    val userEmail: String,
+    val subject: String,
+    val description: String,
+    val status: String,
+    val priority: String,
+    val createdAt: String,
+    val updatedAt: String,
+    val resolvedAt: String?,
+    val assignedTo: Long?
+)
+
+@Serializable
+data class CreateTicketRequest(
+    val subject: String,
+    val description: String,
+    val priority: String = "NORMAL"
+)
+
+@Serializable
+data class UpdateTicketRequest(
+    val status: String? = null,
+    val assignedTo: Long? = null
+)
+
+// Permission DTOs
+@Serializable
+data class AdminPermissionDto(
+    val id: Long,
+    val userId: Long,
+    val userEmail: String,
+    val permission: String,
+    val grantedAt: String,
+    val grantedBy: Long
+)
+
+@Serializable
+data class GrantPermissionRequest(
+    val userId: Long,
+    val permission: String
+)
+
+// Analytics DTOs
+@Serializable
+data class GrowthMetricsDto(
+    val startDate: String,
+    val endDate: String,
+    val newSchools: Int,
+    val newStudents: Int,
+    val totalRevenue: Double,
+    val dataPoints: List<GrowthDataPoint>
+)
+
+@Serializable
+data class GrowthDataPoint(
+    val date: String,
+    val schools: Int,
+    val students: Int,
+    val revenue: Double
+)
+
+@Serializable
+data class RevenueDataPoint(
+    val period: String,
+    val amount: Double,
+    val schoolCount: Int
+)
+
+@Serializable
+data class SchoolActivityDto(
+    val tenantId: Int,
+    val tenantName: String,
+    val lastLoginDate: String?,
+    val activeUsers: Int,
+    val totalStudents: Int,
+    val activityScore: Double // 0-100
+)

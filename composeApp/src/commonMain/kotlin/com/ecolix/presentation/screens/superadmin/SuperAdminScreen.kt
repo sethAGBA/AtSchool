@@ -51,24 +51,32 @@ class SuperAdminScreen : Screen {
                     title = {
                         Column {
                             Text("Administration Plateforme", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("Vue d'ensemble et gestion", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            Text("Vue d'ensemble et gestion", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     actions = {
-                        IconButton(onClick = { screenModel.refresh() }) {
+                        IconButton(onClick = { screenModel.refresh() }, colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
                             Icon(Icons.Default.Refresh, contentDescription = "Actualiser")
+                        }
+                        
+                        val themeState = com.ecolix.presentation.theme.LocalThemeIsDark.current
+                        IconButton(onClick = { themeState.value = !themeState.value }, colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
+                            Icon(
+                                if (themeState.value) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = "Changer Thème"
+                            )
                         }
                         IconButton(onClick = {
                             com.ecolix.atschool.api.TokenProvider.token = null
                             com.ecolix.atschool.api.TokenProvider.role = null
                             navigator.replace(LoginScreen())
-                        }) {
+                        }, colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
                             Icon(Icons.Default.Logout, contentDescription = "Déconnexion")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = BluePrimary
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.primary
                     )
                 )
             },
@@ -234,10 +242,10 @@ class SuperAdminScreen : Screen {
                         shape = RoundedCornerShape(12.dp),
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedBorderColor = BluePrimary,
-                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                         ),
                         singleLine = true
                     )
@@ -247,13 +255,13 @@ class SuperAdminScreen : Screen {
                     Button(
                         onClick = { /* Export implementation */ },
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray.copy(alpha = 0.1f)),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                         contentPadding = PaddingValues(horizontal = 16.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.DarkGray)
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(8.dp))
-                            Text("Exporter", color = Color.DarkGray)
+                            Text("Exporter", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -344,7 +352,7 @@ class SuperAdminScreen : Screen {
             modifier = Modifier.height(56.dp),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Row(
                 modifier = Modifier.padding(4.dp),
@@ -354,8 +362,8 @@ class SuperAdminScreen : Screen {
                 IconButton(
                     onClick = { onLayoutModeChange(SuperAdminLayoutMode.LIST) },
                     colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
-                        contentColor = if (isList) BluePrimary else Color.Gray
+                        containerColor = if (isList) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent,
+                        contentColor = if (isList) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 ) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Liste")
@@ -363,8 +371,8 @@ class SuperAdminScreen : Screen {
                 IconButton(
                     onClick = { onLayoutModeChange(SuperAdminLayoutMode.GRID) },
                     colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (!isList) BluePrimary.copy(alpha = 0.1f) else Color.Transparent,
-                        contentColor = if (!isList) BluePrimary else Color.Gray
+                        containerColor = if (!isList) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent,
+                        contentColor = if (!isList) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 ) {
                     Icon(Icons.Default.GridView, contentDescription = "Grille")
@@ -438,9 +446,9 @@ class SuperAdminScreen : Screen {
                         
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                              Column(modifier = Modifier.weight(1f)) {
-                                 Text("Abonnement", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                 Text("Abonnement", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                  val expiry = tenant.subscriptionExpiresAt ?: "Non défini"
-                                 Text(expiry, fontWeight = FontWeight.Bold, color = if (tenant.subscriptionExpiresAt == null) Color.Red else BluePrimary)
+                                 Text(expiry, fontWeight = FontWeight.Bold, color = if (tenant.subscriptionExpiresAt == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                              }
                              TextButton(onClick = { showSubscriptionDialog = true }) {
                                  Text("Modifier")
@@ -557,7 +565,7 @@ class SuperAdminScreen : Screen {
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = color)
-                Text(title, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -585,7 +593,7 @@ class SuperAdminScreen : Screen {
                             Text(
                                 text = tenant.code.take(2),
                                 fontWeight = FontWeight.Bold,
-                                color = if (tenant.isActive) BluePrimary else Color.Gray,
+                                color = if (tenant.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 18.sp
                             )
                         }
@@ -612,28 +620,28 @@ class SuperAdminScreen : Screen {
                     text = tenant.name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = if (tenant.isActive) Color.Unspecified else Color.Gray
+                    color = if (tenant.isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                    Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(6.dp))
-                    Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 tenant.contactEmail?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                        Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(6.dp))
-                        Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
@@ -642,13 +650,13 @@ class SuperAdminScreen : Screen {
                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Code École", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                        Text(tenant.code, fontWeight = FontWeight.Medium, color = BluePrimary)
+                        Text("Code École", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tenant.code, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
                     }
                     Text(
                         text = tenant.createdAt.take(10),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -676,24 +684,24 @@ class SuperAdminScreen : Screen {
                         Text(
                             text = tenant.code.take(2),
                             fontWeight = FontWeight.Bold,
-                            color = if (tenant.isActive) BluePrimary else Color.Gray,
+                            color = if (tenant.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 20.sp
                         )
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(tenant.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (tenant.isActive) Color.Unspecified else Color.Gray)
+                    Text(tenant.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (tenant.isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.Gray)
+                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(4.dp))
-                        Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Text(tenant.domain, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         
                         tenant.contactEmail?.let {
                             Spacer(Modifier.width(12.dp))
-                            Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.Gray)
+                            Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(4.dp))
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -713,7 +721,7 @@ class SuperAdminScreen : Screen {
                     }
                     Spacer(Modifier.height(4.dp))
                     tenant.subscriptionExpiresAt?.let {
-                        Text("Expire: $it", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text("Expire: $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.width(8.dp))
@@ -728,10 +736,10 @@ class SuperAdminScreen : Screen {
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             verticalAlignment = Alignment.Top
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(12.dp))
             Column {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             }
         }

@@ -35,7 +35,11 @@ object DatabaseFactory {
                 Notes,
                 Paiements,
                 AuditLogs,
-                Announcements
+                Announcements,
+                SubscriptionPayments,
+                Notifications,
+                SupportTickets,
+                AdminPermissions
             )
         }
     }

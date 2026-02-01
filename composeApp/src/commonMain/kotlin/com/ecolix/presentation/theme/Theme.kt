@@ -5,7 +5,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.MutableState
 
+val LocalThemeIsDark = compositionLocalOf { mutableStateOf(false) }
 private val LightColorScheme = lightColorScheme(
     primary = BluePrimary,
     secondary = OrangeSecondary,

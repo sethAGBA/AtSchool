@@ -123,6 +123,177 @@ fun Route.superAdminRoutes() {
                     totalRevenue = stats["totalRevenue"] as Double
                 ))
             }
+
+            // ==================== PAYMENT ROUTES ====================
+            val advancedRepo by inject<com.ecolix.atschool.data.SuperAdminAdvancedRepository>()
+
+            post("/payments") {
+                val request = call.receive<CreatePaymentRequest>()
+                val principal = call.principal<JWTPrincipal>()
+                val actor = principal?.payload?.getClaim("email")?.asString() ?: "Unknown"
+                
+                val paymentId = advancedRepo.recordPayment(
+                    tenantId = request.tenantId,
+                    amount = request.amount,
+                    paymentMethod = request.paymentMethod,
+                    notes = request.notes
+                )
+                
+                superAdminRepository.auditLog(actor, "RECORD_PAYMENT", "Payment recorded for tenant ${request.tenantId}: ${request.amount} EUR", request.tenantId)
+                call.respond(HttpStatusCode.Created, mapOf("id" to paymentId))
+            }
+
+            get("/payments") {
+                val tenantId = call.request.queryParameters["tenantId"]?.toIntOrNull()
+                val payments = advancedRepo.getPaymentHistory(tenantId)
+                call.respond(payments)
+            }
+
+            patch("/payments/{id}") {
+                val paymentId = call.parameters["id"]?.toLongOrNull() 
+                    ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid payment ID")
+                val request = call.receive<UpdatePaymentStatusRequest>()
+                
+                advancedRepo.updatePaymentStatus(paymentId, request.status, request.invoiceNumber)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            get("/subscriptions/expiring") {
+                val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 30
+                val expiring = advancedRepo.getExpiringSubscriptions(days)
+                call.respond(expiring)
+            }
+
+            // ==================== NOTIFICATION ROUTES ====================
+
+            post("/notifications") {
+                val request = call.receive<CreateNotificationRequest>()
+                val principal = call.principal<JWTPrincipal>()
+                val actor = principal?.payload?.getClaim("email")?.asString() ?: "Unknown"
+                
+                val notifId = advancedRepo.createNotification(
+                    tenantId = request.tenantId,
+                    userId = request.userId,
+                    title = request.title,
+                    message = request.message,
+                    type = request.type,
+                    priority = request.priority,
+                    expiresAt = request.expiresAt
+                )
+                
+                superAdminRepository.auditLog(actor, "CREATE_NOTIFICATION", "Notification sent: ${request.title}")
+                call.respond(HttpStatusCode.Created, mapOf("id" to notifId))
+            }
+
+            get("/notifications") {
+                val tenantId = call.request.queryParameters["tenantId"]?.toIntOrNull()
+                val userId = call.request.queryParameters["userId"]?.toLongOrNull()
+                val unreadOnly = call.request.queryParameters["unreadOnly"]?.toBoolean() ?: false
+                
+                val notifications = advancedRepo.getNotifications(tenantId, userId, unreadOnly)
+                call.respond(notifications)
+            }
+
+            patch("/notifications/{id}/read") {
+                val notifId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid notification ID")
+                
+                advancedRepo.markNotificationAsRead(notifId)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            // ==================== SUPPORT TICKET ROUTES ====================
+
+            post("/tickets") {
+                val request = call.receive<CreateTicketRequest>()
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.payload?.getClaim("userId")?.asLong() ?: 0L
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: 0
+                
+                val ticketId = advancedRepo.createTicket(
+                    tenantId = tenantId,
+                    userId = userId,
+                    subject = request.subject,
+                    description = request.description,
+                    priority = request.priority
+                )
+                
+                call.respond(HttpStatusCode.Created, mapOf("id" to ticketId))
+            }
+
+            get("/tickets") {
+                val status = call.request.queryParameters["status"]
+                val tenantId = call.request.queryParameters["tenantId"]?.toIntOrNull()
+                
+                val tickets = advancedRepo.listTickets(status, tenantId)
+                call.respond(tickets)
+            }
+
+            patch("/tickets/{id}") {
+                val ticketId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid ticket ID")
+                val request = call.receive<UpdateTicketRequest>()
+                val principal = call.principal<JWTPrincipal>()
+                val actor = principal?.payload?.getClaim("email")?.asString() ?: "Unknown"
+                
+                advancedRepo.updateTicket(ticketId, request.status, request.assignedTo)
+                superAdminRepository.auditLog(actor, "UPDATE_TICKET", "Ticket #$ticketId updated")
+                call.respond(HttpStatusCode.OK)
+            }
+
+            // ==================== PERMISSION ROUTES ====================
+
+            get("/admins/permissions") {
+                val permissions = advancedRepo.listAdminPermissions()
+                call.respond(permissions)
+            }
+
+            post("/admins/{userId}/permissions") {
+                val userId = call.parameters["userId"]?.toLongOrNull()
+                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
+                val request = call.receive<GrantPermissionRequest>()
+                val principal = call.principal<JWTPrincipal>()
+                val grantedBy = principal?.payload?.getClaim("userId")?.asLong() ?: 0L
+                val actor = principal?.payload?.getClaim("email")?.asString() ?: "Unknown"
+                
+                advancedRepo.grantPermission(request.userId, request.permission, grantedBy)
+                superAdminRepository.auditLog(actor, "GRANT_PERMISSION", "Granted ${request.permission} to user ${request.userId}")
+                call.respond(HttpStatusCode.Created)
+            }
+
+            delete("/admins/{userId}/permissions/{permission}") {
+                val userId = call.parameters["userId"]?.toLongOrNull()
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
+                val permission = call.parameters["permission"]
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid permission")
+                val principal = call.principal<JWTPrincipal>()
+                val actor = principal?.payload?.getClaim("email")?.asString() ?: "Unknown"
+                
+                advancedRepo.revokePermission(userId, permission)
+                superAdminRepository.auditLog(actor, "REVOKE_PERMISSION", "Revoked $permission from user $userId")
+                call.respond(HttpStatusCode.OK)
+            }
+
+            // ==================== ANALYTICS ROUTES ====================
+
+            get("/analytics/growth") {
+                val start = call.request.queryParameters["start"] ?: "2026-01-01"
+                val end = call.request.queryParameters["end"] ?: "2026-12-31"
+                
+                val metrics = advancedRepo.getGrowthMetrics(start, end)
+                call.respond(metrics)
+            }
+
+            get("/analytics/revenue") {
+                val period = call.request.queryParameters["period"] ?: "monthly"
+                val revenue = advancedRepo.getRevenueByPeriod(period)
+                call.respond(revenue)
+            }
+
+            get("/analytics/activity") {
+                val activity = advancedRepo.getSchoolActivityRate()
+                call.respond(activity)
+            }
         }
     }
 }

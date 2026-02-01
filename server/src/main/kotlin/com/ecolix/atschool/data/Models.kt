@@ -126,6 +126,50 @@ object Paiements : LongIdTable("paiements") {
     val modePaiement = varchar("mode_paiement", 50) // ESPECES, CHEQUE, TRANSFERT
 }
 
+object SubscriptionPayments : LongIdTable("subscription_payments") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val amount = double("amount")
+    val currency = varchar("currency", 3).default("EUR")
+    val paymentDate = datetime("payment_date")
+    val paymentMethod = varchar("payment_method", 50) // CARD, TRANSFER, CASH, CHECK
+    val status = varchar("status", 20).default("PENDING") // PENDING, PAID, FAILED, REFUNDED
+    val invoiceNumber = varchar("invoice_number", 50).nullable()
+    val notes = text("notes").nullable()
+    val createdAt = datetime("created_at")
+}
+
+object Notifications : LongIdTable("notifications") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE).nullable()
+    val userId = reference("user_id", Users, onDelete = ReferenceOption.CASCADE).nullable()
+    val title = varchar("title", 200)
+    val message = text("message")
+    val type = varchar("type", 50).default("INFO") // INFO, WARNING, ALERT, SUBSCRIPTION_EXPIRY
+    val priority = varchar("priority", 20).default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+    val isRead = bool("is_read").default(false)
+    val createdAt = datetime("created_at")
+    val expiresAt = datetime("expires_at").nullable()
+}
+
+object SupportTickets : LongIdTable("support_tickets") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val userId = reference("user_id", Users, onDelete = ReferenceOption.CASCADE)
+    val subject = varchar("subject", 200)
+    val description = text("description")
+    val status = varchar("status", 20).default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+    val priority = varchar("priority", 20).default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+    val createdAt = datetime("created_at")
+    val updatedAt = datetime("updated_at")
+    val resolvedAt = datetime("resolved_at").nullable()
+    val assignedTo = reference("assigned_to", Users, onDelete = ReferenceOption.SET_NULL).nullable()
+}
+
+object AdminPermissions : LongIdTable("admin_permissions") {
+    val userId = reference("user_id", Users, onDelete = ReferenceOption.CASCADE)
+    val permission = varchar("permission", 100)
+    val grantedAt = datetime("granted_at")
+    val grantedBy = reference("granted_by", Users, onDelete = ReferenceOption.CASCADE)
+}
+
 @Serializable
 data class GlobalStatsResponse(
     val totalSchools: Int,
