@@ -2,6 +2,7 @@ package com.ecolix
 
 import androidx.compose.runtime.Composable
 import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.navigator.CurrentScreen
 import com.ecolix.presentation.screens.auth.LoginScreen
 import com.ecolix.presentation.theme.EcolixTheme
 
@@ -23,7 +24,14 @@ fun App() {
 
     CompositionLocalProvider(LocalThemeIsDark provides isDarkState) {
         EcolixTheme(darkTheme = isDarkState.value) {
-            Navigator(LoginScreen())
+            Navigator(LoginScreen()) { navigator ->
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    com.ecolix.atschool.api.AuthEvents.unauthorizedEvents.collect {
+                        navigator.replaceAll(LoginScreen())
+                    }
+                }
+                CurrentScreen()
+            }
         }
     }
 }

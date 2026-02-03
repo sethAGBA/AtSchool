@@ -8,6 +8,7 @@ import com.ecolix.atschool.api.dashboardRoutes
 import com.ecolix.atschool.api.superAdminRoutes
 import com.ecolix.atschool.api.structureRoutes
 import com.ecolix.atschool.api.academicRoutes
+import com.ecolix.atschool.api.settingsRoutes
 import com.ecolix.atschool.data.DatabaseFactory
 import com.ecolix.atschool.di.appModule
 import io.ktor.serialization.kotlinx.json.*
@@ -103,5 +104,6 @@ fun Application.module() {
         structureRoutes()
         academicRoutes()
         superAdminRoutes()
+        settingsRoutes()
     }
 }

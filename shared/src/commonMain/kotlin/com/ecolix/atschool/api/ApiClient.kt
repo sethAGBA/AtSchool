@@ -61,6 +61,14 @@ fun createHttpClient(): HttpClient {
             logger = Logger.DEFAULT
             level = LogLevel.ALL
         }
+
+        HttpResponseValidator {
+            validateResponse { response ->
+                if (response.status.value == 401) {
+                    AuthEvents.onUnauthorized()
+                }
+            }
+        }
         
         /*
         install(Auth) {

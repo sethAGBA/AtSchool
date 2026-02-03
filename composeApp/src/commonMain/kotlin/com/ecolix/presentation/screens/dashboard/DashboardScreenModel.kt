@@ -18,29 +18,32 @@ class DashboardScreenModel(private val dashboardApiService: DashboardApiService)
 
     fun refreshStats() {
         screenModelScope.launch {
-            dashboardApiService.getStats().onSuccess { response ->
-                mutableState.update { state ->
-                    state.copy(
-                        stats = listOf(
-                            StatCardData("Total Eleves", response.totalStudents.toString(), Icons.Filled.School, Color(0xFF3B82F6), ""),
-                            StatCardData("Personnel", response.totalStaff.toString(), Icons.Filled.Groups, Color(0xFF10B981), ""),
-                            StatCardData("Classes", response.totalClasses.toString(), Icons.Filled.School, Color(0xFFF59E0B), ""),
-                            StatCardData("Revenus", "${response.totalRevenue} FCFA", Icons.Filled.Payments, Color(0xFFEF4444), "")
-                        ),
-                        activities = response.recentActivities.map { dto ->
-                            ActivityData(
-                                title = dto.title,
-                                subtitle = dto.subtitle,
-                                time = dto.time,
-                                icon = if (dto.type == "PAYMENT") Icons.Filled.Payments else Icons.Filled.School,
-                                color = if (dto.type == "PAYMENT") Color(0xFF3B82F6) else Color(0xFF10B981)
-                            )
-                        }
-                    )
+            dashboardApiService.getStats()
+                .onSuccess { response ->
+                    mutableState.update { state ->
+                        state.copy(
+                            stats = listOf(
+                                StatCardData("Total Eleves", response.totalStudents.toString(), Icons.Filled.School, Color(0xFF3B82F6), ""),
+                                StatCardData("Personnel", response.totalStaff.toString(), Icons.Filled.Groups, Color(0xFF10B981), ""),
+                                StatCardData("Classes", response.totalClasses.toString(), Icons.Filled.School, Color(0xFFF59E0B), ""),
+                                StatCardData("Revenus", "${response.totalRevenue} FCFA", Icons.Filled.Payments, Color(0xFFEF4444), "")
+                            ),
+                            activities = response.recentActivities.map { dto ->
+                                ActivityData(
+                                    title = dto.title,
+                                    subtitle = dto.subtitle,
+                                    time = dto.time,
+                                    icon = if (dto.type == "PAYMENT") Icons.Filled.Payments else Icons.Filled.School,
+                                    color = if (dto.type == "PAYMENT") Color(0xFF3B82F6) else Color(0xFF10B981)
+                                )
+                            }
+                        )
+                    }
                 }
-            }.onFailure {
-                it.printStackTrace()
-            }
+                .onFailure { e ->
+                    println("Dashboard stats load failed: ${e.message}")
+                    // Keep sample data or show error state if needed
+                }
         }
     }
 

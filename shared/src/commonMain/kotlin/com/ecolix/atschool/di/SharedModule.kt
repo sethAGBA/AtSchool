@@ -9,4 +9,5 @@ val sharedModule = module {
     single { StudentApiService(get()) }
     single { DashboardApiService(get()) }
     single { SuperAdminApiService(get()) }
+    single { SettingsApiService(get()) }
 }

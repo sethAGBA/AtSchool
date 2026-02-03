@@ -46,6 +46,60 @@ object Establishments : IntIdTable("establishments") {
     val ville = varchar("ville", 100).nullable()
 }
 
+object EstablishmentSettings : IntIdTable("establishment_settings") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE).uniqueIndex()
+    
+    // Identité
+    val schoolName = varchar("school_name", 200)
+    val schoolCode = varchar("school_code", 50)
+    val schoolSlogan = text("school_slogan").nullable()
+    val schoolLevel = varchar("school_level", 50).default("Primaire")
+    val logoUrl = text("logo_url").nullable()
+    val republicLogoUrl = text("republic_logo_url").nullable()
+    
+    // Tutelle
+    val ministry = text("ministry").nullable()
+    val republicName = varchar("republic_name", 100).nullable()
+    val republicMotto = varchar("republic_motto", 200).nullable()
+    val educationDirection = text("education_direction").nullable()
+    val inspection = text("inspection").nullable()
+    
+    // Direction
+    val genCivility = varchar("gen_civility", 10).default("M.")
+    val genDirector = varchar("gen_director", 100).nullable()
+    val matCivility = varchar("mat_civility", 10).default("Mme")
+    val matDirector = varchar("mat_director", 100).nullable()
+    val priCivility = varchar("pri_civility", 10).default("M.")
+    val priDirector = varchar("pri_director", 100).nullable()
+    val colCivility = varchar("col_civility", 10).default("M.")
+    val colDirector = varchar("col_director", 100).nullable()
+    val lycCivility = varchar("lyc_civility", 10).default("M.")
+    val lycDirector = varchar("lyc_director", 100).nullable()
+    val uniCivility = varchar("uni_civility", 10).default("Pr")
+    val uniDirector = varchar("uni_director", 100).nullable()
+    val supCivility = varchar("sup_civility", 10).default("Dr")
+    val supDirector = varchar("sup_director", 100).nullable()
+    
+    // Contact
+    val phone = varchar("phone", 50).nullable()
+    val email = varchar("email", 100).nullable()
+    val website = varchar("website", 100).nullable()
+    val bp = varchar("bp", 100).nullable()
+    val address = text("address").nullable()
+    
+    // Configuration
+    val pdfFooter = text("pdf_footer").nullable()
+    val useTrimesters = bool("use_trimesters").default(true)
+    val useSemesters = bool("use_semesters").default(false)
+    
+    // Système
+    val autoBackup = bool("auto_backup").default(true)
+    val backupFrequency = varchar("backup_frequency", 20).default("Quotidienne")
+    val retentionDays = integer("retention_days").default(30)
+    
+    val updatedAt = datetime("updated_at")
+}
+
 object Users : LongIdTable("users") {
     val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
     val email = varchar("email", 255).uniqueIndex()

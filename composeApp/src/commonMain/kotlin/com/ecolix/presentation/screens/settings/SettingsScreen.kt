@@ -26,70 +26,25 @@ import com.ecolix.data.models.DashboardColors
 import com.ecolix.presentation.components.CardContainer
 
 @Composable
-fun SettingsScreenContent(isDarkMode: Boolean) {
+fun SettingsScreenContent(
+    isDarkMode: Boolean
+) {
+    val screenModel: SettingsScreenModel = org.koin.compose.koinInject()
     val colors = if (isDarkMode) DashboardColors.dark() else DashboardColors.light()
-    SettingsScreen(colors = colors)
+    val state by screenModel.state.collectAsState()
+    SettingsScreen(colors = colors, state = state, screenModel = screenModel)
 }
 
 @Composable
 fun SettingsScreen(
-    colors: DashboardColors
+    colors: DashboardColors,
+    state: SettingsUiState,
+    screenModel: SettingsScreenModel
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("L'École", "Académique", "Données & Système", "Préférences")
-
-    // State for School Settings
-    var schoolName by remember { mutableStateOf("Groupe Scolaire Ecolix") }
-    var schoolCode by remember { mutableStateOf("GS-001") }
-    var schoolSlogan by remember { mutableStateOf("L'excellence au service de l'avenir") }
-    var schoolLevel by remember { mutableStateOf("Primaire") }
-    var ministry by remember { mutableStateOf("Ministère de l'Enseignement Primaire, Secondaire et Technique") }
-    var republicName by remember { mutableStateOf("RÉPUBLIQUE TOGOLAISE") }
-    var republicMotto by remember { mutableStateOf("Travail - Liberté - Patrie") }
-    var inspection by remember { mutableStateOf("IEPP Lomé-Centre") }
-    var educationDirection by remember { mutableStateOf("Direction Régionale de l'Éducation Maritime") }
     
-    // Contact Info
-    var phone by remember { mutableStateOf("+228 90 00 00 00") }
-    var email by remember { mutableStateOf("contact@ecolix-togo.com") }
-    var website by remember { mutableStateOf("www.ecolix-togo.com") }
-    var bp by remember { mutableStateOf("BP 1234 Lomé") }
-    var address by remember { mutableStateOf("Lomé, Quartier Administratif") }
-    var pdfFooter by remember { mutableStateOf("Bulletin de notes officiel - Système Généré par ÉcoliX") }
-
-    // Directors & Civilities
-    var genCivility by remember { mutableStateOf("M.") }
-    var genDirector by remember { mutableStateOf("Seth Kouamé") }
-
-    var matCivility by remember { mutableStateOf("Mme") }
-    var matDirector by remember { mutableStateOf("") }
-    
-    var priCivility by remember { mutableStateOf("M.") }
-    var priDirector by remember { mutableStateOf("") }
-    
-    var colCivility by remember { mutableStateOf("M.") }
-    var colDirector by remember { mutableStateOf("") }
-    
-    var lycCivility by remember { mutableStateOf("M.") }
-    var lycDirector by remember { mutableStateOf("") }
-    
-    var uniCivility by remember { mutableStateOf("Pr") }
-    var uniDirector by remember { mutableStateOf("") }
-    
-    var supCivility by remember { mutableStateOf("Dr") }
-    var supDirector by remember { mutableStateOf("") }
-
-    // Academic Settings
-    var academicYear by remember { mutableStateOf("2024-2025") }
-    var useTrimesters by remember { mutableStateOf(true) }
-    var useSemesters by remember { mutableStateOf(false) }
-
-    // Data & System Settings
-    var autoBackup by remember { mutableStateOf(true) }
-    var backupFrequency by remember { mutableStateOf("Quotidienne") }
-    var retentionDays by remember { mutableStateOf(30f) }
-    
-    // User Preferences & Profile
+    // User Preferences (not in settings API yet)
     var userDisplayName by remember { mutableStateOf("Seth Kouamé") }
     var userRole by remember { mutableStateOf("Administrateur") }
     var userAvatar by remember { mutableStateOf<String?>(null) }
@@ -98,6 +53,7 @@ fun SettingsScreen(
     var realTimeNotifications by remember { mutableStateOf(true) }
     var selectedLanguage by remember { mutableStateOf("Français") }
     var is2FAEnabled by remember { mutableStateOf(false) }
+    var academicYear by remember { mutableStateOf(state.academicYear) }
 
     // Dialog States
     var showNewYearDialog by remember { mutableStateOf(false) }
@@ -179,51 +135,53 @@ fun SettingsScreen(
                 when (targetTab) {
                     0 -> SchoolSettingsTab(
                         colors = colors,
-                        schoolName = schoolName, onSchoolNameChange = { schoolName = it },
-                        schoolCode = schoolCode, onSchoolCodeChange = { schoolCode = it },
-                        schoolSlogan = schoolSlogan, onSchoolSloganChange = { schoolSlogan = it },
-                        schoolLevel = schoolLevel, onSchoolLevelChange = { schoolLevel = it },
-                        ministry = ministry, onMinistryChange = { ministry = it },
-                        republicName = republicName, onRepublicNameChange = { republicName = it },
-                        republicMotto = republicMotto, onRepublicMottoChange = { republicMotto = it },
-                        inspection = inspection, onInspectionChange = { inspection = it },
-                        educationDirection = educationDirection, onEducationDirectionChange = { educationDirection = it },
-                        phone = phone, onPhoneChange = { phone = it },
-                        email = email, onEmailChange = { email = it },
-                        website = website, onWebsiteChange = { website = it },
-                        bp = bp, onBpChange = { bp = it },
-                        address = address, onAddressChange = { address = it },
-                        pdfFooter = pdfFooter, onPdfFooterChange = { pdfFooter = it },
-                        genCivility = genCivility, onGenCivilityChange = { genCivility = it },
-                        genDirector = genDirector, onGenDirectorChange = { genDirector = it },
-                        matCivility = matCivility, onMatCivilityChange = { matCivility = it },
-                        matDirector = matDirector, onMatDirectorChange = { matDirector = it },
-                        priCivility = priCivility, onPriCivilityChange = { priCivility = it },
-                        priDirector = priDirector, onPriDirectorChange = { priDirector = it },
-                        colCivility = colCivility, onColCivilityChange = { colCivility = it },
-                        colDirector = colDirector, onColDirectorChange = { colDirector = it },
-                        lycCivility = lycCivility, onLycCivilityChange = { lycCivility = it },
-                        lycDirector = lycDirector, onLycDirectorChange = { lycDirector = it },
-                        uniCivility = uniCivility, onUniCivilityChange = { uniCivility = it },
-                        uniDirector = uniDirector, onUniDirectorChange = { uniDirector = it },
-                        supCivility = supCivility, onSupCivilityChange = { supCivility = it },
-                        supDirector = supDirector, onSupDirectorChange = { supDirector = it }
+                        state = state,
+                        onSave = { screenModel.saveSettings() },
+                        schoolName = state.schoolName, onSchoolNameChange = screenModel::updateSchoolName,
+                        schoolCode = state.schoolCode, onSchoolCodeChange = screenModel::updateSchoolCode,
+                        schoolSlogan = state.schoolSlogan, onSchoolSloganChange = screenModel::updateSchoolSlogan,
+                        schoolLevel = state.schoolLevel, onSchoolLevelChange = screenModel::updateSchoolLevel,
+                        ministry = state.ministry, onMinistryChange = screenModel::updateMinistry,
+                        republicName = state.republicName, onRepublicNameChange = screenModel::updateRepublicName,
+                        republicMotto = state.republicMotto, onRepublicMottoChange = screenModel::updateRepublicMotto,
+                        inspection = state.inspection, onInspectionChange = screenModel::updateInspection,
+                        educationDirection = state.educationDirection, onEducationDirectionChange = screenModel::updateEducationDirection,
+                        phone = state.phone, onPhoneChange = screenModel::updatePhone,
+                        email = state.email, onEmailChange = screenModel::updateEmail,
+                        website = state.website, onWebsiteChange = screenModel::updateWebsite,
+                        bp = state.bp, onBpChange = screenModel::updateBp,
+                        address = state.address, onAddressChange = screenModel::updateAddress,
+                        pdfFooter = state.pdfFooter, onPdfFooterChange = screenModel::updatePdfFooter,
+                        genCivility = state.genCivility, onGenCivilityChange = screenModel::updateGenCivility,
+                        genDirector = state.genDirector, onGenDirectorChange = screenModel::updateGenDirector,
+                        matCivility = state.matCivility, onMatCivilityChange = screenModel::updateMatCivility,
+                        matDirector = state.matDirector, onMatDirectorChange = screenModel::updateMatDirector,
+                        priCivility = state.priCivility, onPriCivilityChange = screenModel::updatePriCivility,
+                        priDirector = state.priDirector, onPriDirectorChange = screenModel::updatePriDirector,
+                        colCivility = state.colCivility, onColCivilityChange = screenModel::updateColCivility,
+                        colDirector = state.colDirector, onColDirectorChange = screenModel::updateColDirector,
+                        lycCivility = state.lycCivility, onLycCivilityChange = screenModel::updateLycCivility,
+                        lycDirector = state.lycDirector, onLycDirectorChange = screenModel::updateLycDirector,
+                        uniCivility = state.uniCivility, onUniCivilityChange = screenModel::updateUniCivility,
+                        uniDirector = state.uniDirector, onUniDirectorChange = screenModel::updateUniDirector,
+                        supCivility = state.supCivility, onSupCivilityChange = screenModel::updateSupCivility,
+                        supDirector = state.supDirector, onSupDirectorChange = screenModel::updateSupDirector
                     )
                     1 -> AcademicSettingsTab(
                         colors = colors,
-                        academicYear = academicYear,
-                        useTrimesters = useTrimesters,
-                        onTrimestersChange = { useTrimesters = it },
-                        useSemesters = useSemesters,
-                        onSemestersChange = { useSemesters = it },
+                        academicYear = state.academicYear,
+                        useTrimesters = state.useTrimesters,
+                        onTrimestersChange = screenModel::updateUseTrimesters,
+                        useSemesters = state.useSemesters,
+                        onSemestersChange = screenModel::updateUseSemesters,
                         onAddYearClick = { showNewYearDialog = true },
                         onArchiveClick = { showArchiveDialog = true }
                     )
                     2 -> SystemSettingsTab(
                         colors = colors,
-                        autoBackup = autoBackup, onAutoBackupChange = { autoBackup = it },
-                        backupFrequency = backupFrequency, onBackupFrequencyChange = { backupFrequency = it },
-                        retentionDays = retentionDays, onRetentionDaysChange = { retentionDays = it }
+                        autoBackup = state.autoBackup, onAutoBackupChange = screenModel::updateAutoBackup,
+                        backupFrequency = state.backupFrequency, onBackupFrequencyChange = screenModel::updateBackupFrequency,
+                        retentionDays = state.retentionDays, onRetentionDaysChange = screenModel::updateRetentionDays
                     )
                     3 -> PreferencesSettingsTab(
                         colors = colors,
@@ -283,6 +241,8 @@ private fun CustomSettingsField(
 @Composable
 private fun SchoolSettingsTab(
     colors: DashboardColors,
+    state: SettingsUiState,
+    onSave: () -> Unit,
     schoolName: String, onSchoolNameChange: (String) -> Unit,
     schoolCode: String, onSchoolCodeChange: (String) -> Unit,
     schoolSlogan: String, onSchoolSloganChange: (String) -> Unit,
@@ -574,17 +534,62 @@ private fun SchoolSettingsTab(
         
         item {
             Button(
-                onClick = {},
+                onClick = onSave,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
+                enabled = !state.isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White
                 )
             ) {
-                Icon(Icons.Default.Save, null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Sauvegarder les informations")
+                if (state.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sauvegarde en cours...")
+                } else {
+                    Icon(Icons.Default.Save, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sauvegarder les informations")
+                }
+            }
+            
+            // Success message
+            if (state.saveSuccess) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF10B981).copy(alpha = 0.1f))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF10B981))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Paramètres sauvegardés avec succès !", color = Color(0xFF10B981))
+                }
+            }
+            
+            // Error message
+            state.error?.let { error ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFEF4444).copy(alpha = 0.1f))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Error, null, tint = Color(0xFFEF4444))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Erreur : $error", color = Color(0xFFEF4444))
+                }
             }
         }
     }

@@ -275,3 +275,60 @@ data class SchoolActivityDto(
     val totalStudents: Int,
     val activityScore: Double // 0-100
 )
+
+// Establishment Settings DTOs
+@Serializable
+data class EstablishmentSettingsDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    
+    // Identité
+    val schoolName: String,
+    val schoolCode: String,
+    val schoolSlogan: String? = null,
+    val schoolLevel: String = "Primaire",
+    val logoUrl: String? = null,
+    val republicLogoUrl: String? = null,
+    
+    // Tutelle
+    val ministry: String? = null,
+    val republicName: String? = null,
+    val republicMotto: String? = null,
+    val educationDirection: String? = null,
+    val inspection: String? = null,
+    
+    // Direction
+    val genCivility: String = "M.",
+    val genDirector: String? = null,
+    val matCivility: String = "Mme",
+    val matDirector: String? = null,
+    val priCivility: String = "M.",
+    val priDirector: String? = null,
+    val colCivility: String = "M.",
+    val colDirector: String? = null,
+    val lycCivility: String = "M.",
+    val lycDirector: String? = null,
+    val uniCivility: String = "Pr",
+    val uniDirector: String? = null,
+    val supCivility: String = "Dr",
+    val supDirector: String? = null,
+    
+    // Contact
+    val phone: String? = null,
+    val email: String? = null,
+    val website: String? = null,
+    val bp: String? = null,
+    val address: String? = null,
+    
+    // Configuration
+    val pdfFooter: String? = null,
+    val useTrimesters: Boolean = true,
+    val useSemesters: Boolean = false,
+    
+    // Système
+    val autoBackup: Boolean = true,
+    val backupFrequency: String = "Quotidienne",
+    val retentionDays: Int = 30,
+    
+    val updatedAt: String? = null
+)

@@ -23,6 +23,7 @@ object DatabaseFactory {
             SchemaUtils.createMissingTablesAndColumns(
                 Tenants,
                 Establishments,
+                EstablishmentSettings,
                 Users,
                 AnneesScolaires,
                 Cycles,

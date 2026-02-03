@@ -96,6 +96,37 @@ object DataSeeder {
                     it[sexe] = "M"
                 }
 
+                // 4. Create Default Establishment Settings
+                if (EstablishmentSettings.selectAll().where { EstablishmentSettings.tenantId eq tenantId }.count() == 0L) {
+                    EstablishmentSettings.insert {
+                        it[EstablishmentSettings.tenantId] = tenantId
+                        it[schoolName] = "Groupe Scolaire Ecolix"
+                        it[schoolCode] = "GS-001"
+                        it[schoolSlogan] = "L'excellence au service de l'avenir"
+                        it[schoolLevel] = "Primaire"
+                        it[ministry] = "Ministère de l'Enseignement Primaire, Secondaire et Technique"
+                        it[republicName] = "RÉPUBLIQUE TOGOLAISE"
+                        it[republicMotto] = "Travail - Liberté - Patrie"
+                        it[inspection] = "IEPP Lomé-Centre"
+                        it[educationDirection] = "Direction Régionale de l'Éducation Maritime"
+                        it[genCivility] = "M."
+                        it[genDirector] = "Seth Kouamé"
+                        it[phone] = "+228 90 00 00 00"
+                        it[email] = "contact@ecolix-togo.com"
+                        it[website] = "www.ecolix-togo.com"
+                        it[bp] = "BP 1234 Lomé"
+                        it[address] = "Lomé, Quartier Administratif"
+                        it[pdfFooter] = "Bulletin de notes officiel - Système Généré par ÉcoliX"
+                        it[useTrimesters] = true
+                        it[useSemesters] = false
+                        it[autoBackup] = true
+                        it[backupFrequency] = "Quotidienne"
+                        it[retentionDays] = 30
+                        it[updatedAt] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                    }
+                    logger.info("Created Default Establishment Settings")
+                }
+
                 // 5. Audit Log
                 AuditLogs.insert {
                     it[AuditLogs.actorEmail] = adminEmail
