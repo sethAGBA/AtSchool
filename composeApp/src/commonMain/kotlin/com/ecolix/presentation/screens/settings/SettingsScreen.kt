@@ -24,6 +24,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ecolix.data.models.DashboardColors
 import com.ecolix.presentation.components.CardContainer
+import io.kamel.image.KamelImage
+import io.kamel.image.asyncPainterResource
+import com.ecolix.utils.rememberImageBitmap
+import androidx.compose.foundation.Image
 
 @Composable
 fun SettingsScreenContent(
@@ -165,7 +169,9 @@ fun SettingsScreen(
                         uniCivility = state.uniCivility, onUniCivilityChange = screenModel::updateUniCivility,
                         uniDirector = state.uniDirector, onUniDirectorChange = screenModel::updateUniDirector,
                         supCivility = state.supCivility, onSupCivilityChange = screenModel::updateSupCivility,
-                        supDirector = state.supDirector, onSupDirectorChange = screenModel::updateSupDirector
+                        supDirector = state.supDirector, onSupDirectorChange = screenModel::updateSupDirector,
+                        onLogoClick = { screenModel.pickAndUploadLogo(false) },
+                        onRepublicLogoClick = { screenModel.pickAndUploadLogo(true) }
                     )
                     1 -> AcademicSettingsTab(
                         colors = colors,
@@ -271,7 +277,9 @@ private fun SchoolSettingsTab(
     uniCivility: String, onUniCivilityChange: (String) -> Unit,
     uniDirector: String, onUniDirectorChange: (String) -> Unit,
     supCivility: String, onSupCivilityChange: (String) -> Unit,
-    supDirector: String, onSupDirectorChange: (String) -> Unit
+    supDirector: String, onSupDirectorChange: (String) -> Unit,
+    onLogoClick: () -> Unit,
+    onRepublicLogoClick: () -> Unit
 ) {
     val levels = listOf("Maternelle", "Primaire", "Collège", "Lycée", "Université", "Enseignement Supérieur", "Complexe Scolaire")
     var showLevelMenu by remember { mutableStateOf(false) }
@@ -287,6 +295,8 @@ private fun SchoolSettingsTab(
                     Text("Identité de l'Établissement", fontWeight = FontWeight.Bold, color = colors.textPrimary)
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        val localBitmap = rememberImageBitmap(state.localLogoBytes)
+                        
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
@@ -298,23 +308,51 @@ private fun SchoolSettingsTab(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(44.dp), tint = Color.White)
+                            if (localBitmap != null) {
+                                Image(
+                                    bitmap = localBitmap,
+                                    contentDescription = "Logo (preview)",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            } else if (state.logoUrl != null) {
+                                val baseUrl = com.ecolix.atschool.Constants.getBaseUrl().removeSuffix("/")
+                                val relativeUrl = if (state.logoUrl.startsWith("/")) state.logoUrl else "/${state.logoUrl}"
+                                val fullUrl = if (state.logoUrl.startsWith("http")) state.logoUrl else "$baseUrl$relativeUrl"
+                                
+                                KamelImage(
+                                    resource = asyncPainterResource(fullUrl),
+                                    contentDescription = "Logo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    onLoading = { CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) },
+                                    onFailure = { Icon(Icons.Default.School, null, modifier = Modifier.size(44.dp), tint = Color.White) }
+                                )
+                            } else {
+                                Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(44.dp), tint = Color.White)
+                            }
                         }
                         Spacer(modifier = Modifier.width(20.dp))
                         Button(
-                            onClick = {},
+                            onClick = onLogoClick,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = colors.textLink,
                                 contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text("Changer Logo", fontSize = 12.sp)
+                            if (state.isUploading) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                            } else {
+                                Text("Changer Logo", fontSize = 12.sp)
+                            }
                         }
                     }
 
                     Text("Armoiries / Logo de la République", fontWeight = FontWeight.Bold, color = colors.textPrimary, style = MaterialTheme.typography.bodySmall)
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        val localRepBitmap = rememberImageBitmap(state.localRepublicLogoBytes)
+
                         Box(
                             modifier = Modifier
                                 .size(60.dp)
@@ -322,11 +360,33 @@ private fun SchoolSettingsTab(
                                 .background(colors.background),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Public, contentDescription = null, modifier = Modifier.size(30.dp), tint = colors.textMuted)
+                            if (localRepBitmap != null) {
+                                Image(
+                                    bitmap = localRepBitmap,
+                                    contentDescription = "Republic Logo (preview)",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                )
+                            } else if (state.republicLogoUrl != null) {
+                                val baseUrl = com.ecolix.atschool.Constants.getBaseUrl().removeSuffix("/")
+                                val relativeUrl = if (state.republicLogoUrl.startsWith("/")) state.republicLogoUrl else "/${state.republicLogoUrl}"
+                                val fullUrl = if (state.republicLogoUrl.startsWith("http")) state.republicLogoUrl else "$baseUrl$relativeUrl"
+                                
+                                KamelImage(
+                                    resource = asyncPainterResource(fullUrl),
+                                    contentDescription = "Republic Logo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                                    onLoading = { CircularProgressIndicator(modifier = Modifier.size(16.dp)) },
+                                    onFailure = { Icon(Icons.Default.Public, null, modifier = Modifier.size(30.dp), tint = colors.textMuted) }
+                                )
+                            } else {
+                                Icon(Icons.Default.Public, contentDescription = null, modifier = Modifier.size(30.dp), tint = colors.textMuted)
+                            }
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         OutlinedButton(
-                            onClick = {},
+                            onClick = onRepublicLogoClick,
                             shape = RoundedCornerShape(8.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
                         ) {

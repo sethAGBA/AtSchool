@@ -9,6 +9,7 @@ import com.ecolix.atschool.api.superAdminRoutes
 import com.ecolix.atschool.api.structureRoutes
 import com.ecolix.atschool.api.academicRoutes
 import com.ecolix.atschool.api.settingsRoutes
+import com.ecolix.atschool.api.uploadRoutes
 import com.ecolix.atschool.data.DatabaseFactory
 import com.ecolix.atschool.di.appModule
 import io.ktor.serialization.kotlinx.json.*
@@ -16,10 +17,12 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.engine.*
+import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.io.File
 import org.koin.ktor.plugin.Koin
 import org.koin.core.logger.Level
 import org.koin.dsl.module
@@ -105,5 +108,8 @@ fun Application.module() {
         academicRoutes()
         superAdminRoutes()
         settingsRoutes()
+        uploadRoutes()
+
+        staticFiles("/uploads", File("uploads"))
     }
 }

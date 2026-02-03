@@ -74,6 +74,9 @@ kotlin {
             // Koin
             implementation("io.insert-koin:koin-core:3.6.0-Beta4")
             implementation("io.insert-koin:koin-compose:1.2.0-Beta4")
+
+            // Image Loading
+            implementation(libs.kamel)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -25,6 +25,7 @@ koin = "4.0.0"
 hikaricp = "6.2.1"
 bcrypt = "0.4"
 flyway = "11.20.2"
+kamel = "1.0.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -87,6 +88,7 @@ koin-logger-slf4j-classic = { module = "io.insert-koin:koin-logger-slf4j", versi
 
 # Security
 bcrypt = { module = "org.mindrot:jbcrypt", version.ref = "bcrypt" }
+kamel = { module = "media.kamel:kamel-image", version.ref = "kamel" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

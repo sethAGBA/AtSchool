@@ -12,5 +12,5 @@ val presentationModule = module {
     factory { StudentsScreenModel(get()) }
     factory { DashboardScreenModel(get()) }
     factory { SuperAdminScreenModel(get()) }
-    factory { SettingsScreenModel(get()) }
+    single { SettingsScreenModel(get(), get()) }
 }

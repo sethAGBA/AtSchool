@@ -4,6 +4,7 @@ import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.ecolix.atschool.api.EstablishmentSettingsDto
 import com.ecolix.atschool.api.SettingsApiService
+import com.ecolix.atschool.api.UploadApiService
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -11,6 +12,7 @@ data class SettingsUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val saveSuccess: Boolean = false,
+    val isUploading: Boolean = false,
     
     // Identité
     val schoolName: String = "",
@@ -19,6 +21,8 @@ data class SettingsUiState(
     val schoolLevel: String = "Primaire",
     val logoUrl: String? = null,
     val republicLogoUrl: String? = null,
+    val localLogoBytes: ByteArray? = null,
+    val localRepublicLogoBytes: ByteArray? = null,
     
     // Tutelle
     val ministry: String = "",
@@ -105,7 +109,8 @@ data class SettingsUiState(
 }
 
 class SettingsScreenModel(
-    private val settingsApiService: SettingsApiService
+    private val settingsApiService: SettingsApiService,
+    private val uploadApiService: UploadApiService
 ) : StateScreenModel<SettingsUiState>(SettingsUiState()) {
     
     init {
@@ -155,7 +160,9 @@ class SettingsScreenModel(
                             useSemesters = dto.useSemesters,
                             autoBackup = dto.autoBackup,
                             backupFrequency = dto.backupFrequency,
-                            retentionDays = dto.retentionDays.toFloat()
+                            retentionDays = dto.retentionDays.toFloat(),
+                            localLogoBytes = null,
+                            localRepublicLogoBytes = null
                         )
                     }
                 }
@@ -175,12 +182,16 @@ class SettingsScreenModel(
         mutableState.update { it.copy(isLoading = true, error = null, saveSuccess = false) }
         
         screenModelScope.launch {
-            // Note: tenantId should come from auth context, using 1 for demo
-            val dto = currentState.toDto(tenantId = 1)
+            // Note: tenantId is overwritten by server from JWT, using 0 as placeholder
+            val dto = currentState.toDto(tenantId = 0)
             
             settingsApiService.updateSettings(dto)
                 .onSuccess {
-                    mutableState.update { it.copy(isLoading = false, saveSuccess = true) }
+                    mutableState.update { it.copy(
+                        isLoading = false, 
+                        saveSuccess = true
+                        // Note: Removed clearing of local bytes to prevent disappearance during remote load
+                    ) }
                 }
                 .onFailure { error ->
                     val cleanError = when {
@@ -233,4 +244,34 @@ class SettingsScreenModel(
     fun updateRetentionDays(value: Float) = mutableState.update { it.copy(retentionDays = value) }
     
     fun clearSaveSuccess() = mutableState.update { it.copy(saveSuccess = false) }
+
+    fun pickAndUploadLogo(isRepublic: Boolean = false) {
+        screenModelScope.launch {
+            val fileData = com.ecolix.utils.FilePicker.pickFile() ?: return@launch
+            
+            mutableState.update { state: SettingsUiState ->
+                if (isRepublic) {
+                    state.copy(localRepublicLogoBytes = fileData.bytes, isUploading = true, error = null)
+                } else {
+                    state.copy(localLogoBytes = fileData.bytes, isUploading = true, error = null)
+                }
+            }
+            
+            uploadApiService.uploadFile(fileData.name, fileData.bytes)
+                .onSuccess { url: String ->
+                    mutableState.update { state: SettingsUiState ->
+                        if (isRepublic) {
+                            state.copy(isUploading = false, republicLogoUrl = url)
+                        } else {
+                            state.copy(isUploading = false, logoUrl = url)
+                        }
+                    }
+                }
+                .onFailure { error: Throwable ->
+                    mutableState.update { state: SettingsUiState -> 
+                        state.copy(isUploading = false, error = "Échec de l'upload: ${error.message}")
+                    }
+                }
+        }
+    }
 }
