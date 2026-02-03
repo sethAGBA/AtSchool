@@ -8,10 +8,10 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
+import org.koin.ktor.ext.getKoin
 
 fun Route.superAdminRoutes() {
-    val superAdminRepository by inject<SuperAdminRepository>()
+    val superAdminRepository by lazy { application.getKoin().get<SuperAdminRepository>() }
 
     authenticate("auth-jwt") {
         route("/superadmin") {
@@ -50,7 +50,7 @@ fun Route.superAdminRoutes() {
                         name = request.name, 
                         code = request.code, 
                         adminEmail = request.adminEmail, 
-                        password = request.adminPassword,
+                        password = com.ecolix.atschool.security.PasswordUtils.hashPassword(request.adminPassword),
                         contactEmail = request.contactEmail,
                         contactPhone = request.contactPhone,
                         address = request.address
@@ -125,7 +125,7 @@ fun Route.superAdminRoutes() {
             }
 
             // ==================== PAYMENT ROUTES ====================
-            val advancedRepo by inject<com.ecolix.atschool.data.SuperAdminAdvancedRepository>()
+            val advancedRepo by lazy { application.getKoin().get<com.ecolix.atschool.data.SuperAdminAdvancedRepository>() }
 
             post("/payments") {
                 val request = call.receive<CreatePaymentRequest>()
@@ -321,8 +321,8 @@ fun Route.superAdminRoutes() {
             // ==================== ANALYTICS ROUTES ====================
 
             get("/analytics/growth") {
-                val start = call.request.queryParameters["start"] ?: "2026-01-01"
-                val end = call.request.queryParameters["end"] ?: "2026-12-31"
+                val start = call.request.queryParameters["startDate"] ?: "2026-01-01"
+                val end = call.request.queryParameters["endDate"] ?: "2026-12-31"
                 
                 val metrics = advancedRepo.getGrowthMetrics(start, end)
                 call.respond(metrics)

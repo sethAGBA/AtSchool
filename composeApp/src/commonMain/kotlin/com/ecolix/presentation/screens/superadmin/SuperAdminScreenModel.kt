@@ -20,6 +20,9 @@ import com.ecolix.atschool.api.SubscriptionPlanDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.datetime.*
+import com.ecolix.atschool.api.SchoolActivityDto
 
 enum class SuperAdminLayoutMode {
     LIST, GRID
@@ -27,6 +30,10 @@ enum class SuperAdminLayoutMode {
 
 enum class SuperAdminTab {
     SCHOOLS, ANNOUNCEMENTS, LOGS, ANALYTICS, BILLING, SYSTEM, SUPPORT
+}
+
+enum class AnalyticsPeriod {
+    LAST_7_DAYS, LAST_30_DAYS, LAST_YEAR
 }
 
 sealed class SuperAdminState {
@@ -40,6 +47,8 @@ sealed class SuperAdminState {
         val plans: List<SubscriptionPlanDto> = emptyList(),
         val tickets: List<SupportTicketDto> = emptyList(),
         val growthMetrics: GrowthMetricsDto? = null,
+        val schoolActivity: List<SchoolActivityDto> = emptyList(),
+        val selectedPeriod: AnalyticsPeriod = AnalyticsPeriod.LAST_30_DAYS,
         val selectedTab: SuperAdminTab = SuperAdminTab.SCHOOLS,
         val layoutMode: SuperAdminLayoutMode = SuperAdminLayoutMode.LIST
     ) : SuperAdminState()
@@ -66,6 +75,8 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
     private val _plans = MutableStateFlow<List<SubscriptionPlanDto>>(emptyList())
     private val _tickets = MutableStateFlow<List<SupportTicketDto>>(emptyList())
     private val _growthMetrics = MutableStateFlow<GrowthMetricsDto?>(null)
+    private val _schoolActivity = MutableStateFlow<List<SchoolActivityDto>>(emptyList())
+    private val _selectedPeriod = MutableStateFlow(AnalyticsPeriod.LAST_30_DAYS)
     private val _stats = MutableStateFlow<GlobalStatsResponse?>(null)
 
     init {
@@ -91,26 +102,34 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
         screenModelScope.launch {
             _state.value = SuperAdminState.Loading
             try {
-                val tenantsResult = apiService.getTenants()
-                val statsResult = apiService.getGlobalStats()
-                val announcementsResult = apiService.getAnnouncements()
-                val logsResult = apiService.getAuditLogs()
-                val paymentsResult = apiService.getPayments()
-                val plansResult = apiService.getPlans()
-                val ticketsResult = apiService.getTickets()
-                val growthResult = apiService.getGrowthMetrics()
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                val startDate = when (_selectedPeriod.value) {
+                    AnalyticsPeriod.LAST_7_DAYS -> now.minus(7, DateTimeUnit.DAY)
+                    AnalyticsPeriod.LAST_30_DAYS -> now.minus(30, DateTimeUnit.DAY)
+                    AnalyticsPeriod.LAST_YEAR -> now.minus(1, DateTimeUnit.YEAR)
+                }
 
-                val schools = tenantsResult.getOrThrow()
-                val stats = statsResult.getOrThrow()
-                
-                _allTenants.value = schools
-                _announcements.value = announcementsResult.getOrDefault(emptyList())
-                _logs.value = logsResult.getOrDefault(emptyList())
-                _payments.value = paymentsResult.getOrDefault(emptyList())
-                _plans.value = plansResult.getOrDefault(emptyList())
-                _tickets.value = ticketsResult.getOrDefault(emptyList())
-                _growthMetrics.value = growthResult.getOrNull()
-                _stats.value = stats
+                // Fire all requests in parallel to avoid sequential bottlenecks
+                val tenantsDeferred = async { apiService.getTenants() }
+                val statsDeferred = async { apiService.getGlobalStats() }
+                val announcementsDeferred = async { apiService.getAnnouncements() }
+                val logsDeferred = async { apiService.getAuditLogs() }
+                val paymentsDeferred = async { apiService.getPayments() }
+                val plansDeferred = async { apiService.getPlans() }
+                val ticketsDeferred = async { apiService.getTickets() }
+                val growthDeferred = async { apiService.getGrowthMetrics(startDate.toString(), now.toString()) }
+                val activityDeferred = async { apiService.getSchoolActivity() }
+
+                // Wait for core results, using defaults for others
+                _allTenants.value = tenantsDeferred.await().getOrDefault(emptyList())
+                _stats.value = statsDeferred.await().getOrNull()
+                _announcements.value = announcementsDeferred.await().getOrDefault(emptyList())
+                _logs.value = logsDeferred.await().getOrDefault(emptyList())
+                _payments.value = paymentsDeferred.await().getOrDefault(emptyList())
+                _plans.value = plansDeferred.await().getOrDefault(emptyList())
+                _tickets.value = ticketsDeferred.await().getOrDefault(emptyList())
+                _growthMetrics.value = growthDeferred.await().getOrNull()
+                _schoolActivity.value = activityDeferred.await().getOrDefault(emptyList())
 
                 updateState()
             } catch (e: Exception) {
@@ -120,7 +139,7 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
     }
 
     private fun updateState() {
-        val stats = _stats.value ?: return
+        val stats = _stats.value ?: GlobalStatsResponse(0,0,0.0) // Provide default if null to avoid blocking UI
         val filteredTenants = if (_searchQuery.value.isEmpty()) {
             _allTenants.value
         } else {
@@ -138,9 +157,16 @@ class SuperAdminScreenModel(private val apiService: SuperAdminApiService) : Scre
             plans = _plans.value,
             tickets = _tickets.value,
             growthMetrics = _growthMetrics.value,
+            schoolActivity = _schoolActivity.value,
+            selectedPeriod = _selectedPeriod.value,
             selectedTab = _selectedTab.value,
             layoutMode = _layoutMode.value
         )
+    }
+
+    fun onPeriodChange(period: AnalyticsPeriod) {
+        _selectedPeriod.value = period
+        refresh()
     }
 
     fun createTenant(request: CreateTenantRequest, onComplete: (Boolean) -> Unit) {

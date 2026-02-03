@@ -1,0 +1,10 @@
+.gradle
+build
+*/build
+.git
+.idea
+.vscode
+local.properties
+*.DS_Store
+composeApp
+!composeApp/build.gradle.kts

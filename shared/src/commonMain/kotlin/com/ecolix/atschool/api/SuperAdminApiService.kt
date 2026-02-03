@@ -133,4 +133,8 @@ class SuperAdminApiService(private val client: HttpClient) {
             throw Exception("Erreur lors de la suppression du plan")
         }
     }
+
+    suspend fun getSchoolActivity(): Result<List<SchoolActivityDto>> = runCatching {
+        client.get("superadmin/analytics/activity").body()
+    }
 }

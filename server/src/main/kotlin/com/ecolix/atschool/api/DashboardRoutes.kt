@@ -7,10 +7,10 @@ import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
+import org.koin.ktor.ext.getKoin
 
 fun Route.dashboardRoutes() {
-    val repository by inject<DashboardRepository>()
+    val repository by lazy { application.getKoin().get<DashboardRepository>() }
 
     authenticate("auth-jwt") {
         route("/dashboard") {

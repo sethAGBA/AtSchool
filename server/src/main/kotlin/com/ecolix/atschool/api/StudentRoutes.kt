@@ -9,10 +9,10 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
+import org.koin.ktor.ext.getKoin
 
 fun Route.studentRoutes() {
-    val repository by inject<StudentRepository>()
+    val repository by lazy { application.getKoin().get<StudentRepository>() }
 
     authenticate("auth-jwt") {
         route("/students") {

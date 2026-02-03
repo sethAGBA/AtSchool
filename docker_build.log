@@ -1,0 +1,222 @@
+ Image atschool-api Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 537B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 997B 0.1s done
+#2 DONE 0.2s
+
+#3 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#3 ...
+
+#4 [auth] library/eclipse-temurin:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [auth] library/gradle:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/library/gradle:8.5-jdk21
+#6 DONE 10.9s
+
+#3 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#3 DONE 10.9s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B 0.1s done
+#7 DONE 0.1s
+
+#8 [internal] load build context
+#8 DONE 0.0s
+
+#9 [build 1/4] FROM docker.io/library/gradle:8.5-jdk21@sha256:873def2b8a73d00f5616043ac9ff65576b055942701391ad66499f1a1f53f1b2
+#9 resolve docker.io/library/gradle:8.5-jdk21@sha256:873def2b8a73d00f5616043ac9ff65576b055942701391ad66499f1a1f53f1b2
+#9 ...
+
+#10 [stage-1 1/3] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:08eecc477dbe3f2e33daac27f36e41daf7f4ec51d2f3396006e54fa41832c74c
+#10 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:08eecc477dbe3f2e33daac27f36e41daf7f4ec51d2f3396006e54fa41832c74c 0.2s done
+#10 DONE 0.2s
+
+#9 [build 1/4] FROM docker.io/library/gradle:8.5-jdk21@sha256:873def2b8a73d00f5616043ac9ff65576b055942701391ad66499f1a1f53f1b2
+#9 resolve docker.io/library/gradle:8.5-jdk21@sha256:873def2b8a73d00f5616043ac9ff65576b055942701391ad66499f1a1f53f1b2 0.2s done
+#9 DONE 0.2s
+
+#8 [internal] load build context
+#8 transferring context: 2.27MB 4.6s
+#8 transferring context: 2.54MB 5.6s done
+#8 DONE 6.3s
+
+#11 [build 2/4] WORKDIR /app
+#11 CACHED
+
+#12 [build 3/4] COPY . .
+#12 DONE 54.7s
+
+#13 [build 4/4] RUN ./gradlew :server:installDist -x test --no-daemon
+#13 13.03 Downloading https://services.gradle.org/distributions/gradle-9.1.0-bin.zip
+#13 17.63 ............10%.............20%.............30%.............40%.............50%............60%.............70%.............80%.............90%.............100%
+#13 50.48 
+#13 50.48 Welcome to Gradle 9.1.0!
+#13 50.48 
+#13 50.48 Here are the highlights of this release:
+#13 50.48  - Full Java 25 support
+#13 50.48  - Native task graph visualization
+#13 50.48  - Enhanced console output
+#13 50.48 
+#13 50.48 For more details see https://docs.gradle.org/9.1.0/release-notes.html
+#13 50.48 
+#13 51.45 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+#13 55.28 Daemon will be stopped at the end of the build 
+#13 57.08 Calculating task graph as no cached configuration is available for tasks: :server:installDist
+#13 110.6 Type-safe project accessors is an incubating feature.
+#13 266.8 
+#13 267.0 > Configure project :composeApp
+#13 267.0 WARNING: The option setting 'android.usesSdkInManifest.disallowed=false' is deprecated.
+#13 267.0 The current default is 'true'.
+#13 267.0 It will be removed in version 10.0 of the Android Gradle plugin.
+#13 267.0 WARNING: The option setting 'android.sdk.defaultTargetSdkToCompileSdkIfUnset=false' is deprecated.
+#13 267.0 The current default is 'true'.
+#13 267.0 It will be removed in version 10.0 of the Android Gradle plugin.
+#13 267.0 WARNING: The option setting 'android.enableAppCompileTimeRClass=false' is deprecated.
+#13 267.0 The current default is 'true'.
+#13 267.0 It will be removed in version 10.0 of the Android Gradle plugin.
+#13 267.0 WARNING: The option setting 'android.builtInKotlin=false' is deprecated.
+#13 267.0 The current default is 'true'.
+#13 267.0 It will be removed in version 10.0 of the Android Gradle plugin.
+#13 267.0 WARNING: The option setting 'android.newDsl=false' is deprecated.
+#13 267.0 The current default is 'true'.
+#13 267.0 It will be removed in version 10.0 of the Android Gradle plugin.
+#13 267.0 WARNING: The option setting 'android.r8.optimizedResourceShrinking=false' is deprecated.
+#13 267.0 The current default is 'true'.
+#13 267.0 It will be removed in version 10.0 of the Android Gradle plugin.
+#13 267.0 WARNING: The option setting 'android.defaults.buildfeatures.resvalues=true' is deprecated.
+#13 267.0 The current default is 'false'.
+#13 267.0 It will be removed in version 10.0 of the Android Gradle plugin.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:54:36: 'val preview: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:58:36: 'val runtime: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:59:36: 'val foundation: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:60:36: 'val material3: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:61:36: 'val materialIconsExtended: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:62:36: 'val ui: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:63:36: 'val components: ComposePlugin.CommonComponentsDependencies' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:63:47: 'val resources: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:64:36: 'val components: ComposePlugin.CommonComponentsDependencies' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:64:47: 'val uiToolingPreview: String' is deprecated. Specify dependency directly.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:94:1: 'fun Project.android(configure: Action<BaseAppModuleExtension>): Unit' is deprecated. Replaced by com.android.build.api.dsl.ApplicationExtension.
+#13 277.2 This class is not used for the public extensions in AGP when android.newDsl=true, which is the default in AGP 9.0, and will be removed in AGP 10.0.
+#13 277.2 w: file:///app/composeApp/build.gradle.kts:122:33: 'val uiTooling: String' is deprecated. Use org.jetbrains.compose.ui:ui-tooling module instead.
+#13 278.8 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 278.8 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 279.0 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 279.0 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 279.1 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 279.1 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 279.1 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 279.1 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 284.6 w: ⚠️ Disabled Kotlin/Native Targets
+#13 284.6 The following Kotlin/Native targets cannot be built on this machine and are disabled:
+#13 284.6 iosArm64, iosSimulatorArm64
+#13 284.6 Solution: To hide this message, add 'kotlin.native.ignoreDisabledTargets=true' to the Gradle properties.
+#13 284.6 
+#13 349.5 
+#13 349.5 > Configure project :shared
+#13 349.5 w: file:///app/shared/build.gradle.kts:44:36: 'val runtime: String' is deprecated. Specify dependency directly.
+#13 349.5 w: file:///app/shared/build.gradle.kts:45:36: 'val foundation: String' is deprecated. Specify dependency directly.
+#13 349.5 w: file:///app/shared/build.gradle.kts:69:1: 'fun Project.android(configure: Action<LibraryExtension>): Unit' is deprecated. Replaced by com.android.build.api.dsl.LibraryExtension.
+#13 349.5 This class is not used for the public extensions in AGP when android.newDsl=true, which is the default in AGP 9.0, and will be removed in AGP 10.0.
+#13 357.1 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 357.1 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 357.4 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 357.4 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 357.4 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 357.4 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 357.4 WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+#13 357.4 To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+#13 359.7 w: ⚠️ Disabled Kotlin/Native Targets
+#13 359.7 The following Kotlin/Native targets cannot be built on this machine and are disabled:
+#13 359.7 iosArm64, iosSimulatorArm64
+#13 359.7 Solution: To hide this message, add 'kotlin.native.ignoreDisabledTargets=true' to the Gradle properties.
+#13 359.7 
+#13 462.2 
+#13 462.2 > Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+#13 462.2 > Task :shared:generateComposeResClass SKIPPED
+#13 462.2 > Task :server:checkKotlinGradlePluginConfigurationErrors SKIPPED
+#13 462.2 > Task :shared:generateJvmMainNonAndroidBuildConfig SKIPPED
+#13 462.2 > Task :shared:generateExpectResourceCollectorsForCommonMain SKIPPED
+#13 462.9 > Task :shared:convertXmlValueResourcesForCommonMain NO-SOURCE
+#13 462.9 > Task :shared:convertXmlValueResourcesForJvmMain NO-SOURCE
+#13 462.9 > Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+#13 462.9 > Task :shared:copyNonXmlValueResourcesForJvmMain NO-SOURCE
+#13 462.9 > Task :shared:prepareComposeResourcesTaskForJvmMain NO-SOURCE
+#13 462.9 > Task :shared:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+#13 462.9 > Task :shared:generateResourceAccessorsForCommonMain SKIPPED
+#13 462.9 > Task :shared:generateResourceAccessorsForJvmMain SKIPPED
+#13 462.9 > Task :shared:generateActualResourceCollectorsForJvmMain SKIPPED
+#13 463.0 > Task :shared:assembleJvmMainResources
+#13 463.0 > Task :server:processResources
+#13 463.0 > Task :shared:jvmProcessResources
+#13 463.0 > Task :shared:processJvmMainResources SKIPPED
+#13 463.1 > Task :shared:generateNonAndroidBuildConfig
+#13 493.2 > Task :shared:compileKotlinJvm
+#13 507.6 w: file:///app/shared/src/commonMain/kotlin/com/ecolix/atschool/util/Settings.kt:3:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+#13 507.6 w: file:///app/shared/src/jvmMain/kotlin/com/ecolix/atschool/util/Settings.jvm.kt:5:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+#13 508.7 
+#13 508.7 > Task :shared:compileJvmMainJava NO-SOURCE
+#13 508.7 > Task :shared:jvmMainClasses
+#13 509.1 > Task :shared:jvmJar
+#13 539.3 > Task :server:compileKotlin
+#13 544.3 w: file:///app/server/src/main/kotlin/com/ecolix/atschool/api/SuperAdminRoutes.kt:19:13 'fun Route.intercept(phase: PipelinePhase, block: suspend PipelineContext<Unit, PipelineCall>.(Unit) -> Unit): Unit' is deprecated. Please use route scoped plugins instead.
+#13 544.3 w: file:///app/server/src/main/kotlin/com/ecolix/atschool/data/DatabaseFactory.kt:23:25 'fun createMissingTablesAndColumns(vararg tables: Table, inBatch: Boolean = ..., withLogs: Boolean = ...): Unit' is deprecated. Execution of this function might lead to unpredictable state in the database if a failure occurs at any point. To prevent this, please use `MigrationUtils.statementsRequiredForDatabaseMigration` with a third-party migration tool (e.g., Flyway).
+#13 547.2 
+#13 547.2 > Task :server:compileJava NO-SOURCE
+#13 547.2 > Task :server:classes
+#13 547.8 > Task :server:jar
+#13 575.3 > Task :server:startScripts
+#13 576.9 > Task :server:installDist
+#13 577.2 
+#13 577.2 [Incubating] Problems report is available at: file:///app/build/reports/problems/problems-report.html
+#13 577.2 
+#13 577.2 Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+#13 577.2 
+#13 577.2 You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+#13 577.2 
+#13 577.2 For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+#13 577.3 
+#13 577.3 BUILD SUCCESSFUL in 9m 25s
+#13 577.3 10 actionable tasks: 10 executed
+#13 577.3 Configuration cache entry stored.
+#13 DONE 583.0s
+
+#14 [stage-1 2/3] WORKDIR /app
+#14 CACHED
+
+#15 [stage-1 3/3] COPY --from=build /app/server/build/install/server/ .
+#15 DONE 0.6s
+
+#16 exporting to image
+#16 exporting layers
+#16 exporting layers 4.2s done
+#16 exporting manifest sha256:627b52a9021ee5366cbe92f5660bf66daf717ef15eacd2da3acd768752791693 0.0s done
+#16 exporting config sha256:cf4b3b57dd981941688ab67c76452678f6418cf7fb2ba5e6c2a36e830bed5bd8 0.1s done
+#16 exporting attestation manifest sha256:d1a5dc5d4b9146a3cb3ad92bd364c58876c96fbbdadb27dbbe50fc524abe3b15 0.0s done
+#16 exporting manifest list sha256:52e00f57e0a6b071d0897738bbf3c790dd918dba845ac08d1880cd26052808f8 done
+#16 naming to docker.io/library/atschool-api:latest done
+#16 unpacking to docker.io/library/atschool-api:latest
+#16 unpacking to docker.io/library/atschool-api:latest 1.5s done
+#16 DONE 6.0s
+
+#17 resolving provenance for metadata file
+#17 DONE 0.2s
+ Image atschool-api Built 
+ Network atschool_atschool-network Creating 
+ Network atschool_atschool-network Created 
+ Container atschool-db-1 Creating 
+ Container atschool-db-1 Created 
+ Container atschool-api-1 Creating 
+ Container atschool-api-1 Created 
+Attaching to api-1, db-1
+ Container atschool-db-1 Starting 
+ Container atschool-db-1 Started 
+ Container atschool-api-1 Starting 
+Error response from daemon: ports are not available: exposing port TCP 0.0.0.0:8080 -> 127.0.0.1:0: listen tcp 0.0.0.0:8080: bind: address already in use

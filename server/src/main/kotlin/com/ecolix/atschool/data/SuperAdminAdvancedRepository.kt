@@ -379,22 +379,56 @@ class SuperAdminAdvancedRepository {
     // ==================== ANALYTICS ====================
     
     fun getGrowthMetrics(startDate: String, endDate: String): GrowthMetricsDto = transaction {
-        // Simplified implementation - count all schools and students for now
-        val totalSchools = Tenants.selectAll().count().toInt()
-        val totalStudents = Eleves.selectAll().count().toInt()
+        val start = try { LocalDate.parse(startDate) } catch (e: Exception) { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.minus(30, DateTimeUnit.DAY) }
+        val end = try { LocalDate.parse(endDate) } catch (e: Exception) { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
         
-        // Calculate total revenue from paid subscriptions
-        val revenue = SubscriptionPayments.selectAll()
-            .where { SubscriptionPayments.status eq "PAID" }
+        // Total schools added in range
+        val newSchools = Tenants.selectAll()
+            .where { (Tenants.createdAt greaterEq start) and (Tenants.createdAt lessEq end) }
+            .count().toInt()
+
+        // Total students inscribed in range
+        val newStudents = Inscriptions.selectAll()
+            .where { (Inscriptions.dateInscription greaterEq start) and (Inscriptions.dateInscription lessEq end) }
+            .count().toInt()
+        
+        // Total revenue from PAID subscription payments in range
+        // Since paymentDate is LocalDateTime, we compare with start of start day and end of end day
+        val startDateTime = start.atTime(0, 0)
+        val endDateTime = end.atTime(23, 59, 59)
+        
+        val totalRevenue = SubscriptionPayments.selectAll()
+            .where { 
+                (SubscriptionPayments.status eq "PAID") and 
+                (SubscriptionPayments.paymentDate greaterEq startDateTime) and 
+                (SubscriptionPayments.paymentDate lessEq endDateTime)
+            }
             .sumOf { it[SubscriptionPayments.amount] }
+        
+        // Generate data points (daily for now)
+        val dataPoints = mutableListOf<GrowthDataPoint>()
+        var current = start
+        while (current <= end) {
+            val cStart = current.atTime(0,0)
+            val cEnd = current.atTime(23,59,59)
+            
+            val schools = Tenants.selectAll().where { Tenants.createdAt eq current }.count().toInt()
+            val students = Inscriptions.selectAll().where { Inscriptions.dateInscription eq current }.count().toInt()
+            val revenue = SubscriptionPayments.selectAll()
+                .where { (SubscriptionPayments.status eq "PAID") and (SubscriptionPayments.paymentDate greaterEq cStart) and (SubscriptionPayments.paymentDate lessEq cEnd) }
+                .sumOf { it[SubscriptionPayments.amount] }
+            
+            dataPoints.add(GrowthDataPoint(current.toString(), schools, students, revenue))
+            current = current.plus(1, DateTimeUnit.DAY)
+        }
         
         GrowthMetricsDto(
             startDate = startDate,
             endDate = endDate,
-            newSchools = totalSchools,
-            newStudents = totalStudents,
-            totalRevenue = revenue,
-            dataPoints = emptyList() // TODO: Implement daily breakdown with proper date filtering
+            newSchools = newSchools,
+            newStudents = newStudents,
+            totalRevenue = totalRevenue,
+            dataPoints = dataPoints
         )
     }
 
@@ -414,15 +448,19 @@ class SuperAdminAdvancedRepository {
     }
 
     fun getSchoolActivityRate(): List<SchoolActivityDto> = transaction {
-        Tenants.selectAll().map { tenant ->
-            val tenantId = tenant[Tenants.id].value
-            val studentCount = Eleves.selectAll().where { Eleves.tenantId eq tenantId }.count().toInt()
-            val userCount = Users.selectAll().where { Users.tenantId eq tenantId }.count().toInt()
+        // Optimized: Single query with joins and aggregation would be better, 
+        // but let's keep it simple and safe for now while fixing the immediate loop.
+        val tenants = Tenants.selectAll().toList()
+        
+        tenants.map { tenant ->
+            val tId = tenant[Tenants.id].value
+            val studentCount = (Inscriptions innerJoin Eleves).selectAll().where { Eleves.tenantId eq tId }.count().toInt()
+            val userCount = Users.selectAll().where { Users.tenantId eq tId }.count().toInt()
             
             SchoolActivityDto(
-                tenantId = tenantId,
+                tenantId = tId,
                 tenantName = tenant[Tenants.name],
-                lastLoginDate = null, // Would need login tracking
+                lastLoginDate = null,
                 activeUsers = userCount,
                 totalStudents = studentCount,
                 activityScore = if (studentCount > 0) (userCount.toDouble() / studentCount * 100).coerceIn(0.0, 100.0) else 0.0

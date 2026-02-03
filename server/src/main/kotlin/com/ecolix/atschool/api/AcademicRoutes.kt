@@ -9,12 +9,12 @@ import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
+import org.koin.ktor.ext.getKoin
 
 fun Route.academicRoutes() {
-    val subjectRepository by inject<SubjectRepository>()
-    val evaluationRepository by inject<EvaluationRepository>()
-    val gradeRepository by inject<GradeRepository>()
+    val subjectRepository by lazy { application.getKoin().get<SubjectRepository>() }
+    val evaluationRepository by lazy { application.getKoin().get<EvaluationRepository>() }
+    val gradeRepository by lazy { application.getKoin().get<GradeRepository>() }
 
     authenticate("auth-jwt") {
         route("/subjects") {

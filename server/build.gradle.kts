@@ -28,19 +28,35 @@ dependencies {
     // Database
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)
-    implementation(libs.exposed.kotlin.datetime)
+    implementation(libs.exposed.dao)
+    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.58.0")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.58.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
     implementation(libs.postgresql)
     implementation(libs.hikaricp)
     implementation(libs.flyway.core)
     implementation(libs.flyway.database.postgresql)
     
+    // Auth & Security
+    implementation(libs.bcrypt)
+    
     // DI
+    implementation(libs.koin.core)
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger.slf4j)
     
-    // Security
-    implementation(libs.bcrypt)
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.kotlin.test)
+}
 
-    testImplementation(libs.ktor.server.testHost)
-    testImplementation(libs.kotlin.test.junit)
+tasks.withType<Copy>().configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+distributions {
+    main {
+        contents {
+            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        }
+    }
 }

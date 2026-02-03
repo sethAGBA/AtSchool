@@ -225,7 +225,9 @@ class LoginScreen : Screen {
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = {
-                                screenModel.login(username, password, schoolCode, rememberMe)
+                                if (schoolCode.isNotBlank() && username.isNotBlank() && password.isNotBlank()) {
+                                    screenModel.login(username, password, schoolCode, rememberMe)
+                                }
                             }
                         ),
                          colors = OutlinedTextFieldDefaults.colors(
@@ -250,9 +252,10 @@ class LoginScreen : Screen {
                     }
 
                     // Login Button
+                    val isFormValid = schoolCode.isNotBlank() && username.isNotBlank() && password.isNotBlank()
                     Button(
                         onClick = { screenModel.login(username, password, schoolCode, rememberMe) },
-                        enabled = state !is LoginState.Loading,
+                        enabled = isFormValid && state !is LoginState.Loading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

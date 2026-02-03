@@ -13,7 +13,11 @@ plugins {
 
 configurations.configureEach {
     exclude(group = "androidx.activity", module = "activity-compose")
+    resolutionStrategy {
+        force("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+    }
 }
+
 
 kotlin {
     androidTarget {

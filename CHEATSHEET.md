@@ -65,3 +65,12 @@ kill -9 $(lsof -t -i:8080)
 - **Email**: `seth@atschool.com`
 - **Password**: `superadmin`
 - **URL**: [http://localhost:8080](http://localhost:8080)
+
+
+kill -9 $(lsof -t -i:8080) && ./gradlew :server:run
+
+
+docker compose up -d --build
+
+
+docker compose down -v && docker compose up -d

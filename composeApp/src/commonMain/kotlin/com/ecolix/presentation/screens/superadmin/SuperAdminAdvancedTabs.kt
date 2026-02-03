@@ -24,46 +24,243 @@ import androidx.compose.ui.unit.sp
 import com.ecolix.presentation.theme.BluePrimary
 import com.ecolix.presentation.theme.GreenAccent
 import com.ecolix.presentation.theme.OrangeSecondary
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import com.ecolix.atschool.api.*
 
 @Composable
-fun AnalyticsTabContent(metrics: com.ecolix.atschool.api.GrowthMetricsDto?) {
+fun AnalyticsTabContent(state: SuperAdminState.Success, screenModel: SuperAdminScreenModel) {
+    val metrics = state.growthMetrics
+    
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text(
-            "Analyse et Statistiques",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            "Vue détaillée de la croissance de la plateforme",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    "Analyse et Statistiques",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    "Vue détaillée de la croissance de la plateforme",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Period Selector
+            Row(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                AnalyticsPeriod.values().forEach { period ->
+                    val isSelected = state.selectedPeriod == period
+                    val text = when(period) {
+                        AnalyticsPeriod.LAST_7_DAYS -> "7j"
+                        AnalyticsPeriod.LAST_30_DAYS -> "30j"
+                        AnalyticsPeriod.LAST_YEAR -> "1 an"
+                    }
+                    
+                    Surface(
+                        onClick = { screenModel.onPeriodChange(period) },
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = text,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Mock Chart Placeholder
+        // Dynamic Chart Wrapper
         Card(
-            modifier = Modifier.fillMaxWidth().height(300.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            modifier = Modifier.fillMaxWidth().height(350.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.BarChart, null, modifier = Modifier.size(64.dp), tint = BluePrimary.copy(alpha = 0.5f))
-                    Spacer(Modifier.height(16.dp))
-                    Text("Graphique de Croissance (Écoles vs Élèves)", fontWeight = FontWeight.Bold)
-                    Text("Données visualisées sur 6 mois", style = MaterialTheme.typography.bodySmall)
+            Column(Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Croissance des revenus (FCFA)", fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(10.dp).background(BluePrimary, CircleShape))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Revenus", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                
+                Spacer(Modifier.height(20.dp))
+                
+                if (metrics != null && metrics.dataPoints.isNotEmpty()) {
+                    DynamicLineChart(
+                        dataPoints = metrics.dataPoints,
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    )
+                } else {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text("Aucune donnée disponible pour cette période", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    }
                 }
             }
         }
         
         Spacer(Modifier.height(24.dp))
         
+        // Summary Cards
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-           AnalyticsCard("Taux de Rétention", "98.5%", Icons.Default.ThumbUp, GreenAccent, Modifier.weight(1f)) 
-           AnalyticsCard("Croissance", metrics?.let { "+${it.newSchools} écoles" } ?: "--", Icons.Default.TrendingUp, BluePrimary, Modifier.weight(1f)) 
-           AnalyticsCard("Revenu Total", metrics?.let { "${it.totalRevenue} FCFA" } ?: "--", Icons.Default.Payments, Color(0xFF9C27B0), Modifier.weight(1f))         }
+            AnalyticsCard("Nouv. Écoles", metrics?.let { "${it.newSchools}" } ?: "0", Icons.Default.School, GreenAccent, Modifier.weight(1f)) 
+            AnalyticsCard("Nouv. Élèves", metrics?.let { "${it.newStudents}" } ?: "0", Icons.Default.People, BluePrimary, Modifier.weight(1f)) 
+            val totalRevenueFormatted = metrics?.totalRevenue?.toLong()?.toString() ?: "0"
+            AnalyticsCard("Revenu Période", "$totalRevenueFormatted FCFA", Icons.Default.Payments, Color(0xFF9C27B0), Modifier.weight(1f)) 
+        }
+
+        Spacer(Modifier.height(32.dp))
+
+        // School Activity Leaderboard
+        Text("Concentration d'Activité par École", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(16.dp))
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                if (state.schoolActivity.isEmpty()) {
+                    Text("Calcul des scores d'activité...", modifier = Modifier.padding(16.dp), color = Color.Gray)
+                } else {
+                    state.schoolActivity.sortedByDescending { it.activityScore }.forEach { activity ->
+                        ActivityScoreRow(activity)
+                        if (activity != state.schoolActivity.last()) {
+                            Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(Modifier.height(40.dp))
+    }
+}
+
+@Composable
+fun ActivityScoreRow(activity: SchoolActivityDto) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            modifier = Modifier.size(40.dp),
+            shape = CircleShape,
+            color = BluePrimary.copy(alpha = 0.1f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(activity.tenantName.take(1).uppercase(), color = BluePrimary, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(activity.tenantName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text("${activity.totalStudents} élèves", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = (activity.activityScore / 100).toFloat(),
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                color = when {
+                    activity.activityScore > 75 -> GreenAccent
+                    activity.activityScore > 40 -> BluePrimary
+                    else -> OrangeSecondary
+                },
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        }
+
+        Surface(
+            color = when {
+                activity.activityScore > 75 -> GreenAccent.copy(alpha = 0.1f)
+                activity.activityScore > 40 -> BluePrimary.copy(alpha = 0.1f)
+                else -> OrangeSecondary.copy(alpha = 0.1f)
+            },
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(
+                "${activity.activityScore.toInt()}%",
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                color = when {
+                    activity.activityScore > 75 -> GreenAccent
+                    activity.activityScore > 40 -> BluePrimary
+                    else -> OrangeSecondary
+                },
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun DynamicLineChart(dataPoints: List<GrowthDataPoint>, modifier: Modifier = Modifier) {
+    val chartColor = BluePrimary
+    val maxRevenue = dataPoints.maxOfOrNull { it.revenue } ?: 1.0
+    val displayMax = if (maxRevenue == 0.0) 1.0 else maxRevenue * 1.2
+
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val spacing = width / (dataPoints.size - 1).coerceAtLeast(1)
+
+        val path = Path()
+        dataPoints.forEachIndexed { index, point ->
+            val x = index * spacing
+            val y = height - (point.revenue / displayMax * height).toFloat()
+            
+            if (index == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+        }
+
+        drawPath(
+            path = path,
+            color = chartColor,
+            style = Stroke(width = 3.dp.toPx())
+        )
+        
+        // Draw Area Under Path
+        val fillPath = Path().apply {
+            addPath(path)
+            lineTo(width, height)
+            lineTo(0f, height)
+            close()
+        }
+        drawPath(
+            path = fillPath,
+            color = chartColor.copy(alpha = 0.1f)
+        )
     }
 }
 

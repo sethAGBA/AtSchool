@@ -8,11 +8,11 @@ import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
+import org.koin.ktor.ext.getKoin
 
 fun Route.structureRoutes() {
-    val establishmentRepository by inject<EstablishmentRepository>()
-    val classRepository by inject<ClassRepository>()
+    val establishmentRepository by lazy { application.getKoin().get<EstablishmentRepository>() }
+    val classRepository by lazy { application.getKoin().get<ClassRepository>() }
 
     authenticate("auth-jwt") {
         route("/establishments") {
