@@ -26,6 +26,7 @@ object DatabaseFactory {
                 EstablishmentSettings,
                 Users,
                 AnneesScolaires,
+                AcademicPeriods,
                 Cycles,
                 Niveaux,
                 Classes,

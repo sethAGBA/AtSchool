@@ -1,25 +1,28 @@
 package com.ecolix.utils
 
+import java.awt.FileDialog
+import java.awt.Frame
 import java.io.File
-import javax.swing.JFileChooser
-import javax.swing.UIManager
-import javax.swing.filechooser.FileNameExtensionFilter
 
 actual object FilePicker {
     actual fun pickFile(): FileData? {
         return try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
-            
-            val fileChooser = JFileChooser().apply {
-                fileSelectionMode = JFileChooser.FILES_ONLY
-                dialogTitle = "Choisir une image"
-                fileFilter = FileNameExtensionFilter("Images", "jpg", "jpeg", "png", "webp")
+            // Using FileDialog (AWT) for native feel on macOS/Windows
+            val dialog = FileDialog(null as Frame?, "Choisir une image", FileDialog.LOAD).apply {
+                file = "*.jpg;*.jpeg;*.png;*.webp" // Hint for some platforms
+                setFilenameFilter { _, name ->
+                    val lower = name.lowercase()
+                    lower.endsWith(".jpg") || lower.endsWith(".jpeg") || 
+                    lower.endsWith(".png") || lower.endsWith(".webp")
+                }
+                isVisible = true
             }
-            
-            val result = fileChooser.showOpenDialog(null)
-            
-            if (result == JFileChooser.APPROVE_OPTION) {
-                val file = fileChooser.selectedFile
+
+            val directory = dialog.directory
+            val fileName = dialog.file
+
+            if (directory != null && fileName != null) {
+                val file = File(directory, fileName)
                 FileData(
                     name = file.name,
                     bytes = file.readBytes()

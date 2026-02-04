@@ -5,6 +5,7 @@ import com.ecolix.presentation.screens.eleves.StudentsScreenModel
 import com.ecolix.presentation.screens.dashboard.DashboardScreenModel
 import com.ecolix.presentation.screens.superadmin.SuperAdminScreenModel
 import com.ecolix.presentation.screens.settings.SettingsScreenModel
+import com.ecolix.presentation.screens.academic.AcademicScreenModel
 import org.koin.dsl.module
 
 val presentationModule = module {
@@ -13,4 +14,5 @@ val presentationModule = module {
     factory { DashboardScreenModel(get()) }
     factory { SuperAdminScreenModel(get()) }
     single { SettingsScreenModel(get(), get()) }
+    factory { AcademicScreenModel(get()) }
 }

@@ -8,6 +8,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import java.io.File
 import java.util.*
+import org.koin.ktor.ext.getKoin
+import org.koin.core.qualifier.named
 
 fun Route.uploadRoutes() {
     authenticate("auth-jwt") {
@@ -21,7 +23,8 @@ fun Route.uploadRoutes() {
                     val extension = name.substringAfterLast(".", "png")
                     val fileName = "${UUID.randomUUID()}.$extension"
                     
-                    val uploadDir = File("uploads")
+                    val uploadDir = call.application.getKoin().get<File>(org.koin.core.qualifier.named("uploadDir"))
+                    
                     if (!uploadDir.exists()) {
                         uploadDir.mkdirs()
                     }

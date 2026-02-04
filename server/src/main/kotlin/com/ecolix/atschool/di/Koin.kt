@@ -14,6 +14,10 @@ val appModule = module {
     single { SubjectRepository() }
     single { EvaluationRepository() }
     single { GradeRepository() }
+    single { SchoolYearRepository() }
+    single { AcademicPeriodRepository() }
+    single { CycleRepository() }
+    single { LevelRepository() }
     single { SuperAdminRepository() }
     single { SuperAdminAdvancedRepository() }
     single { 

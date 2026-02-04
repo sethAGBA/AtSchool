@@ -332,3 +332,57 @@ data class EstablishmentSettingsDto(
     
     val updatedAt: String? = null
 )
+
+// Academic & Structure DTOs
+@Serializable
+data class SchoolYearDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val libelle: String,
+    val dateDebut: String,
+    val dateFin: String,
+    val isActif: Boolean = true,
+    val numberOfPeriods: Int = 3,
+    val periodType: String = "TRIMESTER",
+    val isDefault: Boolean = false,
+    val description: String? = null,
+    val periods: List<AcademicPeriodDto>? = null
+)
+
+@Serializable
+data class AcademicPeriodDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val anneeScolaireId: Int,
+    val nom: String,
+    val numero: Int,
+    val dateDebut: String,
+    val dateFin: String,
+    val periodType: String = "TRIMESTER",
+    val evaluationDeadline: String? = null,
+    val reportCardDeadline: String? = null,
+    val isActif: Boolean = true
+)
+
+@Serializable
+data class CycleDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val nom: String
+)
+
+@Serializable
+data class LevelDto(
+    val id: Int? = null,
+    val cycleId: Int,
+    val nom: String
+)
+
+@Serializable
+data class ClassDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val niveauId: Int,
+    val code: String,
+    val nom: String
+)

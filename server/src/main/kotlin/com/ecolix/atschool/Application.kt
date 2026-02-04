@@ -30,7 +30,17 @@ import org.koin.dsl.module
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
-    // 1. Dependency Injection
+    // 📂 Consistent Upload Directory (Always at project root)
+    val projectRoot = File(System.getProperty("user.dir")).let { dir ->
+        if (dir.name == "server" || dir.path.endsWith("/server")) dir.parentFile else dir
+    }
+    val uploadDir = File(projectRoot, "uploads").absoluteFile
+    if (!uploadDir.exists()) uploadDir.mkdirs()
+
+    println("🚀 Server Working Directory: ${System.getProperty("user.dir")}")
+    println("📂 Serving uploads from: ${uploadDir.absolutePath}")
+
+    // Configuration
     val jwtConfig = environment.config.config("jwt")
     val jwtSecret = jwtConfig.property("secret").getString()
     val jwtIssuer = jwtConfig.property("issuer").getString()
@@ -46,6 +56,7 @@ fun Application.module() {
                 single(org.koin.core.qualifier.named("jwtIssuer")) { jwtIssuer }
                 single(org.koin.core.qualifier.named("jwtAudience")) { jwtAudience }
                 single(org.koin.core.qualifier.named("jwtRealm")) { jwtRealm }
+                single(org.koin.core.qualifier.named("uploadDir")) { uploadDir }
             },
             appModule
         )
@@ -64,18 +75,6 @@ fun Application.module() {
     }
 
     // 4. Authentication
-    // Config loaded above for DI
-
-    install(io.ktor.server.plugins.cors.routing.CORS) {
-        allowMethod(io.ktor.http.HttpMethod.Options)
-        allowMethod(io.ktor.http.HttpMethod.Put)
-        allowMethod(io.ktor.http.HttpMethod.Delete)
-        allowMethod(io.ktor.http.HttpMethod.Patch)
-        allowHeader(io.ktor.http.HttpHeaders.Authorization)
-        allowHeader(io.ktor.http.HttpHeaders.ContentType)
-        anyHost() // Allow all hosts for development
-    }
-
     install(Authentication) {
         jwt("auth-jwt") {
             realm = jwtRealm
@@ -110,6 +109,14 @@ fun Application.module() {
         settingsRoutes()
         uploadRoutes()
 
-        staticFiles("/uploads", File("uploads"))
+        get("/uploads/{filename}") {
+            val filename = call.parameters["filename"] ?: return@get call.respond(io.ktor.http.HttpStatusCode.BadRequest)
+            val file = File(uploadDir, filename)
+            if (file.exists()) {
+                call.respondFile(file)
+            } else {
+                call.respond(io.ktor.http.HttpStatusCode.NotFound)
+            }
+        }
     }
 }

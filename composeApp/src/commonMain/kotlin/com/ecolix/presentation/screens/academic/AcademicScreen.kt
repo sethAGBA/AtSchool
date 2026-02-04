@@ -3,6 +3,8 @@ package com.ecolix.presentation.screens.academic
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,27 +20,86 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ecolix.data.models.*
 import com.ecolix.presentation.components.SearchBar
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+
+class AcademicScreen : Screen {
+    @Composable
+    override fun Content() {
+        // We'll need to know if it's dark mode. 
+        // Usually, this is handled by a theme provider, but here it's passed down.
+        // For now, let's assume it's part of the global theme or passed via LocalTheme.
+        val isDarkMode = androidx.compose.foundation.isSystemInDarkTheme() 
+        val screenModel = koinScreenModel<AcademicScreenModel>()
+        AcademicScreenContent(screenModel, isDarkMode)
+    }
+}
 
 @Composable
-fun AcademicScreenContent(isDarkMode: Boolean) {
-    val screenModel = remember { AcademicScreenModel() }
-    val state by screenModel.state.collectAsState()
+fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean) {
+    val state: AcademicUiState by screenModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            screenModel.clearError()
+        }
+    }
+
+    LaunchedEffect(state.successMessage) {
+        state.successMessage?.let {
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            screenModel.clearSuccess()
+        }
+    }
 
     LaunchedEffect(isDarkMode) {
         screenModel.onDarkModeChange(isDarkMode)
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isCompact = maxWidth < 800.dp
-
-        Column(
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = state.colors.background,
+        modifier = Modifier.fillMaxSize()
+    ) { padding ->
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(if (isCompact) 16.dp else 24.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 24.dp)
+                .padding(padding)
         ) {
-            if (!isCompact) {
-                // Header Row (Desktop)
+            val isCompact = maxWidth < 800.dp
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(if (isCompact) 16.dp else 24.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 24.dp)
+            ) {
+            // Header (Visible on all devices)
+            val headerTitleStyle = if (isCompact) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium
+            val headerSpacing = if (isCompact) 8.dp else 24.dp
+
+            if (isCompact) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Gestion Académique",
+                        style = headerTitleStyle.copy(fontWeight = FontWeight.Bold),
+                        color = state.colors.textPrimary
+                    )
+                    AcademicViewToggle(
+                        currentMode = state.viewMode,
+                        onModeChange = { screenModel.onViewModeChange(it) },
+                        colors = state.colors,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -47,10 +108,7 @@ fun AcademicScreenContent(isDarkMode: Boolean) {
                     Column {
                         Text(
                             text = "Gestion Académique",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 32.sp
-                            ),
+                            style = headerTitleStyle.copy(fontWeight = FontWeight.Bold, fontSize = 32.sp),
                             color = state.colors.textPrimary
                         )
                         Text(
@@ -66,6 +124,9 @@ fun AcademicScreenContent(isDarkMode: Boolean) {
                         colors = state.colors
                     )
                 }
+            }
+
+            if (!isCompact) {
 
                 // Statistics Cards
                 if (state.viewMode == AcademicViewMode.OVERVIEW && state.searchQuery.isEmpty()) {
@@ -97,19 +158,37 @@ fun AcademicScreenContent(isDarkMode: Boolean) {
                         AcademicViewMode.OVERVIEW -> AcademicOverviewTab(
                             state = state,
                             colors = state.colors,
-                            isCompact = isCompact
+                            isCompact = isCompact,
+                            onArchiveYear = { screenModel.deleteSchoolYear(it) } // Or a specific archive method
                         )
                         AcademicViewMode.SCHOOL_YEARS -> SchoolYearsTab(
                             state = state,
                             colors = state.colors,
                             isCompact = isCompact,
-                            onSelectYear = { screenModel.onSelectSchoolYear(it) }
+                            onSelectYear = { screenModel.onSelectSchoolYear(it) },
+                            onCreateYear = { name, start, end, types, num, periods ->
+                                screenModel.createSchoolYear(name, start, end, types, num, periods)
+                            },
+                            onUpdateYear = { id, name, start, end, types, num, periods ->
+                                screenModel.updateSchoolYear(id, name, start, end, types, num, periods)
+                            },
+                            onDeleteYear = { screenModel.deleteSchoolYear(it) },
+                            onSetDefault = { screenModel.setDefaultYear(it) }
                         )
                         AcademicViewMode.PERIODS -> PeriodsTab(
                             state = state,
                             colors = state.colors,
                             isCompact = isCompact,
-                            onSelectPeriod = { screenModel.onSelectPeriod(it) }
+                            onSelectPeriod = { screenModel.onSelectPeriod(it) },
+                            onCreatePeriod = { name, num, start, end, type ->
+                                screenModel.createAcademicPeriod(name, num, start, end, type)
+                            },
+                            onUpdatePeriod = { id, name, num, start, end, type ->
+                                screenModel.updateAcademicPeriod(id, name, num, start, end, type)
+                            },
+                            onDeletePeriod = { 
+                                screenModel.deleteAcademicPeriod(it)
+                            }
                         )
                         AcademicViewMode.CALENDAR -> CalendarTab(
                             state = state,
@@ -127,17 +206,21 @@ fun AcademicScreenContent(isDarkMode: Boolean) {
         }
     }
 }
+}
 
 @Composable
 private fun AcademicViewToggle(
     currentMode: AcademicViewMode,
     onModeChange: (AcademicViewMode) -> Unit,
-    colors: DashboardColors
+    colors: DashboardColors,
+    modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
     Row(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(colors.card)
+            .horizontalScroll(scrollState)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -198,9 +281,9 @@ private fun AcademicStatisticsCards(
             modifier = Modifier.weight(1f)
         )
         StatCard(
-            title = "Période Actuelle",
-            value = statistics.currentPeriod?.name ?: "Aucune",
-            subtitle = statistics.currentPeriod?.let { "Jusqu'au ${it.endDate}" },
+            title = "Période(s) Actuelle(s)",
+            value = if (statistics.currentPeriods.isNotEmpty()) statistics.currentPeriods.joinToString(", ") { it.name } else "Aucune",
+            subtitle = statistics.currentPeriods.minByOrNull { it.endDate }?.let { "Fin : ${it.endDate}" },
             icon = Icons.Default.DateRange,
             color = Color(0xFF10B981),
             colors = colors,
@@ -302,7 +385,6 @@ fun AcademicStatus.toColor(): Color = when (this) {
 fun PeriodType.toFrench(): String = when (this) {
     PeriodType.TRIMESTER -> "Trimestre"
     PeriodType.SEMESTER -> "Semestre"
-    PeriodType.QUARTER -> "Quadrimestre"
 }
 
 fun EventType.toFrench(): String = when (this) {

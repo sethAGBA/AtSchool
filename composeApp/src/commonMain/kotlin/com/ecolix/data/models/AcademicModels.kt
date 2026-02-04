@@ -13,8 +13,7 @@ enum class AcademicViewMode {
 
 enum class PeriodType {
     TRIMESTER,
-    SEMESTER,
-    QUARTER
+    SEMESTER
 }
 
 enum class AcademicStatus {
@@ -31,7 +30,7 @@ data class SchoolYear(
     val startDate: String,
     val endDate: String,
     val status: AcademicStatus,
-    val periodType: PeriodType,
+    val periodTypes: List<PeriodType>,
     val numberOfPeriods: Int,
     val isDefault: Boolean = false,
     val description: String? = null
@@ -45,6 +44,7 @@ data class AcademicPeriod(
     val startDate: String,
     val endDate: String,
     val status: AcademicStatus,
+    val type: PeriodType,
     val evaluationDeadline: String? = null,
     val reportCardDeadline: String? = null
 )
@@ -118,7 +118,7 @@ data class GradeLevel(
 data class AcademicStatistics(
     val totalSchoolYears: Int,
     val activeYear: SchoolYear?,
-    val currentPeriod: AcademicPeriod?,
+    val currentPeriods: List<AcademicPeriod> = emptyList(),
     val upcomingEvents: Int,
     val daysUntilNextPeriod: Int,
     val completionRate: Float
@@ -138,7 +138,7 @@ data class AcademicUiState(
     val statistics: AcademicStatistics = AcademicStatistics(
         totalSchoolYears = 0,
         activeYear = null,
-        currentPeriod = null,
+        currentPeriods = emptyList(),
         upcomingEvents = 0,
         daysUntilNextPeriod = 0,
         completionRate = 0f
@@ -157,5 +157,42 @@ data class AcademicUiState(
         autoPromoteStudents = false
     ),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val successMessage: String? = null
 )
+
+// Extensions
+fun PeriodType.toFrench(): String = when (this) {
+    PeriodType.TRIMESTER -> "Trimestre"
+    PeriodType.SEMESTER -> "Semestre"
+}
+
+fun AcademicStatus.toFrench(): String = when (this) {
+    AcademicStatus.ACTIVE -> "Actif"
+    AcademicStatus.UPCOMING -> "À venir"
+    AcademicStatus.COMPLETED -> "Terminé"
+    AcademicStatus.ARCHIVED -> "Archivé"
+}
+
+fun AcademicStatus.toColor(): Color = when (this) {
+    AcademicStatus.ACTIVE -> Color(0xFF10B981)
+    AcademicStatus.UPCOMING -> Color(0xFF3B82F6)
+    AcademicStatus.COMPLETED -> Color(0xFFF59E0B)
+    AcademicStatus.ARCHIVED -> Color(0xFF64748B)
+}
+
+fun EventType.toFrench(): String = when (this) {
+    EventType.HOLIDAY -> "Vacances"
+    EventType.EXAM -> "Examen"
+    EventType.MEETING -> "Réunion"
+    EventType.CEREMONY -> "Cérémonie"
+    EventType.DEADLINE -> "Date limite"
+    EventType.OTHER -> "Autre"
+}
+
+fun HolidayType.toFrench(): String = when (this) {
+    HolidayType.NATIONAL -> "Fête Nationale"
+    HolidayType.RELIGIOUS -> "Fête Religieuse"
+    HolidayType.SCHOOL_BREAK -> "Congés Scolaires"
+    HolidayType.OTHER -> "Autre"
+}

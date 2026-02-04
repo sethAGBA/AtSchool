@@ -116,6 +116,23 @@ object AnneesScolaires : IntIdTable("annees_scolaires") {
     val dateDebut = date("date_debut")
     val dateFin = date("date_fin")
     val isActif = bool("is_actif").default(true)
+    val numberOfPeriods = integer("number_of_periods").default(3)
+    val periodType = varchar("period_type", 255).default("TRIMESTER") // Comma-separated: TRIMESTER, SEMESTER, etc.
+    val isDefault = bool("is_default").default(false)
+    val description = text("description").nullable()
+}
+
+object AcademicPeriods : IntIdTable("academic_periods") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val anneeScolaireId = reference("annee_scolaire_id", AnneesScolaires, onDelete = ReferenceOption.CASCADE)
+    val nom = varchar("nom", 100)
+    val numero = integer("numero")
+    val dateDebut = date("date_debut")
+    val dateFin = date("date_fin")
+    val evaluationDeadline = date("evaluation_deadline").nullable()
+    val reportCardDeadline = date("report_card_deadline").nullable()
+    val periodType = varchar("period_type", 20).default("TRIMESTER")
+    val isActif = bool("is_actif").default(true)
 }
 
 object Cycles : IntIdTable("cycles") {

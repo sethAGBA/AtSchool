@@ -22,12 +22,15 @@ import com.ecolix.presentation.components.*
 import com.ecolix.data.models.DashboardUiState
 import com.ecolix.presentation.screens.settings.SettingsScreenContent
 import com.ecolix.presentation.screens.statistics.StatsScreenContent
+import com.ecolix.presentation.screens.academic.AcademicScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 
 class DashboardScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = cafe.adriel.voyager.navigator.LocalNavigator.currentOrThrow
         val screenModel: DashboardScreenModel = org.koin.compose.koinInject()
+        val academicScreenModel: AcademicScreenModel = koinScreenModel()
         val state by screenModel.state.collectAsState()
         
         var isDarkMode by remember { mutableStateOf(false) }
@@ -129,7 +132,7 @@ class DashboardScreen : Screen {
                                     5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                                     6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
                                     7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)
-                                    8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
+                                    8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(screenModel = academicScreenModel, isDarkMode = isDarkMode)
                                     9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
                                     10 -> com.ecolix.presentation.screens.inventory.InventoryScreenContent(isDarkMode = isDarkMode)
                                     11 -> com.ecolix.presentation.screens.audits.AuditScreenContent(isDarkMode = isDarkMode)
@@ -156,7 +159,7 @@ class DashboardScreen : Screen {
                             5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                             6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
                             7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)
-                            8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(isDarkMode = isDarkMode)
+                            8 -> com.ecolix.presentation.screens.academic.AcademicScreenContent(screenModel = academicScreenModel, isDarkMode = isDarkMode)
                             9 -> com.ecolix.presentation.screens.paiements.PaymentsScreenContent(isDarkMode = isDarkMode)
                             10 -> com.ecolix.presentation.screens.inventory.InventoryScreenContent(isDarkMode = isDarkMode)
                             11 -> com.ecolix.presentation.screens.audits.AuditScreenContent(isDarkMode = isDarkMode)
