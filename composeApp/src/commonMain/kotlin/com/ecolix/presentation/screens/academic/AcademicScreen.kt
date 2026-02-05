@@ -217,7 +217,8 @@ fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean)
                         AcademicViewMode.SETTINGS -> AcademicSettingsTab(
                             state = state,
                             colors = state.colors,
-                            isCompact = isCompact
+                            isCompact = isCompact,
+                            onUpdateSettings = { screenModel.updateSettings(it) }
                         )
                     }
                 }

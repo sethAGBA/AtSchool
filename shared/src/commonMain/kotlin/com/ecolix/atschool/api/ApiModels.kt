@@ -408,3 +408,33 @@ data class HolidayDto(
     val endDate: String,
     val type: String
 )
+
+@Serializable
+data class AcademicSettingsDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val defaultPeriodType: String = "TRIMESTER",
+    val minGrade: Float = 0f,
+    val maxGrade: Float = 20f,
+    val passingGrade: Float = 10f,
+    val attendanceRequiredPercentage: Float = 75f,
+    val allowMidPeriodTransfer: Boolean = false,
+    val autoPromoteStudents: Boolean = false,
+    val decimalPrecision: Int = 2,
+    val showRankOnReportCard: Boolean = true,
+    val showClassAverageOnReportCard: Boolean = true,
+    val absencesThresholdAlert: Int = 5,
+    val matriculePrefix: String? = null,
+    val updatedAt: String? = null
+)
+
+@Serializable
+data class GradeLevelDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val name: String,
+    val minValue: Float,
+    val maxValue: Float,
+    val description: String? = null,
+    val color: String = "#000000"
+)

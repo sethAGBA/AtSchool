@@ -271,6 +271,32 @@ object Holidays : IntIdTable("holidays") {
     val type = varchar("type", 50) // NATIONAL, RELIGIOUS, SCHOOL_BREAK, OTHER
 }
 
+object AcademicSettings : IntIdTable("academic_settings") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE).uniqueIndex()
+    val defaultPeriodType = varchar("default_period_type", 20).default("TRIMESTER")
+    val minGrade = float("min_grade").default(0f)
+    val maxGrade = float("max_grade").default(20f)
+    val passingGrade = float("passing_grade").default(10f)
+    val attendanceRequiredPercentage = float("attendance_required_percentage").default(75f)
+    val allowMidPeriodTransfer = bool("allow_mid_period_transfer").default(false)
+    val autoPromoteStudents = bool("auto_promote_students").default(false)
+    val decimalPrecision = integer("decimal_precision").default(2)
+    val showRankOnReportCard = bool("show_rank_on_report_card").default(true)
+    val showClassAverageOnReportCard = bool("show_class_average_on_report_card").default(true)
+    val absencesThresholdAlert = integer("absences_threshold_alert").default(5)
+    val matriculePrefix = varchar("matricule_prefix", 10).nullable()
+    val updatedAt = datetime("updated_at")
+}
+
+object GradeLevels : IntIdTable("grade_levels") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 50) // e.g., "Excellent", "Très Bien"
+    val minValue = float("min_value")
+    val maxValue = float("max_value")
+    val description = text("description").nullable()
+    val color = varchar("color", 10).default("#000000") // Hex code
+}
+
 @Serializable
 data class GlobalStatsResponse(
     val totalSchools: Int,

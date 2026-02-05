@@ -44,7 +44,9 @@ object DatabaseFactory {
                 SupportTickets,
                 AdminPermissions,
                 AcademicEvents,
-                Holidays
+                Holidays,
+                AcademicSettings,
+                GradeLevels
             )
         }
     }

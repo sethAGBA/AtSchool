@@ -54,6 +54,24 @@ class StudentRepository {
         Eleves.deleteWhere { (Eleves.id eq id) and (Eleves.tenantId eq tenantId) }
     }
 
+    fun generateNextMatricule(tenantId: Int): String = transaction {
+        val prefix = AcademicSettings.selectAll().where { AcademicSettings.tenantId eq tenantId }
+            .map { it[AcademicSettings.matriculePrefix] }
+            .singleOrNull() ?: "MAT"
+
+        val regex = "^$prefix-(\\d+)$".toRegex()
+        val maxNumber = Eleves.selectAll()
+            .where { (Eleves.tenantId eq tenantId) and (Eleves.matricule like "$prefix-%") }
+            .mapNotNull { 
+                val match = regex.find(it[Eleves.matricule])
+                match?.groupValues?.get(1)?.toIntOrNull()
+            }
+            .maxOrNull() ?: 0
+
+        val nextNumber = maxNumber + 1
+        "$prefix-${nextNumber.toString().padStart(5, '0')}"
+    }
+
     private fun ResultRow.toStudent() = Student(
         id = this[Eleves.id].value,
         tenantId = this[Eleves.tenantId].value,

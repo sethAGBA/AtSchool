@@ -17,8 +17,41 @@ fun Route.academicRoutes() {
     val gradeRepository by lazy { application.getKoin().get<GradeRepository>() }
     val academicEventRepository by lazy { application.getKoin().get<AcademicEventRepository>() }
     val holidayRepository by lazy { application.getKoin().get<HolidayRepository>() }
+    val academicSettingsRepository by lazy { application.getKoin().get<AcademicSettingsRepository>() }
+    val gradeLevelRepository by lazy { application.getKoin().get<GradeLevelRepository>() }
 
     authenticate("auth-jwt") {
+        route("/settings") {
+            get {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                call.respond(academicSettingsRepository.getSettings(tenantId))
+            }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val settings = call.receive<AcademicSettingsDto>().copy(tenantId = tenantId)
+                academicSettingsRepository.updateSettings(tenantId, settings)
+                call.respond(HttpStatusCode.OK)
+            }
+        }
+
+        route("/grade-levels") {
+            get {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                call.respond(gradeLevelRepository.getGradeLevels(tenantId))
+            }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val levels = call.receive<List<GradeLevelDto>>().map { it.copy(tenantId = tenantId) }
+                gradeLevelRepository.updateGradeLevels(tenantId, levels)
+                call.respond(HttpStatusCode.OK)
+            }
+        }
         route("/subjects") {
             get {
                 val principal = call.principal<JWTPrincipal>()

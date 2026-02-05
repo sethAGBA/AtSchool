@@ -57,6 +57,14 @@ fun Route.studentRoutes() {
                 call.respond(HttpStatusCode.OK)
             }
 
+            get("/next-matricule") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                
+                val nextMatricule = repository.generateNextMatricule(tenantId)
+                call.respond(mapOf("matricule" to nextMatricule))
+            }
+
             delete("/{id}") {
                 val principal = call.principal<JWTPrincipal>()
                 val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)

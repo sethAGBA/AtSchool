@@ -97,7 +97,12 @@ data class AcademicSettings(
     val passingGrade: Float,
     val attendanceRequired: Float,
     val allowMidPeriodTransfer: Boolean,
-    val autoPromoteStudents: Boolean
+    val autoPromoteStudents: Boolean,
+    val decimalPrecision: Int = 2,
+    val showRankOnReportCard: Boolean = true,
+    val showClassAverageOnReportCard: Boolean = true,
+    val absencesThresholdAlert: Int = 5,
+    val matriculePrefix: String? = null
 )
 
 data class GradeScale(
@@ -154,7 +159,12 @@ data class AcademicUiState(
         passingGrade = 10f,
         attendanceRequired = 75f,
         allowMidPeriodTransfer = false,
-        autoPromoteStudents = false
+        autoPromoteStudents = false,
+        decimalPrecision = 2,
+        showRankOnReportCard = true,
+        showClassAverageOnReportCard = true,
+        absencesThresholdAlert = 5,
+        matriculePrefix = null
     ),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

@@ -225,4 +225,46 @@ class StructureApiService(private val client: HttpClient) {
             throw Exception(errorBody?.get("error") ?: "Erreur lors de la suppression des vacances (${response.status.value})")
         }
     }
+
+    // Academic Settings
+    suspend fun getAcademicSettings(): Result<AcademicSettingsDto> = runCatching {
+        val response = client.get("settings")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la récupération des paramètres (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun updateAcademicSettings(settings: AcademicSettingsDto): Result<Unit> = runCatching {
+        val response = client.post("settings") {
+            contentType(ContentType.Application.Json)
+            setBody(settings)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour des paramètres (${response.status.value})")
+        }
+    }
+
+    // Grade Levels
+    suspend fun getGradeLevels(): Result<List<GradeLevelDto>> = runCatching {
+        val response = client.get("grade-levels")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la récupération des échelons (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun updateGradeLevels(levels: List<GradeLevelDto>): Result<Unit> = runCatching {
+        val response = client.post("grade-levels") {
+            contentType(ContentType.Application.Json)
+            setBody(levels)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour des échelons (${response.status.value})")
+        }
+    }
 }

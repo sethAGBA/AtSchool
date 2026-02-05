@@ -6,6 +6,8 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.ecolix.atschool.api.StructureApiService
 import com.ecolix.atschool.api.SchoolYearDto
 import com.ecolix.atschool.api.AcademicPeriodDto
+import com.ecolix.atschool.api.AcademicSettingsDto
+import com.ecolix.atschool.api.GradeLevelDto
 import com.ecolix.data.models.*
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -19,6 +21,49 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
     init {
         loadData()
         loadCalendarData()
+        fetchAcademicSettings()
+    }
+
+    private fun fetchAcademicSettings() {
+        screenModelScope.launch {
+            structureApiService.getAcademicSettings()
+                .onSuccess { settingsDto ->
+                    structureApiService.getGradeLevels()
+                        .onSuccess { gradeLevelDtos ->
+                            mutableState.update { state ->
+                                state.copy(
+                                    settings = settingsDto.toUiModel(gradeLevelDtos)
+                                )
+                            }
+                        }
+                }
+        }
+    }
+
+    fun updateSettings(settings: AcademicSettings) {
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            val dto = settings.toDto(0) // tenantId handled by server
+            structureApiService.updateAcademicSettings(dto)
+                .onSuccess {
+                    // Update grade levels too
+                    val gradeDtos = settings.gradeScale.gradeLevels.map { it.toDto(0) }
+                    structureApiService.updateGradeLevels(gradeDtos)
+                        .onSuccess {
+                            mutableState.update { it.copy(
+                                isLoading = false,
+                                successMessage = "Paramètres enregistrés avec succès"
+                            ) }
+                            fetchAcademicSettings()
+                        }
+                        .onFailure { error ->
+                            mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                        }
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
     }
 
     private fun loadCalendarData() {
@@ -634,8 +679,59 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         mutableState.update { it.copy(statistics = statistics) }
     }
 
+    private fun AcademicSettingsDto.toUiModel(gradeLevels: List<com.ecolix.atschool.api.GradeLevelDto>) = AcademicSettings(
+        defaultPeriodType = try { PeriodType.valueOf(this.defaultPeriodType) } catch (e: Exception) { PeriodType.TRIMESTER },
+        gradeScale = GradeScale(
+            minGrade = this.minGrade,
+            maxGrade = this.maxGrade,
+            passingGrade = this.passingGrade,
+            gradeLevels = gradeLevels.map { it.toUiModel() }
+        ),
+        passingGrade = this.passingGrade,
+        attendanceRequired = this.attendanceRequiredPercentage,
+        allowMidPeriodTransfer = this.allowMidPeriodTransfer,
+        autoPromoteStudents = this.autoPromoteStudents,
+        decimalPrecision = this.decimalPrecision,
+        showRankOnReportCard = this.showRankOnReportCard,
+        showClassAverageOnReportCard = this.showClassAverageOnReportCard,
+        absencesThresholdAlert = this.absencesThresholdAlert,
+        matriculePrefix = this.matriculePrefix
+    )
+
+    private fun com.ecolix.atschool.api.GradeLevelDto.toUiModel() = GradeLevel(
+        name = this.name,
+        minValue = this.minValue,
+        maxValue = this.maxValue,
+        description = this.description ?: "",
+        color = parseHexColor(this.color)
+    )
+
+    private fun AcademicSettings.toDto(tenantId: Int) = com.ecolix.atschool.api.AcademicSettingsDto(
+        tenantId = tenantId,
+        defaultPeriodType = this.defaultPeriodType.name,
+        minGrade = this.gradeScale.minGrade,
+        maxGrade = this.gradeScale.maxGrade,
+        passingGrade = this.passingGrade,
+        attendanceRequiredPercentage = this.attendanceRequired,
+        allowMidPeriodTransfer = this.allowMidPeriodTransfer,
+        autoPromoteStudents = this.autoPromoteStudents,
+        decimalPrecision = this.decimalPrecision,
+        showRankOnReportCard = this.showRankOnReportCard,
+        showClassAverageOnReportCard = this.showClassAverageOnReportCard,
+        absencesThresholdAlert = this.absencesThresholdAlert,
+        matriculePrefix = this.matriculePrefix
+    )
+
+    private fun GradeLevel.toDto(tenantId: Int) = com.ecolix.atschool.api.GradeLevelDto(
+        tenantId = tenantId,
+        name = this.name,
+        minValue = this.minValue,
+        maxValue = this.maxValue,
+        description = this.description,
+        color = this.color.toHex()
+    )
+
     private fun Color.toHex(): String {
-        // Extract ARGB from the 64-bit value properly
         val argb = (value shr 32).toInt()
         val r = (argb shr 16) and 0xFF
         val g = (argb shr 8) and 0xFF
