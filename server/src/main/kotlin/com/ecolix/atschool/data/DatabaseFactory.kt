@@ -42,7 +42,9 @@ object DatabaseFactory {
                 SubscriptionPlans,
                 Notifications,
                 SupportTickets,
-                AdminPermissions
+                AdminPermissions,
+                AcademicEvents,
+                Holidays
             )
         }
     }

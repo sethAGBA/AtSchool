@@ -386,3 +386,25 @@ data class ClassDto(
     val code: String,
     val nom: String
 )
+
+@Serializable
+data class AcademicEventDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val title: String,
+    val description: String? = null,
+    val date: String,
+    val endDate: String? = null,
+    val type: String,
+    val color: String
+)
+
+@Serializable
+data class HolidayDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val name: String,
+    val startDate: String,
+    val endDate: String,
+    val type: String
+)

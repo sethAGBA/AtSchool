@@ -253,6 +253,24 @@ object AdminPermissions : LongIdTable("admin_permissions") {
     val grantedBy = reference("granted_by", Users, onDelete = ReferenceOption.CASCADE)
 }
 
+object AcademicEvents : IntIdTable("academic_events") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val title = varchar("title", 200)
+    val description = text("description").nullable()
+    val date = date("event_date")
+    val endDate = date("end_date").nullable()
+    val type = varchar("type", 50) // EXAM, MEETING, CEREMONY, DEADLINE
+    val color = varchar("color", 20).default("#3B82F6")
+}
+
+object Holidays : IntIdTable("holidays") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 200)
+    val startDate = date("start_date")
+    val endDate = date("end_date")
+    val type = varchar("type", 50) // NATIONAL, RELIGIOUS, SCHOOL_BREAK, OTHER
+}
+
 @Serializable
 data class GlobalStatsResponse(
     val totalSchools: Int,

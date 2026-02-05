@@ -9,12 +9,140 @@ import com.ecolix.atschool.api.AcademicPeriodDto
 import com.ecolix.data.models.*
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 class AcademicScreenModel(private val structureApiService: StructureApiService) : 
     StateScreenModel<AcademicUiState>(AcademicUiState()) {
 
     init {
         loadData()
+        loadCalendarData()
+    }
+
+    private fun loadCalendarData() {
+        screenModelScope.launch {
+            val eventsResult = structureApiService.getAcademicEvents()
+            val holidaysResult = structureApiService.getHolidays()
+
+            val eventDtos = eventsResult.getOrDefault(emptyList())
+            val holidayDtos = holidaysResult.getOrDefault(emptyList())
+
+            if (eventDtos.isEmpty() && holidayDtos.isEmpty()) {
+                seedDefaultCalendarData()
+            } else {
+                mutableState.update { it.copy(
+                    events = eventDtos.map { dto -> dto.toUiModel() },
+                    holidays = holidayDtos.map { dto -> dto.toUiModel() }
+                ) }
+            }
+        }
+    }
+
+    private fun seedDefaultCalendarData() {
+        screenModelScope.launch {
+            val state = mutableState.value
+            val currentYear = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
+            val activeYearId = state.selectedSchoolYearId ?: state.schoolYears.find { it.status == AcademicStatus.ACTIVE }?.id
+
+            // 1. Seed Default Periods if missing in active year
+            if (activeYearId != null && state.periods.isEmpty()) {
+                val yearIdInt = activeYearId.toIntOrNull() ?: 0
+                val defaultPeriods = listOf(
+                    // Trimesters
+                    Triple("1er Trimestre", "$currentYear-09-15", "$currentYear-12-20") to PeriodType.TRIMESTER,
+                    Triple("2ème Trimestre", "${currentYear + 1}-01-05", "${currentYear + 1}-03-28") to PeriodType.TRIMESTER,
+                    Triple("3ème Trimestre", "${currentYear + 1}-04-07", "${currentYear + 1}-06-30") to PeriodType.TRIMESTER,
+                    // Semesters
+                    Triple("1er Semestre", "$currentYear-09-15", "${currentYear + 1}-01-31") to PeriodType.SEMESTER,
+                    Triple("2ème Semestre", "${currentYear + 1}-02-01", "${currentYear + 1}-06-30") to PeriodType.SEMESTER
+                )
+
+                defaultPeriods.forEachIndexed { index, (data, type) ->
+                    val (name, start, end) = data
+                    structureApiService.createAcademicPeriod(AcademicPeriodDto(
+                        id = null,
+                        tenantId = 0,
+                        anneeScolaireId = yearIdInt,
+                        nom = name,
+                        numero = (index % 3) + 1,
+                        dateDebut = start,
+                        dateFin = end,
+                        periodType = type.name,
+                        status = "UPCOMING"
+                    ))
+                }
+                
+                // Refresh periods in state to generate events for them
+                structureApiService.getPeriodsByYear(yearIdInt).onSuccess { dtos ->
+                    mutableState.update { it.copy(periods = dtos.map { it.toUiModel() }) }
+                }
+            }
+
+            // 2. Generate Events for existing periods (Evaluations & Bulletins)
+            val currentState = mutableState.value
+            currentState.periods.forEach { period ->
+                // Evaluation Period (typically last 2 weeks of period)
+                val evalDate = period.endDate // Simplified: use end date as reference
+                structureApiService.createAcademicEvent(com.ecolix.atschool.api.AcademicEventDto(
+                    title = "Évaluations - ${period.name}",
+                    date = evalDate,
+                    type = EventType.EXAM.name,
+                    color = "#EF4444", // Red for exams
+                    tenantId = 0
+                ))
+
+                // Report Card Distribution (typically 1 week after period end)
+                structureApiService.createAcademicEvent(com.ecolix.atschool.api.AcademicEventDto(
+                    title = "Remise des Bulletins - ${period.name}",
+                    date = period.endDate, // simplified
+                    type = EventType.DEADLINE.name,
+                    color = "#10B981", // Green for results
+                    tenantId = 0
+                ))
+            }
+
+            // 3. General Events & Holidays
+            val defaultEvents = listOf(
+                Triple("Rentrée des Classes", "$currentYear-09-01", EventType.CEREMONY),
+                Triple("Fête de Fin d'Année", "${currentYear + 1}-06-28", EventType.CEREMONY)
+            )
+
+            defaultEvents.forEach { (title, date, type) ->
+                structureApiService.createAcademicEvent(com.ecolix.atschool.api.AcademicEventDto(
+                    title = title,
+                    date = date,
+                    type = type.name,
+                    color = "#3B82F6",
+                    tenantId = 0
+                ))
+            }
+
+            val defaultHolidays = listOf(
+                Triple("Vacances de Noël", "$currentYear-12-20", "${currentYear + 1}-01-05"),
+                Triple("Vacances de Pâques", "${currentYear + 1}-03-29", "${currentYear + 1}-04-06")
+            )
+
+            defaultHolidays.forEach { (name, start, end) ->
+                structureApiService.createHoliday(com.ecolix.atschool.api.HolidayDto(
+                    name = name,
+                    startDate = start,
+                    endDate = end,
+                    type = HolidayType.SCHOOL_BREAK.name,
+                    tenantId = 0
+                ))
+            }
+
+            // Reload everything
+            val updatedEvents = structureApiService.getAcademicEvents().getOrDefault(emptyList())
+            val updatedHolidays = structureApiService.getHolidays().getOrDefault(emptyList())
+            
+            mutableState.update { it.copy(
+                events = updatedEvents.map { it.toUiModel() },
+                holidays = updatedHolidays.map { it.toUiModel() }
+            ) }
+        }
     }
 
     fun loadData() {
@@ -195,7 +323,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         }
     }
 
-    fun updateAcademicPeriod(periodId: String, name: String, number: Int, startDate: String, endDate: String, type: PeriodType) {
+    fun updateAcademicPeriod(periodId: String, name: String, number: Int, startDate: String, endDate: String, type: PeriodType, evaluationDeadline: String? = null, reportCardDeadline: String? = null) {
         val idInt = periodId.toIntOrNull() ?: return
         val yearId = mutableState.value.selectedSchoolYearId ?: return
         screenModelScope.launch {
@@ -209,6 +337,8 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                 dateDebut = startDate,
                 dateFin = endDate,
                 periodType = type.name,
+                evaluationDeadline = evaluationDeadline,
+                reportCardDeadline = reportCardDeadline,
                 status = "ACTIVE"
             )
             structureApiService.updateAcademicPeriod(idInt, dto)
@@ -222,6 +352,20 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         }
     }
 
+    fun updatePeriodDeadlines(periodId: String, evaluationDeadline: String?, reportCardDeadline: String?) {
+        val period = mutableState.value.periods.find { it.id == periodId } ?: return
+        updateAcademicPeriod(
+            periodId = period.id,
+            name = period.name,
+            number = period.periodNumber,
+            startDate = period.startDate,
+            endDate = period.endDate,
+            type = period.type,
+            evaluationDeadline = evaluationDeadline,
+            reportCardDeadline = reportCardDeadline
+        )
+    }
+
     fun deleteAcademicPeriod(periodId: String) {
         val idInt = periodId.toIntOrNull() ?: return
         val yearId = mutableState.value.selectedSchoolYearId ?: return
@@ -231,6 +375,131 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                 .onSuccess { 
                     mutableState.update { it.copy(successMessage = "Période supprimée") }
                     loadPeriods(yearId)
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun createAcademicEvent(title: String, description: String?, date: String, endDate: String?, type: EventType, color: Color) {
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            val hexColor = color.toHex()
+            val dto = com.ecolix.atschool.api.AcademicEventDto(
+                title = title,
+                description = description,
+                date = date,
+                endDate = endDate,
+                type = type.name,
+                color = hexColor,
+                tenantId = 0
+            )
+            structureApiService.createAcademicEvent(dto)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Événement créé") }
+                    loadCalendarData()
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun updateAcademicEvent(id: String, title: String, description: String?, date: String, endDate: String?, type: EventType, color: Color) {
+        val idInt = id.toIntOrNull() ?: return
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            val hexColor = color.toHex()
+            val dto = com.ecolix.atschool.api.AcademicEventDto(
+                id = idInt,
+                title = title,
+                description = description,
+                date = date,
+                endDate = endDate,
+                type = type.name,
+                color = hexColor,
+                tenantId = 0
+            )
+            structureApiService.updateAcademicEvent(idInt, dto)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Événement mis à jour") }
+                    loadCalendarData()
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun deleteAcademicEvent(id: String) {
+        val idInt = id.toIntOrNull() ?: return
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            structureApiService.deleteAcademicEvent(idInt)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Événement supprimé") }
+                    loadCalendarData()
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
+    // Holidays Operations
+    fun createHoliday(name: String, startDate: String, endDate: String, type: HolidayType) {
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            val dto = com.ecolix.atschool.api.HolidayDto(
+                name = name,
+                startDate = startDate,
+                endDate = endDate,
+                type = type.name,
+                tenantId = 0
+            )
+            structureApiService.createHoliday(dto)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Vacances créées") }
+                    loadCalendarData()
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun updateHoliday(id: String, name: String, startDate: String, endDate: String, type: HolidayType) {
+        val idInt = id.toIntOrNull() ?: return
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            val dto = com.ecolix.atschool.api.HolidayDto(
+                id = idInt,
+                name = name,
+                startDate = startDate,
+                endDate = endDate,
+                type = type.name,
+                tenantId = 0
+            )
+            structureApiService.updateHoliday(idInt, dto)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Vacances mises à jour") }
+                    loadCalendarData()
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun deleteHoliday(id: String) {
+        val idInt = id.toIntOrNull() ?: return
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            structureApiService.deleteHoliday(idInt)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Vacances supprimées") }
+                    loadCalendarData()
                 }
                 .onFailure { error ->
                     mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
@@ -328,6 +597,24 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         reportCardDeadline = this.reportCardDeadline
     )
 
+    private fun com.ecolix.atschool.api.AcademicEventDto.toUiModel() = AcademicEvent(
+        id = this.id?.toString() ?: "",
+        title = this.title,
+        description = this.description,
+        date = this.date,
+        endDate = this.endDate,
+        type = try { EventType.valueOf(this.type) } catch (e: Exception) { EventType.OTHER },
+        color = parseHexColor(this.color)
+    )
+
+    private fun com.ecolix.atschool.api.HolidayDto.toUiModel() = Holiday(
+        id = this.id?.toString() ?: "",
+        name = this.name,
+        startDate = this.startDate,
+        endDate = this.endDate,
+        type = try { HolidayType.valueOf(this.type) } catch (e: Exception) { HolidayType.OTHER }
+    )
+
     private fun updateStatistics() {
         val state = mutableState.value
         val activeYear = state.schoolYears.find { it.status == AcademicStatus.ACTIVE }
@@ -345,5 +632,28 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         )
         
         mutableState.update { it.copy(statistics = statistics) }
+    }
+
+    private fun Color.toHex(): String {
+        // Extract ARGB from the 64-bit value properly
+        val argb = (value shr 32).toInt()
+        val r = (argb shr 16) and 0xFF
+        val g = (argb shr 8) and 0xFF
+        val b = argb and 0xFF
+        return "#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}".uppercase()
+    }
+
+    private fun parseHexColor(hexString: String): Color {
+        return try {
+            val hex = hexString.removePrefix("#")
+            val argb = when (hex.length) {
+                6 -> (0xFF shl 24) or hex.toInt(16)
+                8 -> hex.toLong(16).toInt()
+                else -> 0xFF3B82F6.toInt()
+            }
+            Color(argb)
+        } catch (e: Exception) {
+            Color(0xFF3B82F6)
+        }
     }
 }

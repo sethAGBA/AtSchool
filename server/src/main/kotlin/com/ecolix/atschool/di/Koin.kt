@@ -18,6 +18,8 @@ val appModule = module {
     single { AcademicPeriodRepository() }
     single { CycleRepository() }
     single { LevelRepository() }
+    single { AcademicEventRepository() }
+    single { HolidayRepository() }
     single { SuperAdminRepository() }
     single { SuperAdminAdvancedRepository() }
     single { 

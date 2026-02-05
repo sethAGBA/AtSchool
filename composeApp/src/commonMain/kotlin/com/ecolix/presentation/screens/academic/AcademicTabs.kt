@@ -24,7 +24,9 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.scale
 import com.ecolix.data.models.*
 import com.ecolix.atschool.api.AcademicPeriodDto
@@ -277,7 +279,9 @@ private fun InfoItem(
 @Composable
 private fun EventItem(
     event: AcademicEvent,
-    colors: DashboardColors
+    colors: DashboardColors,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -340,13 +344,26 @@ private fun EventItem(
                 )
             }
         }
+
+        if (onEdit != null && onDelete != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Modifier", tint = colors.textMuted, modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun HolidayItem(
     holiday: Holiday,
-    colors: DashboardColors
+    colors: DashboardColors,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -398,6 +415,17 @@ private fun HolidayItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted
                 )
+            }
+        }
+
+        if (onEdit != null && onDelete != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Modifier", tint = colors.textMuted, modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                }
             }
         }
     }
@@ -2034,6 +2062,642 @@ fun DeletePeriodDialog(
         text = {
             Text(
                 "Voulez-vous vraiment supprimer la période $periodName ? Cette action est définitive.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Supprimer")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
+        }
+    )
+}
+
+@Composable
+fun CalendarTab(
+    state: AcademicUiState,
+    colors: DashboardColors,
+    isCompact: Boolean,
+    onUpdateDeadlines: (String, String?, String?) -> Unit,
+    onAddEvent: (String, String?, String, String?, EventType, Color) -> Unit,
+    onUpdateEvent: (String, String, String?, String, String?, EventType, Color) -> Unit,
+    onDeleteEvent: (String) -> Unit,
+    onAddHoliday: (String, String, String, HolidayType) -> Unit,
+    onUpdateHoliday: (String, String, String, String, HolidayType) -> Unit,
+    onDeleteHoliday: (String) -> Unit
+) {
+    val scrollState = rememberScrollState()
+    var showEventDialog by remember { mutableStateOf<AcademicEvent?>(null) }
+    var showHolidayDialog by remember { mutableStateOf<Holiday?>(null) }
+    var showDeleteEventDialog by remember { mutableStateOf<AcademicEvent?>(null) }
+    var showDeleteHolidayDialog by remember { mutableStateOf<Holiday?>(null) }
+    var isNewEvent by remember { mutableStateOf(false) }
+    var isNewHoliday by remember { mutableStateOf(false) }
+
+    if (showEventDialog != null || isNewEvent) {
+        EventDialog(
+            event = showEventDialog,
+            onDismiss = { 
+                showEventDialog = null
+                isNewEvent = false
+            },
+            onConfirm = { title, desc, date, end, type, color ->
+                if (isNewEvent) {
+                    onAddEvent(title, desc, date, end, type, color)
+                } else {
+                    showEventDialog?.id?.let { onUpdateEvent(it, title, desc, date, end, type, color) }
+                }
+                showEventDialog = null
+                isNewEvent = false
+            },
+            colors = colors
+        )
+    }
+
+    if (showHolidayDialog != null || isNewHoliday) {
+        HolidayDialog(
+            holiday = showHolidayDialog,
+            onDismiss = {
+                showHolidayDialog = null
+                isNewHoliday = false
+            },
+            onConfirm = { name, start, end, type ->
+                if (isNewHoliday) {
+                    onAddHoliday(name, start, end, type)
+                } else {
+                    showHolidayDialog?.id?.let { onUpdateHoliday(it, name, start, end, type) }
+                }
+                showHolidayDialog = null
+                isNewHoliday = false
+            },
+            colors = colors
+        )
+    }
+
+    if (showDeleteEventDialog != null) {
+        GenericDeleteDialog(
+            title = "Supprimer l'événement",
+            message = "Voulez-vous vraiment supprimer l'événement \"${showDeleteEventDialog?.title}\" ?",
+            onDismiss = { showDeleteEventDialog = null },
+            onConfirm = {
+                showDeleteEventDialog?.id?.let { onDeleteEvent(it) }
+                showDeleteEventDialog = null
+            },
+            colors = colors
+        )
+    }
+
+    if (showDeleteHolidayDialog != null) {
+        GenericDeleteDialog(
+            title = "Supprimer les vacances",
+            message = "Voulez-vous vraiment supprimer les vacances \"${showDeleteHolidayDialog?.name}\" ?",
+            onDismiss = { showDeleteHolidayDialog = null },
+            onConfirm = {
+                showDeleteHolidayDialog?.id?.let { onDeleteHoliday(it) }
+                showDeleteHolidayDialog = null
+            },
+            colors = colors
+        )
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // Section: Timeline
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                "Chronologie des Périodes",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = colors.textPrimary
+            )
+            
+            // Group periods by type for parallel tracks
+            val periodsByType = state.periods.groupBy { it.type }
+            
+            periodsByType.forEach { (type, periods) ->
+                TimelineTrack(
+                    type = type,
+                    periods = periods.sortedBy { it.periodNumber },
+                    colors = colors,
+                    isCompact = isCompact,
+                    onUpdateDeadlines = onUpdateDeadlines
+                )
+            }
+        }
+
+        // Section: Upcoming Events & Holidays
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // Events
+            Card(
+                colors = CardDefaults.cardColors(containerColor = colors.card),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Événements",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colors.textPrimary
+                        )
+                        IconButton(onClick = { isNewEvent = true }) {
+                            Icon(Icons.Default.AddCircleOutline, contentDescription = "Ajouter un événement", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (state.events.isEmpty()) {
+                        Text("Aucun événement prévu", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                    }
+
+                    state.events.forEach { event ->
+                        EventItem(
+                            event = event,
+                            colors = colors,
+                            onEdit = { showEventDialog = event },
+                            onDelete = { showDeleteEventDialog = event }
+                        )
+                        if (event != state.events.last()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = colors.divider)
+                        }
+                    }
+                }
+            }
+            
+            // Holidays
+            Card(
+                colors = CardDefaults.cardColors(containerColor = colors.card),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Vacances",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colors.textPrimary
+                        )
+                        IconButton(onClick = { isNewHoliday = true }) {
+                            Icon(Icons.Default.AddCircleOutline, contentDescription = "Ajouter des vacances", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (state.holidays.isEmpty()) {
+                        Text("Aucune vacance prévue", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                    }
+
+                    state.holidays.forEach { holiday ->
+                        HolidayItem(
+                            holiday = holiday,
+                            colors = colors,
+                            onEdit = { showHolidayDialog = holiday },
+                            onDelete = { showDeleteHolidayDialog = holiday }
+                        )
+                        if (holiday != state.holidays.last()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = colors.divider)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelineTrack(
+    type: PeriodType,
+    periods: List<AcademicPeriod>,
+    colors: DashboardColors,
+    isCompact: Boolean,
+    onUpdateDeadlines: (String, String?, String?) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = colors.card),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                type.toFrench(),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = colors.textMuted
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                periods.forEach { period ->
+                    TimelinePeriodItem(
+                        period = period,
+                        modifier = Modifier.weight(1f),
+                        colors = colors,
+                        onUpdateDeadlines = onUpdateDeadlines
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelinePeriodItem(
+    period: AcademicPeriod,
+    modifier: Modifier = Modifier,
+    colors: DashboardColors,
+    onUpdateDeadlines: (String, String?, String?) -> Unit
+) {
+    var showDeadlineDialog by remember { mutableStateOf(false) }
+
+    if (showDeadlineDialog) {
+        EditDeadlinesDialog(
+            period = period,
+            onDismiss = { showDeadlineDialog = false },
+            onConfirm = { eval, report ->
+                onUpdateDeadlines(period.id, eval, report)
+                showDeadlineDialog = false
+            },
+            colors = colors
+        )
+    }
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(period.status.toColor().copy(alpha = 0.05f))
+            .border(1.dp, period.status.toColor().copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+            .clickable { showDeadlineDialog = true }
+            .padding(12.dp)
+    ) {
+        Text(
+            period.name,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = colors.textPrimary
+        )
+        Text(
+            "${period.startDate} au ${period.endDate}",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        DeadlineIndicator("Évaluations", period.evaluationDeadline, Icons.Default.Assignment, colors)
+        DeadlineIndicator("Bulletins", period.reportCardDeadline, Icons.Default.Description, colors)
+    }
+}
+
+@Composable
+private fun DeadlineIndicator(
+    label: String,
+    date: String?,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    colors: DashboardColors
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (date != null) MaterialTheme.colorScheme.primary else colors.textMuted,
+            modifier = Modifier.size(14.dp)
+        )
+        Text(
+            text = date ?: "Non définie",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (date != null) colors.textPrimary else colors.textMuted
+        )
+    }
+}
+
+@Composable
+fun EditDeadlinesDialog(
+    period: AcademicPeriod,
+    onDismiss: () -> Unit,
+    onConfirm: (String?, String?) -> Unit,
+    colors: DashboardColors
+) {
+    var evaluationDeadline by remember { mutableStateOf(period.evaluationDeadline ?: "") }
+    var reportCardDeadline by remember { mutableStateOf(period.reportCardDeadline ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.card,
+        title = {
+            Text(
+                "Échéances : ${period.name}",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colors.textPrimary
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    "Définissez les dates limites pour la saisie des notes et la génération des bulletins pour cette période.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textMuted
+                )
+                
+                FormTextField(
+                    label = "Date limite des évaluations",
+                    value = evaluationDeadline,
+                    onValueChange = { evaluationDeadline = it },
+                    colors = colors,
+                    placeholder = "AAAA-MM-JJ",
+                    icon = Icons.Default.Assignment,
+                    isError = evaluationDeadline.isNotEmpty() && validateDate(evaluationDeadline) != null
+                )
+                
+                FormTextField(
+                    label = "Date limite des bulletins",
+                    value = reportCardDeadline,
+                    onValueChange = { reportCardDeadline = it },
+                    colors = colors,
+                    placeholder = "AAAA-MM-JJ",
+                    icon = Icons.Default.Description,
+                    isError = reportCardDeadline.isNotEmpty() && validateDate(reportCardDeadline) != null
+                )
+            }
+        },
+        confirmButton = {
+            val isValid = (evaluationDeadline.isEmpty() || validateDate(evaluationDeadline) == null) &&
+                         (reportCardDeadline.isEmpty() || validateDate(reportCardDeadline) == null)
+            Button(
+                onClick = { 
+                    onConfirm(
+                        evaluationDeadline.takeIf { it.isNotBlank() },
+                        reportCardDeadline.takeIf { it.isNotBlank() }
+                    ) 
+                },
+                enabled = isValid,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Enregistrer")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
+        }
+    )
+}
+
+@Composable
+fun EventDialog(
+    event: AcademicEvent?,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String?, String, String?, EventType, Color) -> Unit,
+    colors: DashboardColors
+) {
+    var title by remember { mutableStateOf(event?.title ?: "") }
+    var description by remember { mutableStateOf(event?.description ?: "") }
+    var date by remember { mutableStateOf(event?.date ?: "") }
+    var endDate by remember { mutableStateOf(event?.endDate ?: "") }
+    var type by remember { mutableStateOf(event?.type ?: EventType.OTHER) }
+    var color by remember { mutableStateOf(event?.color ?: Color(0xFF3B82F6)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.card,
+        title = {
+            Text(
+                if (event == null) "Ajouter un événement" else "Modifier l'événement",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colors.textPrimary
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
+                FormTextField(
+                    label = "Titre *",
+                    value = title,
+                    onValueChange = { title = it },
+                    colors = colors,
+                    icon = Icons.Default.Title
+                )
+                FormTextField(
+                    label = "Description",
+                    value = description,
+                    onValueChange = { description = it },
+                    colors = colors,
+                    icon = Icons.Default.Description
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    FormTextField(
+                        label = "Date *",
+                        value = date,
+                        onValueChange = { date = it },
+                        colors = colors,
+                        modifier = Modifier.weight(1f),
+                        placeholder = "AAAA-MM-JJ",
+                        icon = Icons.Default.CalendarToday
+                    )
+                    FormTextField(
+                        label = "Date de fin",
+                        value = endDate ?: "",
+                        onValueChange = { endDate = it },
+                        colors = colors,
+                        modifier = Modifier.weight(1f),
+                        placeholder = "AAAA-MM-JJ",
+                        icon = Icons.Default.Event
+                    )
+                }
+                
+                Text("Type d'événement", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EventType.values().forEach { eType ->
+                        FilterChip(
+                            selected = type == eType,
+                            onClick = { type = eType },
+                            label = { Text(eType.toFrench()) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+
+                Text("Couleur", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
+                val colorOptions = listOf(
+                    Color(0xFF3B82F6), // Blue
+                    Color(0xFFEF4444), // Red
+                    Color(0xFF10B981), // Green
+                    Color(0xFFF59E0B), // Amber
+                    Color(0xFF8B5CF6), // Violet
+                    Color(0xFFEC4899), // Pink
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    colorOptions.forEach { opt ->
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(opt)
+                                .border(
+                                    width = if (color == opt) 2.dp else 0.dp,
+                                    color = if (color == opt) colors.textPrimary else Color.Transparent,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable { color = opt }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(title, description.ifBlank { null }, normalizeDate(date), endDate?.ifBlank { null }?.let { normalizeDate(it) }, type, color) },
+                enabled = title.isNotBlank() && date.isNotBlank(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Enregistrer")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
+        }
+    )
+}
+
+@Composable
+fun HolidayDialog(
+    holiday: Holiday?,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String, HolidayType) -> Unit,
+    colors: DashboardColors
+) {
+    var name by remember { mutableStateOf(holiday?.name ?: "") }
+    var startDate by remember { mutableStateOf(holiday?.startDate ?: "") }
+    var endDate by remember { mutableStateOf(holiday?.endDate ?: "") }
+    var type by remember { mutableStateOf(holiday?.type ?: HolidayType.SCHOOL_BREAK) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.card,
+        title = {
+            Text(
+                if (holiday == null) "Ajouter des vacances" else "Modifier les vacances",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colors.textPrimary
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                FormTextField(
+                    label = "Nom *",
+                    value = name,
+                    onValueChange = { name = it },
+                    colors = colors,
+                    icon = Icons.Default.Badge
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    FormTextField(
+                        label = "Date de début *",
+                        value = startDate,
+                        onValueChange = { startDate = it },
+                        colors = colors,
+                        modifier = Modifier.weight(1f),
+                        placeholder = "AAAA-MM-JJ",
+                        icon = Icons.Default.CalendarToday
+                    )
+                    FormTextField(
+                        label = "Date de fin *",
+                        value = endDate,
+                        onValueChange = { endDate = it },
+                        colors = colors,
+                        modifier = Modifier.weight(1f),
+                        placeholder = "AAAA-MM-JJ",
+                        icon = Icons.Default.Event
+                    )
+                }
+                
+                Text("Type de vacances", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HolidayType.values().forEach { hType ->
+                        FilterChip(
+                            selected = type == hType,
+                            onClick = { type = hType },
+                            label = { Text(hType.toFrench()) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), type) },
+                enabled = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Enregistrer")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
+        }
+    )
+}
+
+@Composable
+fun GenericDeleteDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    colors: DashboardColors
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.card,
+        icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        title = {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colors.textPrimary
+            )
+        },
+        text = {
+            Text(
+                message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textPrimary
             )

@@ -195,7 +195,24 @@ fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean)
                         AcademicViewMode.CALENDAR -> CalendarTab(
                             state = state,
                             colors = state.colors,
-                            isCompact = isCompact
+                            isCompact = isCompact,
+                            onUpdateDeadlines = { id, eval, report ->
+                                screenModel.updatePeriodDeadlines(id, eval, report)
+                            },
+                            onAddEvent = { title, desc, date, end, type, color ->
+                                screenModel.createAcademicEvent(title, desc, date, end, type, color)
+                            },
+                            onUpdateEvent = { id, title, desc, date, end, type, color ->
+                                screenModel.updateAcademicEvent(id, title, desc, date, end, type, color)
+                            },
+                            onDeleteEvent = { screenModel.deleteAcademicEvent(it) },
+                            onAddHoliday = { name, start, end, type ->
+                                screenModel.createHoliday(name, start, end, type)
+                            },
+                            onUpdateHoliday = { id, name, start, end, type ->
+                                screenModel.updateHoliday(id, name, start, end, type)
+                            },
+                            onDeleteHoliday = { screenModel.deleteHoliday(it) }
                         )
                         AcademicViewMode.SETTINGS -> AcademicSettingsTab(
                             state = state,

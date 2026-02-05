@@ -143,4 +143,86 @@ class StructureApiService(private val client: HttpClient) {
         }
         response.body()
     }
+
+    // Academic Events
+    suspend fun getAcademicEvents(): Result<List<AcademicEventDto>> = runCatching {
+        val response = client.get("academic-events")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la récupération des événements (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun createAcademicEvent(event: AcademicEventDto): Result<Int> = runCatching {
+        val response = client.post("academic-events") {
+            contentType(ContentType.Application.Json)
+            setBody(event)
+        }
+        if (response.status != HttpStatusCode.Created) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la création de l'événement (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun updateAcademicEvent(id: Int, event: AcademicEventDto): Result<Unit> = runCatching {
+        val response = client.put("academic-events/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(event)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour de l'événement (${response.status.value})")
+        }
+    }
+
+    suspend fun deleteAcademicEvent(id: Int): Result<Unit> = runCatching {
+        val response = client.delete("academic-events/$id")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la suppression de l'événement (${response.status.value})")
+        }
+    }
+
+    // Holidays
+    suspend fun getHolidays(): Result<List<HolidayDto>> = runCatching {
+        val response = client.get("holidays")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la récupération des vacances (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun createHoliday(holiday: HolidayDto): Result<Int> = runCatching {
+        val response = client.post("holidays") {
+            contentType(ContentType.Application.Json)
+            setBody(holiday)
+        }
+        if (response.status != HttpStatusCode.Created) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la création des vacances (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun updateHoliday(id: Int, holiday: HolidayDto): Result<Unit> = runCatching {
+        val response = client.put("holidays/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(holiday)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour des vacances (${response.status.value})")
+        }
+    }
+
+    suspend fun deleteHoliday(id: Int): Result<Unit> = runCatching {
+        val response = client.delete("holidays/$id")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la suppression des vacances (${response.status.value})")
+        }
+    }
 }
