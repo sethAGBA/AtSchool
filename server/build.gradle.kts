@@ -1,3 +1,5 @@
+import com.github.jengelman.gradle.plugins.shadow.ShadowExtension
+
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.ktor)
@@ -7,11 +9,27 @@ plugins {
 
 group = "com.ecolix.app"
 version = "1.0.0"
+
 application {
     mainClass.set("com.ecolix.atschool.ApplicationKt")
     
     val isDevelopment: Boolean = project.ext.has("development")
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
+}
+
+// Configure fat jar using Ktor plugin
+ktor {
+    fatJar {
+        archiveFileName.set("server.jar")
+    }
+}
+
+// Disable shadow distribution tasks that fail with mainClassName error in Gradle 9
+// We only need shadowJar which is created by Ktor fatJar config
+plugins.withId("com.github.johnrengelman.shadow") {
+    tasks.matching { it.name.startsWith("shadow") && it.name != "shadowJar" }.configureEach {
+        enabled = false
+    }
 }
 
 dependencies {

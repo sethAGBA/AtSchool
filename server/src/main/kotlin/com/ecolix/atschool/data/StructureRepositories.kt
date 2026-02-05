@@ -71,7 +71,7 @@ data class AcademicPeriodEntity(
     val periodType: String = "TRIMESTER",
     val evaluationDeadline: String? = null,
     val reportCardDeadline: String? = null,
-    val isActif: Boolean = true
+    val status: String = "UPCOMING"
 )
 
 @Serializable
@@ -81,10 +81,10 @@ data class SchoolYearEntity(
     val libelle: String,
     val dateDebut: String,
     val dateFin: String,
-    val isActif: Boolean = true,
     val numberOfPeriods: Int = 3,
     val periodType: String = "TRIMESTER",
     val isDefault: Boolean = false,
+    val status: String = "UPCOMING",
     val description: String? = null,
     val periods: List<AcademicPeriodEntity>? = null
 )
@@ -193,13 +193,20 @@ class SchoolYearRepository {
             it[libelle] = entity.libelle
             it[dateDebut] = try { kotlinx.datetime.LocalDate.parse(entity.dateDebut) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
             it[dateFin] = try { kotlinx.datetime.LocalDate.parse(entity.dateFin) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
-            it[isActif] = entity.isActif
             it[numberOfPeriods] = entity.numberOfPeriods
             it[periodType] = entity.periodType
             it[isDefault] = entity.isDefault
+            it[AnneesScolaires.status] = entity.status
+            it[description] = entity.description
             it[description] = entity.description
         }.value
-
+        
+        // If this year is active, deactivate all others (set to COMPLETED if they were ACTIVE)
+        if (entity.status == "ACTIVE") {
+            AnneesScolaires.update({ (AnneesScolaires.tenantId eq entity.tenantId) and (AnneesScolaires.status eq "ACTIVE") and (AnneesScolaires.id neq yearId) }) {
+                it[AnneesScolaires.status] = "COMPLETED"
+            }
+        }
         // Use provided periods or auto-generate
         if (!entity.periods.isNullOrEmpty()) {
             entity.periods.forEach { period ->
@@ -211,7 +218,17 @@ class SchoolYearRepository {
                     it[dateDebut] = try { kotlinx.datetime.LocalDate.parse(period.dateDebut) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
                     it[dateFin] = try { kotlinx.datetime.LocalDate.parse(period.dateFin) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
                     it[periodType] = period.periodType
-                    it[isActif] = true
+                    it[AcademicPeriods.status] = period.status
+                }
+                // If this period is active, deactivate all others in the same year (set to COMPLETED if they were ACTIVE)
+                if (period.status == "ACTIVE") {
+                    AcademicPeriods.update({ (AcademicPeriods.anneeScolaireId eq yearId) and (AcademicPeriods.status eq "ACTIVE") and (AcademicPeriods.periodType eq period.periodType) }) {
+                        it[AcademicPeriods.status] = "COMPLETED"
+                    }
+                    // Re-activate this one
+                    AcademicPeriods.update({ (AcademicPeriods.anneeScolaireId eq yearId) and (AcademicPeriods.nom eq period.nom) and (AcademicPeriods.numero eq period.numero) }) {
+                        it[AcademicPeriods.status] = "ACTIVE"
+                    }
                 }
             }
         } else {
@@ -249,7 +266,7 @@ class SchoolYearRepository {
                             it[dateDebut] = pStart
                             it[dateFin] = pEnd
                             it[periodType] = type
-                            it[isActif] = true
+                            it[AcademicPeriods.status] = if (i == 1) "ACTIVE" else "UPCOMING"
                         }
                     }
                 }
@@ -268,12 +285,20 @@ class SchoolYearRepository {
             it[libelle] = entity.libelle
             it[dateDebut] = try { kotlinx.datetime.LocalDate.parse(entity.dateDebut) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
             it[dateFin] = try { kotlinx.datetime.LocalDate.parse(entity.dateFin) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
-            it[isActif] = entity.isActif
             it[numberOfPeriods] = entity.numberOfPeriods
             it[periodType] = entity.periodType
             it[isDefault] = entity.isDefault
+            it[AnneesScolaires.status] = entity.status
+            it[description] = entity.description
             it[description] = entity.description
         } > 0
+        
+        // If update was successful and status is ACTIVE, deactivate others
+        if (updated && entity.status == "ACTIVE") {
+             AnneesScolaires.update({ (AnneesScolaires.tenantId eq entity.tenantId) and (AnneesScolaires.status eq "ACTIVE") and (AnneesScolaires.id neq id) }) {
+                it[AnneesScolaires.status] = "COMPLETED"
+            }
+        }
         
         // If periods are provided, update them
         if (updated && !entity.periods.isNullOrEmpty()) {
@@ -292,9 +317,24 @@ class SchoolYearRepository {
                     it[dateDebut] = try { kotlinx.datetime.LocalDate.parse(period.dateDebut) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
                     it[dateFin] = try { kotlinx.datetime.LocalDate.parse(period.dateFin) } catch (e: Exception) { kotlinx.datetime.LocalDate(2000, 1, 1) }
                     it[periodType] = period.periodType
-                    it[isActif] = period.isActif
+                    it[AcademicPeriods.status] = period.status
                 }
             }
+            
+            // Ensure only one is active after replacement if any was set to active
+            // Ensure only one is active PER TYPE after replacement if any was set to active
+            val activePeriods = AcademicPeriods.selectAll()
+                 .where { (AcademicPeriods.anneeScolaireId eq id) and (AcademicPeriods.status eq "ACTIVE") }
+                 .map { it[AcademicPeriods.id].value to it[AcademicPeriods.periodType] }
+
+            // Group by type and if multiple active, keep one?
+            // Actually, if we just trust the input, we might not need this closure.
+            // But if we want to enforce "Single Active per Type", we should iterate unique types.
+            // For now, let's remove the aggressive enforcement that assumed only global active period.
+            // If the input data has duplicates, we might want to fix it, but let's assume input is valid for now
+            // or we could enforce it by type if needed.
+            // Simplified: Removing the global "deactivate others" block.
+
         }
         
         updated
@@ -311,7 +351,20 @@ class SchoolYearRepository {
         }
         // Set this one as default
         AnneesScolaires.update({ (AnneesScolaires.id eq id) and (AnneesScolaires.tenantId eq tenantId) }) {
-            it[isDefault] = true
+            it[AnneesScolaires.isDefault] = true
+        }
+    }
+
+    fun setStatus(id: Int, status: String, tenantId: Int) = transaction {
+        if (status == "ACTIVE") {
+            // Transition previously ACTIVE to COMPLETED
+            AnneesScolaires.update({ (AnneesScolaires.tenantId eq tenantId) and (AnneesScolaires.status eq "ACTIVE") and (AnneesScolaires.id neq id) }) {
+                it[AnneesScolaires.status] = "COMPLETED"
+            }
+        }
+        
+        AnneesScolaires.update({ (AnneesScolaires.id eq id) and (AnneesScolaires.tenantId eq tenantId) }) {
+            it[AnneesScolaires.status] = status
         }
     }
 
@@ -321,10 +374,10 @@ class SchoolYearRepository {
         libelle = this[AnneesScolaires.libelle],
         dateDebut = this[AnneesScolaires.dateDebut].toString(),
         dateFin = this[AnneesScolaires.dateFin].toString(),
-        isActif = this[AnneesScolaires.isActif],
         numberOfPeriods = this[AnneesScolaires.numberOfPeriods],
         periodType = this[AnneesScolaires.periodType],
         isDefault = this[AnneesScolaires.isDefault],
+        status = this[AnneesScolaires.status],
         description = this[AnneesScolaires.description]
     )
 }
@@ -338,7 +391,7 @@ class AcademicPeriodRepository {
     }
 
     fun create(entity: AcademicPeriodEntity): Int = transaction {
-        AcademicPeriods.insertAndGetId {
+        val newId = AcademicPeriods.insertAndGetId {
             it[tenantId] = entity.tenantId
             it[anneeScolaireId] = entity.anneeScolaireId
             it[nom] = entity.nom
@@ -348,12 +401,20 @@ class AcademicPeriodRepository {
             it[periodType] = entity.periodType
             it[evaluationDeadline] = entity.evaluationDeadline?.let { d -> kotlinx.datetime.LocalDate.parse(d) }
             it[reportCardDeadline] = entity.reportCardDeadline?.let { d -> kotlinx.datetime.LocalDate.parse(d) }
-            it[isActif] = entity.isActif
+            it[AcademicPeriods.status] = entity.status
         }.value
+        
+        if (entity.status == "ACTIVE") {
+            // Logic: transition previously ACTIVE one of SAME TYPE to COMPLETED
+            AcademicPeriods.update({ (AcademicPeriods.anneeScolaireId eq entity.anneeScolaireId) and (AcademicPeriods.id neq newId) and (AcademicPeriods.status eq "ACTIVE") and (AcademicPeriods.periodType eq entity.periodType) }) {
+                it[AcademicPeriods.status] = "COMPLETED"
+            }
+        }
+        newId
     }
 
     fun update(id: Int, entity: AcademicPeriodEntity): Boolean = transaction {
-        AcademicPeriods.update({ (AcademicPeriods.id eq id) and (AcademicPeriods.tenantId eq entity.tenantId) }) {
+        val updated = AcademicPeriods.update({ (AcademicPeriods.id eq id) and (AcademicPeriods.tenantId eq entity.tenantId) }) {
             it[nom] = entity.nom
             it[numero] = entity.numero
             it[dateDebut] = kotlinx.datetime.LocalDate.parse(entity.dateDebut)
@@ -361,8 +422,51 @@ class AcademicPeriodRepository {
             it[periodType] = entity.periodType
             it[evaluationDeadline] = entity.evaluationDeadline?.let { d -> kotlinx.datetime.LocalDate.parse(d) }
             it[reportCardDeadline] = entity.reportCardDeadline?.let { d -> kotlinx.datetime.LocalDate.parse(d) }
-            it[isActif] = entity.isActif
+            it[AcademicPeriods.status] = entity.status
         } > 0
+        
+        if (updated && entity.status == "ACTIVE") {
+            val period = AcademicPeriods.selectAll().where { AcademicPeriods.id eq id }.limit(1).firstOrNull()
+            val yearId = period?.get(AcademicPeriods.anneeScolaireId)?.value
+            if (yearId != null) {
+                AcademicPeriods.update({ (AcademicPeriods.anneeScolaireId eq yearId) and (AcademicPeriods.id neq id) and (AcademicPeriods.status eq "ACTIVE") and (AcademicPeriods.periodType eq entity.periodType) }) {
+                    it[AcademicPeriods.status] = "COMPLETED"
+                }
+            }
+        }
+        updated
+    }
+    
+    fun setStatus(id: Int, status: String, tenantId: Int): Boolean = transaction {
+        println("DEBUG: setStatus called for id=$id, status=$status, tenantId=$tenantId")
+        val period = AcademicPeriods.selectAll().where { (AcademicPeriods.id eq id) and (AcademicPeriods.tenantId eq tenantId) }
+            .limit(1)
+            .firstOrNull() 
+            
+        if (period == null) {
+            println("DEBUG: Period not found for id=$id and tenantId=$tenantId")
+            return@transaction false
+        }
+            
+        val yearId = period[AcademicPeriods.anneeScolaireId].value
+        println("DEBUG: Found period. YearId=$yearId, Current Type=${period[AcademicPeriods.periodType]}")
+        
+        if (status == "ACTIVE") {
+            val pType = period[AcademicPeriods.periodType]
+            println("DEBUG: Activating period. Deactivating others of type $pType in year $yearId")
+            // Transition previously ACTIVE of SAME TYPE to COMPLETED
+            val deactivatedCount = AcademicPeriods.update({ (AcademicPeriods.anneeScolaireId eq yearId) and (AcademicPeriods.status eq "ACTIVE") and (AcademicPeriods.periodType eq pType) }) {
+                it[AcademicPeriods.status] = "COMPLETED"
+            }
+            println("DEBUG: Deactivated $deactivatedCount periods")
+        }
+        
+        // Update this one
+        val updatedCount = AcademicPeriods.update({ AcademicPeriods.id eq id }) {
+            it[AcademicPeriods.status] = status
+        }
+        println("DEBUG: Updated target period status. affected rows=$updatedCount")
+        updatedCount > 0
     }
 
     fun delete(id: Int, tenantId: Int): Boolean = transaction {
@@ -380,7 +484,7 @@ class AcademicPeriodRepository {
         periodType = this[AcademicPeriods.periodType],
         evaluationDeadline = this[AcademicPeriods.evaluationDeadline]?.toString(),
         reportCardDeadline = this[AcademicPeriods.reportCardDeadline]?.toString(),
-        isActif = this[AcademicPeriods.isActif]
+        status = this[AcademicPeriods.status]
     )
 }
 

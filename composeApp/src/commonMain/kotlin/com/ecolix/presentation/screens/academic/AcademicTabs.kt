@@ -30,6 +30,8 @@ import com.ecolix.data.models.*
 import com.ecolix.atschool.api.AcademicPeriodDto
 import kotlinx.datetime.*
 import androidx.compose.animation.*
+import com.ecolix.presentation.components.FormTextField
+import com.ecolix.presentation.components.SectionHeader
 
 @Composable
 fun AcademicOverviewTab(
@@ -47,7 +49,8 @@ fun AcademicOverviewTab(
             onConfirm = {
                 onArchiveYear(state.statistics.activeYear.id)
                 showArchiveDialog = false
-            }
+            },
+            colors = colors
         )
     }
     LazyColumn(
@@ -409,7 +412,8 @@ fun SchoolYearsTab(
     onCreateYear: (String, String, String, List<PeriodType>, Int, List<AcademicPeriodDto>?) -> Unit,
     onUpdateYear: (String, String, String, String, List<PeriodType>, Int, List<AcademicPeriodDto>?) -> Unit,
     onDeleteYear: (String) -> Unit,
-    onSetDefault: (String) -> Unit
+    onSetDefault: (String) -> Unit,
+    onSetStatus: (String, AcademicStatus) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -456,7 +460,8 @@ fun SchoolYearsTab(
                 onClick = { onSelectYear(year.id) },
                 onEdit = { name, start, end, types, num, periods ->
                     onUpdateYear(year.id, name, start, end, types, num, periods)
-                }
+                },
+                onSetStatus = { onSetStatus(year.id, it) }
             )
         }
     }
@@ -467,9 +472,11 @@ private fun SchoolYearCard(
     year: SchoolYear,
     colors: DashboardColors,
     onClick: () -> Unit,
-    onEdit: (String, String, String, List<PeriodType>, Int, List<AcademicPeriodDto>?) -> Unit
+    onEdit: (String, String, String, List<PeriodType>, Int, List<AcademicPeriodDto>?) -> Unit,
+    onSetStatus: (AcademicStatus) -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
+    var showStatusMenu by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         EditSchoolYearDialog(
@@ -550,6 +557,7 @@ private fun SchoolYearCard(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(year.status.toColor().copy(alpha = 0.1f))
+                    .clickable { showStatusMenu = true }
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
@@ -557,6 +565,30 @@ private fun SchoolYearCard(
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = year.status.toColor()
                 )
+                
+                DropdownMenu(
+                    expanded = showStatusMenu,
+                    onDismissRequest = { showStatusMenu = false },
+                    modifier = Modifier.background(colors.card)
+                ) {
+                    AcademicStatus.values().filter { it != AcademicStatus.ARCHIVED }.forEach { status ->
+                        DropdownMenuItem(
+                            text = { Text(status.toFrench(), color = colors.textPrimary) },
+                            onClick = {
+                                onSetStatus(status)
+                                showStatusMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Circle,
+                                    contentDescription = null,
+                                    tint = status.toColor(),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        )
+                    }
+                }
             }
 
             IconButton(onClick = { showEditDialog = true }) {
@@ -584,7 +616,8 @@ fun PeriodsTab(
     onSelectPeriod: (String) -> Unit,
     onCreatePeriod: (String, Int, String, String, PeriodType) -> Unit,
     onUpdatePeriod: (String, String, Int, String, String, PeriodType) -> Unit,
-    onDeletePeriod: (String) -> Unit
+    onDeletePeriod: (String) -> Unit,
+    onSetStatus: (String, AcademicStatus) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -632,7 +665,8 @@ fun PeriodsTab(
                 onEdit = { name, num, start, end, type ->
                     onUpdatePeriod(period.id, name, num, start, end, type)
                 },
-                onDelete = { onDeletePeriod(period.id) }
+                onDelete = { onDeletePeriod(period.id) },
+                onSetStatus = { onSetStatus(period.id, it) }
             )
         }
     }
@@ -644,10 +678,12 @@ private fun PeriodCard(
     colors: DashboardColors,
     onClick: () -> Unit,
     onEdit: (String, Int, String, String, PeriodType) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onSetStatus: (AcademicStatus) -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showStatusMenu by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         EditPeriodDialog(
@@ -668,7 +704,8 @@ private fun PeriodCard(
             onConfirm = { 
                 onDelete()
                 showDeleteDialog = false
-            }
+            },
+            colors = colors
         )
     }
 
@@ -734,6 +771,7 @@ private fun PeriodCard(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(period.status.toColor().copy(alpha = 0.1f))
+                            .clickable { showStatusMenu = true }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
@@ -741,6 +779,30 @@ private fun PeriodCard(
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = period.status.toColor()
                         )
+                        
+                        DropdownMenu(
+                            expanded = showStatusMenu,
+                            onDismissRequest = { showStatusMenu = false },
+                            modifier = Modifier.background(colors.card)
+                        ) {
+                            AcademicStatus.values().filter { it != AcademicStatus.ARCHIVED }.forEach { status ->
+                                DropdownMenuItem(
+                                    text = { Text(status.toFrench(), color = colors.textPrimary) },
+                                    onClick = {
+                                        onSetStatus(status)
+                                        showStatusMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Circle,
+                                            contentDescription = null,
+                                            tint = status.toColor(),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -847,31 +909,33 @@ fun NewSchoolYearDialog(
         modifier = Modifier
             .widthIn(max = 600.dp)
             .onPreviewKeyEvent { event ->
-            if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
-                onDismiss()
-                true
-            } else if (event.key == Key.Enter && event.type == KeyEventType.KeyDown) {
-                val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank()
-                if (isFormValid) {
-                    val normalizedStart = normalizeDate(startDate)
-                    val normalizedEnd = normalizeDate(endDate)
-                    onConfirm(name, normalizedStart, normalizedEnd, selectedTypes.toList(), numPeriods, generatedPeriods)
+                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                    onDismiss()
+                    true
+                } else if (event.key == Key.Enter && event.type == KeyEventType.KeyDown) {
+                    val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank()
+                    if (isFormValid) {
+                        val normalizedStart = normalizeDate(startDate)
+                        val normalizedEnd = normalizeDate(endDate)
+                        onConfirm(name, normalizedStart, normalizedEnd, selectedTypes.toList(), numPeriods, generatedPeriods)
+                    }
+                    true
+                } else {
+                    false
                 }
-                true
-            } else {
-                false
-            }
-        },
+            },
         containerColor = colors.card,
-        textContentColor = colors.textPrimary,
-        titleContentColor = colors.textPrimary,
         title = { 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Nouvelle Année Scolaire")
+                Text(
+                    "Nouvelle Année Scolaire",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = colors.textPrimary
+                )
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Fermer", tint = colors.textMuted)
                 }
@@ -881,239 +945,217 @@ fun NewSchoolYearDialog(
             val focusManager = LocalFocusManager.current
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Libellé (ex: 2025-2026) *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = colors.textMuted,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                // Section: Informations de Base
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Informations de Base", colors)
+                    
+                    FormTextField(
+                        label = "Libellé (ex: 2025-2026) *",
+                        value = name,
+                        onValueChange = { name = it },
+                        colors = colors,
+                        icon = Icons.Default.Badge,
+                        placeholder = "2025-2026"
                     )
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val startError = validateDate(startDate)
-                    OutlinedTextField(
-                        value = startDate,
-                        onValueChange = { startDate = it; isManualEditing = false },
-                        label = { Text("Début (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = startError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { startError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) }),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = colors.textMuted
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        val startError = validateDate(startDate)
+                        FormTextField(
+                            label = "Date de début *",
+                            value = startDate,
+                            onValueChange = { startDate = it; isManualEditing = false },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.CalendarToday,
+                            isError = startError != null
                         )
-                    )
-                    val endError = validateDate(endDate)
-                    OutlinedTextField(
-                        value = endDate,
-                        onValueChange = { endDate = it; isManualEditing = false },
-                        label = { Text("Fin (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = endError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { 
-                            val rangeError = if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) else null
-                            endError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                            ?: rangeError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = colors.textMuted
-                        )
-                    )
-                }
-                Text("Types de périodes actifs", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PeriodType.values().forEach { pType ->
-                        val isSelected = selectedTypes.contains(pType)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { 
-                                val current = selectedTypes
-                                selectedTypes = if (isSelected) {
-                                    if (current.size > 1) current - pType else current
-                                } else {
-                                    current + pType
-                                }
-                                
-                                numPeriods = selectedTypes.sumOf { t: PeriodType ->
-                                    when(t) {
-                                        PeriodType.TRIMESTER -> 3
-                                        PeriodType.SEMESTER -> 2
-                                    }
-                                }
-                            },
-                            label = { Text(pType.toFrench()) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                selectedLabelColor = MaterialTheme.colorScheme.primary
-                            )
+                        
+                        val endError = validateDate(endDate)
+                        FormTextField(
+                            label = "Date de fin *",
+                            value = endDate,
+                            onValueChange = { endDate = it; isManualEditing = false },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.Event,
+                            isError = endError != null
                         )
                     }
+                    
+                    val rangeError = if (validateDate(startDate) == null && validateDate(endDate) == null) 
+                        validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) else null
+                    if (rangeError != null) {
+                        Text(rangeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
-                OutlinedTextField(
-                    value = numPeriods.toString(),
-                    onValueChange = { 
-                        numPeriods = it.toIntOrNull() ?: numPeriods 
-                    },
-                    label = { Text("Nombre total de périodes *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { 
-                        if (name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && 
-                            validateDate(startDate) == null && validateDate(endDate) == null) {
-                            // Use generatedPeriods for onConfirm
-                            onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods)
-                        }
-                    }),
-                    supportingText = {
-                        val breakdown = selectedTypes.joinToString(" + ") { t ->
-                            when(t) {
-                                PeriodType.TRIMESTER -> "3 Trimestres"
-                                PeriodType.SEMESTER -> "2 Semestres"
-                            }
-                        }
-                        Text("Calculé : $breakdown = $numPeriods périodes")
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = colors.textMuted
+
+                // Section: Configuration des Périodes
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Configuration des Périodes", colors)
+                    
+                    Text(
+                        "Choisissez les types de périodes à activer pour cette année scolaire.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted
                     )
-                )
-                if (generatedPeriods.isNotEmpty()) {
-                    val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
+                    
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column {
-                            Text("Aperçu des périodes", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-                            periodError?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
-                        }
-                        TextButton(onClick = { 
-                            if (isManualEditing) {
-                                // Reset to auto-generated
-                                generatedPeriods = generateDefaultPeriods(normalizeDate(startDate), normalizeDate(endDate), selectedTypes)
-                            }
-                            isManualEditing = !isManualEditing 
-                        }) {
-                            Text(if (isManualEditing) "Réinitialiser" else "Modifier manuellement")
+                        PeriodType.values().forEach { pType ->
+                            val isSelected = selectedTypes.contains(pType)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { 
+                                    val current = selectedTypes
+                                    selectedTypes = if (isSelected) {
+                                        current - pType
+                                    } else {
+                                        current + pType
+                                    }
+                                    
+                                    numPeriods = selectedTypes.sumOf { t: PeriodType ->
+                                        when(t) {
+                                            PeriodType.TRIMESTER -> 3
+                                            PeriodType.SEMESTER -> 2
+                                        }
+                                    }
+                                },
+                                label = { Text(pType.toFrench()) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
                         }
                     }
                     
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = colors.background.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(8.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (periodError != null) MaterialTheme.colorScheme.error else colors.divider)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            generatedPeriods.forEachIndexed { index, period ->
+                    FormTextField(
+                        label = "Nombre total de périodes *",
+                        value = numPeriods.toString(),
+                        onValueChange = { numPeriods = it.toIntOrNull() ?: numPeriods },
+                        colors = colors,
+                        icon = Icons.Default.Assignment,
+                        keyboardType = KeyboardType.Number,
+                        placeholder = "3"
+                    )
+                    
+                    val breakdown = selectedTypes.joinToString(" + ") { t ->
+                        when(t) {
+                            PeriodType.TRIMESTER -> "3 Trimestres"
+                            PeriodType.SEMESTER -> "2 Semestres"
+                        }
+                    }
+                    Text(
+                        "Calculé : $breakdown = $numPeriods périodes",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textMuted
+                    )
+                }
+
+                // Section: Aperçu des Périodes
+                if (generatedPeriods.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                SectionHeader("Aperçu des Périodes", colors)
+                                periodError?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
+                            }
+                            TextButton(onClick = { 
                                 if (isManualEditing) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        OutlinedTextField(
-                                            value = period.nom,
-                                            onValueChange = { newNom ->
-                                                generatedPeriods = generatedPeriods.toMutableList().apply {
-                                                    this[index] = this[index].copy(nom = newNom)
-                                                }
-                                            },
+                                    generatedPeriods = generateDefaultPeriods(normalizeDate(startDate), normalizeDate(endDate), selectedTypes)
+                                }
+                                isManualEditing = !isManualEditing 
+                            }) {
+                                Text(if (isManualEditing) "Réinitialiser" else "Modifier manuellement")
+                            }
+                        }
+                        
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = colors.background.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (periodError != null) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else colors.divider.copy(alpha = 0.5f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                generatedPeriods.forEachIndexed { index, period ->
+                                    if (isManualEditing) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            FormTextField(
+                                                label = "Nom de la période",
+                                                value = period.nom,
+                                                onValueChange = { newNom ->
+                                                    generatedPeriods = generatedPeriods.toMutableList().apply {
+                                                        this[index] = this[index].copy(nom = newNom)
+                                                    }
+                                                },
+                                                colors = colors,
+                                                icon = Icons.Default.Edit
+                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                FormTextField(
+                                                    label = "Début",
+                                                    value = period.dateDebut,
+                                                    onValueChange = { newDate ->
+                                                        generatedPeriods = generatedPeriods.toMutableList().apply {
+                                                            this[index] = this[index].copy(dateDebut = newDate)
+                                                        }
+                                                    },
+                                                    colors = colors,
+                                                    modifier = Modifier.weight(1f),
+                                                    placeholder = "AAAA-MM-JJ"
+                                                )
+                                                FormTextField(
+                                                    label = "Fin",
+                                                    value = period.dateFin,
+                                                    onValueChange = { newDate ->
+                                                        generatedPeriods = generatedPeriods.toMutableList().apply {
+                                                            this[index] = this[index].copy(dateFin = newDate)
+                                                        }
+                                                    },
+                                                    colors = colors,
+                                                    modifier = Modifier.weight(1f),
+                                                    placeholder = "AAAA-MM-JJ"
+                                                )
+                                            }
+                                            if (index < generatedPeriods.size - 1) {
+                                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = colors.divider.copy(alpha = 0.3f))
+                                            }
+                                        }
+                                    } else {
+                                        Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            label = { Text("Nom de la période") },
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                unfocusedContainerColor = Color.Transparent,
-                                                focusedTextColor = colors.textPrimary,
-                                                unfocusedTextColor = colors.textPrimary
-                                            )
-                                        )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            OutlinedTextField(
-                                                value = period.dateDebut,
-                                                onValueChange = { newDate ->
-                                                    generatedPeriods = generatedPeriods.toMutableList().apply {
-                                                        this[index] = this[index].copy(dateDebut = newDate)
-                                                    }
-                                                },
-                                                modifier = Modifier.weight(1f),
-                                                label = { Text("Début") },
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    unfocusedContainerColor = Color.Transparent,
-                                                    focusedTextColor = colors.textPrimary,
-                                                    unfocusedTextColor = colors.textPrimary
-                                                )
-                                            )
-                                            OutlinedTextField(
-                                                value = period.dateFin,
-                                                onValueChange = { newDate ->
-                                                    generatedPeriods = generatedPeriods.toMutableList().apply {
-                                                        this[index] = this[index].copy(dateFin = newDate)
-                                                    }
-                                                },
-                                                modifier = Modifier.weight(1f),
-                                                label = { Text("Fin") },
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    unfocusedContainerColor = Color.Transparent,
-                                                    focusedTextColor = colors.textPrimary,
-                                                    unfocusedTextColor = colors.textPrimary
-                                                )
-                                            )
-                                        }
-                                        if (index < generatedPeriods.size - 1) {
-                                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = colors.divider.copy(alpha = 0.5f))
-                                        }
-                                    }
-                                } else {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val periodColor = when(period.periodType) {
-                                            "TRIMESTER" -> MaterialTheme.colorScheme.primary
-                                            "SEMESTER" -> MaterialTheme.colorScheme.secondary
-                                            else -> MaterialTheme.colorScheme.primary
-                                        }
-                                        Box(
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(periodColor.copy(alpha = 0.1f)),
-                                            contentAlignment = Alignment.Center
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text("${period.numero}", style = MaterialTheme.typography.labelSmall, color = periodColor)
+                                            val periodColor = when(period.periodType) {
+                                                "TRIMESTER" -> MaterialTheme.colorScheme.primary
+                                                "SEMESTER" -> MaterialTheme.colorScheme.secondary
+                                                else -> MaterialTheme.colorScheme.primary
+                                            }
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(periodColor.copy(alpha = 0.15f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text("${period.numero}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = periodColor)
+                                            }
+                                            Text(period.nom, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.textPrimary, modifier = Modifier.weight(1f))
+                                            Text("${period.dateDebut} au ${period.dateFin}", style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
                                         }
-                                        Text(period.nom, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, modifier = Modifier.weight(1f))
-                                        Text("${period.dateDebut} au ${period.dateFin}", style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
                                     }
                                 }
                             }
@@ -1133,12 +1175,19 @@ fun NewSchoolYearDialog(
                     onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods) 
                 },
                 enabled = isFormValid,
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Text("Créer l'année")
+                Text("Créer l'année", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
             }
         }
     )
@@ -1254,7 +1303,7 @@ fun generateDefaultPeriods(
                 dateDebut = pStart.toString(),
                 dateFin = pEnd.toString(),
                 periodType = type.name,
-                isActif = false
+                status = "UPCOMING"
             ))
         }
     }
@@ -1354,15 +1403,17 @@ fun EditSchoolYearDialog(
             }
         },
         containerColor = colors.card,
-        textContentColor = colors.textPrimary,
-        titleContentColor = colors.textPrimary,
         title = { 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Modifier l'Année Scolaire")
+                Text(
+                    "Modifier l'Année Scolaire",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = colors.textPrimary
+                )
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Fermer", tint = colors.textMuted)
                 }
@@ -1372,281 +1423,242 @@ fun EditSchoolYearDialog(
             val focusManager = LocalFocusManager.current
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Libellé (ex: 2025-2026) *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = colors.textMuted
+                // Section: Informations de Base
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Informations de Base", colors)
+                    
+                    FormTextField(
+                        label = "Libellé (ex: 2025-2026) *",
+                        value = name,
+                        onValueChange = { name = it },
+                        colors = colors,
+                        icon = Icons.Default.Badge,
+                        placeholder = "2025-2026"
                     )
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val startError = validateDate(startDate)
-                    OutlinedTextField(
-                        value = startDate,
-                        onValueChange = { startDate = it },
-                        label = { Text("Début (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = startError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { startError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) }),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = colors.textMuted
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        val startError = validateDate(startDate)
+                        FormTextField(
+                            label = "Date de début *",
+                            value = startDate,
+                            onValueChange = { startDate = it },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.CalendarToday,
+                            isError = startError != null
                         )
-                    )
-                    val endError = validateDate(endDate)
-                    OutlinedTextField(
-                        value = endDate,
-                        onValueChange = { endDate = it },
-                        label = { Text("Fin (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = endError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { 
-                            val rangeError = if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) else null
-                            endError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                            ?: rangeError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = colors.textMuted
-                        )
-                    )
-                }
-                Text("Types de périodes actifs", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PeriodType.values().forEach { pType ->
-                        val isSelected = selectedTypes.contains(pType)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { 
-                                val current = selectedTypes
-                                selectedTypes = if (isSelected) {
-                                    if (current.size > 1) current - pType else current
-                                } else {
-                                    current + pType
-                                }
-                                
-                                numPeriods = selectedTypes.sumOf { t: PeriodType ->
-                                    when(t) {
-                                        PeriodType.TRIMESTER -> 3
-                                        PeriodType.SEMESTER -> 2
-                                    }
-                                }
-                            },
-                            label = { Text(pType.toFrench()) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                selectedLabelColor = MaterialTheme.colorScheme.primary
-                            )
+                        
+                        val endError = validateDate(endDate)
+                        FormTextField(
+                            label = "Date de fin *",
+                            value = endDate,
+                            onValueChange = { endDate = it },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.Event,
+                            isError = endError != null
                         )
                     }
+                    
+                    val rangeError = if (validateDate(startDate) == null && validateDate(endDate) == null) 
+                        validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) else null
+                    if (rangeError != null) {
+                        Text(rangeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
-                OutlinedTextField(
-                    value = numPeriods.toString(),
-                    onValueChange = { 
-                        numPeriods = it.toIntOrNull() ?: numPeriods 
-                    },
-                    label = { Text("Nombre total de périodes *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { 
-                        val rangeError = validateDateRange(normalizeDate(startDate), normalizeDate(endDate))
-                        val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
-                        if (name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && 
-                            validateDate(startDate) == null && validateDate(endDate) == null &&
-                            rangeError == null && periodError == null) {
-                            onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods)
+
+                // Section: Configuration des Périodes
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Configuration des Périodes", colors)
+                    
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PeriodType.values().forEach { pType ->
+                            val isSelected = selectedTypes.contains(pType)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { 
+                                    val current = selectedTypes
+                                    selectedTypes = if (isSelected) {
+                                        current - pType
+                                    } else {
+                                        current + pType
+                                    }
+                                    
+                                    numPeriods = selectedTypes.sumOf { t: PeriodType ->
+                                        when(t) {
+                                            PeriodType.TRIMESTER -> 3
+                                            PeriodType.SEMESTER -> 2
+                                        }
+                                    }
+                                },
+                                label = { Text(pType.toFrench()) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
                         }
-                    }),
-                    supportingText = {
-                        val breakdown = selectedTypes.joinToString(" + ") { t ->
-                            when(t) {
-                                PeriodType.TRIMESTER -> "3 Trimestres"
-                                PeriodType.SEMESTER -> "2 Semestres"
-                            }
-                        }
-                        Text("Calculé : $breakdown = $numPeriods périodes")
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = colors.textMuted
+                    }
+                    
+                    FormTextField(
+                        label = "Nombre total de périodes *",
+                        value = numPeriods.toString(),
+                        onValueChange = { numPeriods = it.toIntOrNull() ?: numPeriods },
+                        colors = colors,
+                        icon = Icons.Default.Assignment,
+                        keyboardType = KeyboardType.Number,
+                        placeholder = "3"
                     )
-                )
+                    
+                    val breakdown = selectedTypes.joinToString(" + ") { t ->
+                        when(t) {
+                            PeriodType.TRIMESTER -> "3 Trimestres"
+                            PeriodType.SEMESTER -> "2 Semestres"
+                        }
+                    }
+                    Text(
+                        "Calculé : $breakdown = $numPeriods périodes",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textMuted
+                    )
+                }
                 
                 // Period Preview Section
                 if (generatedPeriods.isNotEmpty()) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Périodes générées (${generatedPeriods.size})",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colors.textMuted
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
                         
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                if (isManualEditing) "Édition manuelle" else "Auto",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.textMuted
-                            )
-                            Switch(
-                                checked = isManualEditing,
-                                onCheckedChange = { isManualEditing = it },
-                                modifier = Modifier.scale(0.8f)
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SectionHeader("Aperçu des Périodes", colors)
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    if (isManualEditing) "Édition manuelle" else "Automatique",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.textMuted
+                                )
+                                Switch(
+                                    checked = isManualEditing,
+                                    onCheckedChange = { isManualEditing = it },
+                                    modifier = Modifier.scale(0.8f)
+                                )
+                            }
                         }
-                    }
-                    
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 200.dp)
-                            .verticalScroll(rememberScrollState())
-                            .background(colors.card.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        generatedPeriods.forEachIndexed { index, period ->
-                            if (isManualEditing) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    OutlinedTextField(
-                                        value = period.nom,
-                                        onValueChange = { newNom ->
-                                            generatedPeriods = generatedPeriods.toMutableList().apply {
-                                                this[index] = this[index].copy(nom = newNom)
+                        
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 240.dp),
+                            color = colors.background.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (periodError != null) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else colors.divider.copy(alpha = 0.5f))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                generatedPeriods.forEachIndexed { index, period ->
+                                    if (isManualEditing) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            FormTextField(
+                                                label = "Nom de la période",
+                                                value = period.nom,
+                                                onValueChange = { newNom ->
+                                                    generatedPeriods = generatedPeriods.toMutableList().apply {
+                                                        this[index] = this[index].copy(nom = newNom)
+                                                    }
+                                                },
+                                                colors = colors,
+                                                icon = Icons.Default.Edit
+                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                FormTextField(
+                                                    label = "Début",
+                                                    value = period.dateDebut,
+                                                    onValueChange = { newDate ->
+                                                        generatedPeriods = generatedPeriods.toMutableList().apply {
+                                                            this[index] = this[index].copy(dateDebut = newDate)
+                                                        }
+                                                    },
+                                                    colors = colors,
+                                                    modifier = Modifier.weight(1f),
+                                                    placeholder = "AAAA-MM-JJ"
+                                                )
+                                                FormTextField(
+                                                    label = "Fin",
+                                                    value = period.dateFin,
+                                                    onValueChange = { newDate ->
+                                                        generatedPeriods = generatedPeriods.toMutableList().apply {
+                                                            this[index] = this[index].copy(dateFin = newDate)
+                                                        }
+                                                    },
+                                                    colors = colors,
+                                                    modifier = Modifier.weight(1f),
+                                                    placeholder = "AAAA-MM-JJ"
+                                                )
                                             }
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        label = { Text("Nom de la période") },
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                            focusedTextColor = colors.textPrimary,
-                                            unfocusedTextColor = colors.textPrimary,
-                                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                            unfocusedLabelColor = colors.textMuted
-                                        )
-                                    )
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedTextField(
-                                            value = period.dateDebut,
-                                            onValueChange = { newDate ->
-                                                generatedPeriods = generatedPeriods.toMutableList().apply {
-                                                    this[index] = this[index].copy(dateDebut = newDate)
-                                                }
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            label = { Text("Début") },
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                                focusedTextColor = colors.textPrimary,
-                                                unfocusedTextColor = colors.textPrimary,
-                                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                                unfocusedLabelColor = colors.textMuted
+                                            if (index < generatedPeriods.size - 1) {
+                                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = colors.divider.copy(alpha = 0.3f))
+                                            }
+                                        }
+                                    } else {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            val periodColor = when(period.periodType) {
+                                                "TRIMESTER" -> MaterialTheme.colorScheme.primary
+                                                "SEMESTER" -> MaterialTheme.colorScheme.secondary
+                                                else -> MaterialTheme.colorScheme.primary
+                                            }
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(periodColor.copy(alpha = 0.15f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text("${period.numero}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = periodColor)
+                                            }
+                                            Text(
+                                                period.nom,
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                color = colors.textPrimary,
+                                                modifier = Modifier.weight(1f)
                                             )
-                                        )
-                                        OutlinedTextField(
-                                            value = period.dateFin,
-                                            onValueChange = { newDate ->
-                                                generatedPeriods = generatedPeriods.toMutableList().apply {
-                                                    this[index] = this[index].copy(dateFin = newDate)
-                                                }
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            label = { Text("Fin") },
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                                focusedTextColor = colors.textPrimary,
-                                                unfocusedTextColor = colors.textPrimary,
-                                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                                unfocusedLabelColor = colors.textMuted
+                                            Text(
+                                                "${period.dateDebut} → ${period.dateFin}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = colors.textMuted
                                             )
-                                        )
+                                        }
                                     }
-                                    if (index < generatedPeriods.size - 1) {
-                                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = colors.divider.copy(alpha = 0.5f))
-                                    }
-                                }
-                            } else {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    val periodColor = when(period.periodType) {
-                                        "TRIMESTER" -> MaterialTheme.colorScheme.primary
-                                        "SEMESTER" -> MaterialTheme.colorScheme.secondary
-                                        else -> MaterialTheme.colorScheme.primary
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(periodColor.copy(alpha = 0.1f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("${period.numero}", style = MaterialTheme.typography.labelSmall, color = periodColor)
-                                    }
-                                    Text(
-                                        period.nom,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = colors.textPrimary,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        "${period.dateDebut} → ${period.dateFin}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = colors.textMuted
-                                    )
                                 }
                             }
                         }
-                    }
-                    
-                    val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
-                    if (periodError != null) {
-                        Text(
-                            periodError,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+                        
+                        periodError?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                     }
                 }
                 
@@ -1668,12 +1680,19 @@ fun EditSchoolYearDialog(
                     onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods) 
                 },
                 enabled = isFormValid,
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Text("Enregistrer")
+                Text("Enregistrer", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
             }
         }
     )
@@ -1694,55 +1713,101 @@ fun NewPeriodDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.card,
-        textContentColor = colors.textPrimary,
-        titleContentColor = colors.textPrimary,
-        title = { Text("Nouvelle Période") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Nom de la période (ex: Trimestre 1) *") },
-                    modifier = Modifier.fillMaxWidth()
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Nouvelle Période",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = colors.textPrimary
                 )
-                OutlinedTextField(
-                    value = number.toString(),
-                    onValueChange = { number = it.toIntOrNull() ?: number },
-                    label = { Text("Numéro d'ordre *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val startError = validateDate(startDate)
-                    OutlinedTextField(
-                        value = startDate,
-                        onValueChange = { startDate = it },
-                        label = { Text("Début (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = startError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { startError?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
-                    )
-                    val endError = validateDate(endDate)
-                    OutlinedTextField(
-                        value = endDate,
-                        onValueChange = { endDate = it },
-                        label = { Text("Fin (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = endError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { endError?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
-                    )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Fermer", tint = colors.textMuted)
                 }
-
-                Text("Type de période", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PeriodType.values().forEach { pType ->
-                        FilterChip(
-                            selected = type == pType,
-                            onClick = { type = pType },
-                            label = { Text(pType.toFrench()) }
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                // Section: Informations
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Informations de la Période", colors)
+                    
+                    FormTextField(
+                        label = "Nom de la période (ex: Trimestre 1) *",
+                        value = name,
+                        onValueChange = { name = it },
+                        colors = colors,
+                        icon = Icons.Default.Badge,
+                        placeholder = "Trimestre 1"
+                    )
+                    
+                    FormTextField(
+                        label = "Numéro d'ordre *",
+                        value = number.toString(),
+                        onValueChange = { number = it.toIntOrNull() ?: number },
+                        colors = colors,
+                        icon = Icons.Default.FormatListNumbered,
+                        keyboardType = KeyboardType.Number,
+                        placeholder = "1"
+                    )
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        val startError = validateDate(startDate)
+                        FormTextField(
+                            label = "Date de début *",
+                            value = startDate,
+                            onValueChange = { startDate = it },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.CalendarToday,
+                            isError = startError != null
+                        )
+                        
+                        val endError = validateDate(endDate)
+                        FormTextField(
+                            label = "Date de fin *",
+                            value = endDate,
+                            onValueChange = { endDate = it },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.Event,
+                            isError = endError != null
                         )
                     }
                 }
+
+                // Section: Type
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Type de Période", colors)
+                    
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PeriodType.values().forEach { pType ->
+                            FilterChip(
+                                selected = type == pType,
+                                onClick = { type = pType },
+                                label = { Text(pType.toFrench()) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                Text(
+                    "* Champs obligatoires",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textMuted
+                )
             }
         },
         confirmButton = {
@@ -1750,13 +1815,21 @@ fun NewPeriodDialog(
                              validateDate(startDate) == null && validateDate(endDate) == null
             Button(
                 onClick = { onConfirm(name, number, normalizeDate(startDate), normalizeDate(endDate), type) },
-                enabled = isFormValid
+                enabled = isFormValid,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Text("Créer la période")
+                Text("Créer la période", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
         }
     )
 }
@@ -1777,55 +1850,101 @@ fun EditPeriodDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.card,
-        textContentColor = colors.textPrimary,
-        titleContentColor = colors.textPrimary,
-        title = { Text("Modifier la Période") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Nom de la période *") },
-                    modifier = Modifier.fillMaxWidth()
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Modifier la Période",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = colors.textPrimary
                 )
-                OutlinedTextField(
-                    value = number.toString(),
-                    onValueChange = { number = it.toIntOrNull() ?: number },
-                    label = { Text("Numéro d'ordre *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val startError = validateDate(startDate)
-                    OutlinedTextField(
-                        value = startDate,
-                        onValueChange = { startDate = it },
-                        label = { Text("Début (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = startError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { startError?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
-                    )
-                    val endError = validateDate(endDate)
-                    OutlinedTextField(
-                        value = endDate,
-                        onValueChange = { endDate = it },
-                        label = { Text("Fin (AAAA-MM-JJ) *") },
-                        modifier = Modifier.weight(1f),
-                        isError = endError != null || (if (validateDate(startDate) == null && validateDate(endDate) == null) validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) != null else false),
-                        supportingText = { endError?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
-                    )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Fermer", tint = colors.textMuted)
                 }
-
-                Text("Type de période", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PeriodType.values().forEach { pType ->
-                        FilterChip(
-                            selected = type == pType,
-                            onClick = { type = pType },
-                            label = { Text(pType.toFrench()) }
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                // Section: Informations
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Informations de la Période", colors)
+                    
+                    FormTextField(
+                        label = "Nom de la période *",
+                        value = name,
+                        onValueChange = { name = it },
+                        colors = colors,
+                        icon = Icons.Default.Badge,
+                        placeholder = "Trimestre 1"
+                    )
+                    
+                    FormTextField(
+                        label = "Numéro d'ordre *",
+                        value = number.toString(),
+                        onValueChange = { number = it.toIntOrNull() ?: number },
+                        colors = colors,
+                        icon = Icons.Default.FormatListNumbered,
+                        keyboardType = KeyboardType.Number,
+                        placeholder = "1"
+                    )
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        val startError = validateDate(startDate)
+                        FormTextField(
+                            label = "Date de début *",
+                            value = startDate,
+                            onValueChange = { startDate = it },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.CalendarToday,
+                            isError = startError != null
+                        )
+                        
+                        val endError = validateDate(endDate)
+                        FormTextField(
+                            label = "Date de fin *",
+                            value = endDate,
+                            onValueChange = { endDate = it },
+                            colors = colors,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "AAAA-MM-JJ",
+                            icon = Icons.Default.Event,
+                            isError = endError != null
                         )
                     }
                 }
+
+                // Section: Type
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("Type de Période", colors)
+                    
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PeriodType.values().forEach { pType ->
+                            FilterChip(
+                                selected = type == pType,
+                                onClick = { type = pType },
+                                label = { Text(pType.toFrench()) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                Text(
+                    "* Champs obligatoires",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textMuted
+                )
             }
         },
         confirmButton = {
@@ -1833,13 +1952,63 @@ fun EditPeriodDialog(
                              validateDate(startDate) == null && validateDate(endDate) == null
             Button(
                 onClick = { onConfirm(name, number, normalizeDate(startDate), normalizeDate(endDate), type) },
-                enabled = isFormValid
+                enabled = isFormValid,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Text("Enregistrer")
+                Text("Enregistrer", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
+        }
+    )
+}
+
+@Composable
+fun ArchiveYearDialog(
+    yearName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    colors: DashboardColors
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.card,
+        icon = { Icon(Icons.Default.Archive, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        title = {
+            Text(
+                "Archiver l'Année Scolaire",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colors.textPrimary
+            )
+        },
+        text = {
+            Text(
+                "Êtes-vous sûr de vouloir archiver l'année scolaire \"$yearName\" ? Cette action est réversible mais l'année ne sera plus active.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Archiver")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
         }
     )
 }
@@ -1848,22 +2017,40 @@ fun EditPeriodDialog(
 fun DeletePeriodDialog(
     periodName: String,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    colors: DashboardColors
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Supprimer la période") },
-        text = { Text("Voulez-vous vraiment supprimer la période $periodName ? Cette action est définitive.") },
+        containerColor = colors.card,
+        icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        title = {
+            Text(
+                "Supprimer la période",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colors.textPrimary
+            )
+        },
+        text = {
+            Text(
+                "Voulez-vous vraiment supprimer la période $periodName ? Cette action est définitive.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary
+            )
+        },
         confirmButton = {
             Button(
                 onClick = onConfirm,
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Text("Supprimer")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
         }
     )
 }

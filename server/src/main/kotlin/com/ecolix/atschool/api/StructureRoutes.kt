@@ -137,6 +137,15 @@ fun Route.structureRoutes() {
                 schoolYearRepository.setAsDefault(id, tenantId)
                 call.respond(HttpStatusCode.OK)
             }
+
+            post("/{id}/set-status") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                val status = call.receive<Map<String, String>>()["status"] ?: return@post call.respond(HttpStatusCode.BadRequest)
+                schoolYearRepository.setStatus(id, status, tenantId)
+                call.respond(HttpStatusCode.OK)
+            }
         }
 
         route("/academic-periods") {
@@ -161,6 +170,26 @@ fun Route.structureRoutes() {
                 val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
                 val id = call.parameters["id"]?.toIntOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
                 if (academicPeriodRepository.delete(id, tenantId)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            post("/{id}/set-active") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                academicPeriodRepository.setStatus(id, "ACTIVE", tenantId)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            post("/{id}/set-status") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                val status = call.receive<Map<String, String>>()["status"] ?: return@post call.respond(HttpStatusCode.BadRequest)
+                if (academicPeriodRepository.setStatus(id, status, tenantId)) {
+                    call.respond(HttpStatusCode.OK)
+                } else {
+                    call.respond(HttpStatusCode.NotFound)
+                }
             }
         }
 

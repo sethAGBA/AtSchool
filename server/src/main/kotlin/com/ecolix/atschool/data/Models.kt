@@ -115,7 +115,7 @@ object AnneesScolaires : IntIdTable("annees_scolaires") {
     val libelle = varchar("libelle", 50)
     val dateDebut = date("date_debut")
     val dateFin = date("date_fin")
-    val isActif = bool("is_actif").default(true)
+    val status = varchar("status", 20).default("UPCOMING")
     val numberOfPeriods = integer("number_of_periods").default(3)
     val periodType = varchar("period_type", 255).default("TRIMESTER") // Comma-separated: TRIMESTER, SEMESTER, etc.
     val isDefault = bool("is_default").default(false)
@@ -132,7 +132,7 @@ object AcademicPeriods : IntIdTable("academic_periods") {
     val evaluationDeadline = date("evaluation_deadline").nullable()
     val reportCardDeadline = date("report_card_deadline").nullable()
     val periodType = varchar("period_type", 20).default("TRIMESTER")
-    val isActif = bool("is_actif").default(true)
+    val status = varchar("status", 20).default("UPCOMING")
 }
 
 object Cycles : IntIdTable("cycles") {

@@ -341,7 +341,7 @@ data class SchoolYearDto(
     val libelle: String,
     val dateDebut: String,
     val dateFin: String,
-    val isActif: Boolean = true,
+    val status: String = "UPCOMING",
     val numberOfPeriods: Int = 3,
     val periodType: String = "TRIMESTER",
     val isDefault: Boolean = false,
@@ -361,7 +361,7 @@ data class AcademicPeriodDto(
     val periodType: String = "TRIMESTER",
     val evaluationDeadline: String? = null,
     val reportCardDeadline: String? = null,
-    val isActif: Boolean = true
+    val status: String = "UPCOMING"
 )
 
 @Serializable

@@ -33,6 +33,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                     
                     // If there's an active year, load its periods
                     uiYears.find { it.status == AcademicStatus.ACTIVE }?.let { activeYear ->
+                        mutableState.update { it.copy(selectedSchoolYearId = activeYear.id) }
                         loadPeriods(activeYear.id)
                     }
                     
@@ -94,7 +95,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                 libelle = name,
                 dateDebut = startDate,
                 dateFin = endDate,
-                isActif = true,
+                status = "UPCOMING",
                 numberOfPeriods = numPeriods,
                 periodType = types.joinToString(","),
                 isDefault = false,
@@ -121,7 +122,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                 libelle = name,
                 dateDebut = startDate,
                 dateFin = endDate,
-                isActif = true,
+                status = "ACTIVE",
                 numberOfPeriods = numPeriods,
                 periodType = types.joinToString(","),
                 isDefault = false,
@@ -181,7 +182,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                 dateDebut = startDate,
                 dateFin = endDate,
                 periodType = type.name,
-                isActif = true
+                status = "UPCOMING"
             )
             structureApiService.createAcademicPeriod(dto)
                 .onSuccess { 
@@ -208,7 +209,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                 dateDebut = startDate,
                 dateFin = endDate,
                 periodType = type.name,
-                isActif = true
+                status = "ACTIVE"
             )
             structureApiService.updateAcademicPeriod(idInt, dto)
                 .onSuccess { 
@@ -245,12 +246,62 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         mutableState.update { it.copy(successMessage = null) }
     }
 
+    fun setPeriodStatus(periodId: String, status: AcademicStatus) {
+        val idInt = periodId.toIntOrNull() ?: return
+        val yearId = mutableState.value.selectedSchoolYearId ?: return
+        val statusString = when (status) {
+            AcademicStatus.ACTIVE -> "ACTIVE"
+            AcademicStatus.COMPLETED -> "COMPLETED"
+            AcademicStatus.UPCOMING -> "UPCOMING"
+            else -> "UPCOMING"
+        }
+        
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true, errorMessage = null) }
+            structureApiService.setAcademicPeriodStatus(idInt, statusString)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Statut mis à jour") }
+                    loadPeriods(yearId)
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun setSchoolYearStatus(yearId: String, status: AcademicStatus) {
+        val idInt = yearId.toIntOrNull() ?: return
+        val statusString = when (status) {
+            AcademicStatus.ACTIVE -> "ACTIVE"
+            AcademicStatus.COMPLETED -> "COMPLETED"
+            AcademicStatus.UPCOMING -> "UPCOMING"
+            else -> "UPCOMING"
+        }
+        
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true, errorMessage = null) }
+            structureApiService.setSchoolYearStatus(idInt, statusString)
+                .onSuccess {
+                    mutableState.update { it.copy(successMessage = "Statut de l'année mis à jour") }
+                    loadData()
+                }
+                .onFailure { error ->
+                    mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
     private fun SchoolYearDto.toUiModel() = SchoolYear(
         id = this.id?.toString() ?: "",
         name = this.libelle,
         startDate = this.dateDebut,
         endDate = this.dateFin,
-        status = if (this.isActif) AcademicStatus.ACTIVE else AcademicStatus.COMPLETED,
+        status = when (this.status) {
+            "ACTIVE" -> AcademicStatus.ACTIVE
+            "COMPLETED" -> AcademicStatus.COMPLETED
+            "UPCOMING" -> AcademicStatus.UPCOMING
+            else -> AcademicStatus.UPCOMING
+        },
         periodTypes = this.periodType.split(",").filter { it.isNotBlank() }.map { 
             try { PeriodType.valueOf(it) } catch (e: Exception) { PeriodType.TRIMESTER }
         },
@@ -266,7 +317,12 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         periodNumber = this.numero,
         startDate = this.dateDebut,
         endDate = this.dateFin,
-        status = if (this.isActif) AcademicStatus.ACTIVE else AcademicStatus.COMPLETED,
+        status = when (this.status) {
+            "ACTIVE" -> AcademicStatus.ACTIVE
+            "COMPLETED" -> AcademicStatus.COMPLETED
+            "UPCOMING" -> AcademicStatus.UPCOMING
+            else -> AcademicStatus.UPCOMING
+        },
         type = try { PeriodType.valueOf(this.periodType) } catch (e: Exception) { PeriodType.TRIMESTER },
         evaluationDeadline = this.evaluationDeadline,
         reportCardDeadline = this.reportCardDeadline

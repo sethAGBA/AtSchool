@@ -55,6 +55,17 @@ class StructureApiService(private val client: HttpClient) {
         }
     }
 
+    suspend fun setSchoolYearStatus(id: Int, status: String): Result<Unit> = runCatching {
+        val response = client.post("school-years/$id/set-status") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("status" to status))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour du statut de l'année scolaire (${response.status.value})")
+        }
+    }
+
     suspend fun getPeriodsByYear(yearId: Int): Result<List<AcademicPeriodDto>> = runCatching {
         val response = client.get("school-years/$yearId/periods")
         if (response.status != HttpStatusCode.OK) {
@@ -92,6 +103,17 @@ class StructureApiService(private val client: HttpClient) {
         if (response.status != HttpStatusCode.OK) {
             val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
             throw Exception(errorBody?.get("error") ?: "Erreur lors de la suppression de la période (${response.status.value})")
+        }
+    }
+
+    suspend fun setAcademicPeriodStatus(id: Int, status: String): Result<Unit> = runCatching {
+        val response = client.post("academic-periods/$id/set-status") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("status" to status))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour du statut de la période (${response.status.value})")
         }
     }
 

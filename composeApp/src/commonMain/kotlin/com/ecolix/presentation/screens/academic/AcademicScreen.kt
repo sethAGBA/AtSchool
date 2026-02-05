@@ -159,7 +159,7 @@ fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean)
                             state = state,
                             colors = state.colors,
                             isCompact = isCompact,
-                            onArchiveYear = { screenModel.deleteSchoolYear(it) } // Or a specific archive method
+                            onArchiveYear = { screenModel.setSchoolYearStatus(it, AcademicStatus.COMPLETED) }
                         )
                         AcademicViewMode.SCHOOL_YEARS -> SchoolYearsTab(
                             state = state,
@@ -173,7 +173,8 @@ fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean)
                                 screenModel.updateSchoolYear(id, name, start, end, types, num, periods)
                             },
                             onDeleteYear = { screenModel.deleteSchoolYear(it) },
-                            onSetDefault = { screenModel.setDefaultYear(it) }
+                            onSetDefault = { screenModel.setDefaultYear(it) },
+                            onSetStatus = { id, status -> screenModel.setSchoolYearStatus(id, status) }
                         )
                         AcademicViewMode.PERIODS -> PeriodsTab(
                             state = state,
@@ -188,7 +189,8 @@ fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean)
                             },
                             onDeletePeriod = { 
                                 screenModel.deleteAcademicPeriod(it)
-                            }
+                            },
+                            onSetStatus = { id, status -> screenModel.setPeriodStatus(id, status) }
                         )
                         AcademicViewMode.CALENDAR -> CalendarTab(
                             state = state,
