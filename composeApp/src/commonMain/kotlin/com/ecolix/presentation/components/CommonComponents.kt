@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.OutlinedTextField
@@ -319,37 +320,53 @@ fun FormTextField(
     icon: ImageVector? = null,
     readOnly: Boolean = false,
     isError: Boolean = false,
+    error: String? = null,
     lines: Int = 1,
     keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     onIconClick: (() -> Unit)? = null
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
-        modifier = modifier.fillMaxWidth(),
-        readOnly = readOnly,
-        isError = isError,
-        maxLines = lines,
-        minLines = lines,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        visualTransformation = visualTransformation,
-        trailingIcon = icon?.let { 
-            { 
-               IconButton(onClick = { onIconClick?.invoke() }, enabled = onIconClick != null) {
-                   Icon(it, contentDescription = null, modifier = Modifier.size(18.dp), tint = if (isError) MaterialTheme.colorScheme.error else colors.textMuted) 
-               }
-            } 
-        },
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = colors.textPrimary,
-            unfocusedTextColor = colors.textPrimary,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = colors.divider,
-            errorBorderColor = MaterialTheme.colorScheme.error
+    val finalIsError = isError || error != null
+    
+    Column(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(label) },
+            placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = readOnly,
+            isError = finalIsError,
+            maxLines = lines,
+            minLines = lines,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+            keyboardActions = keyboardActions,
+            visualTransformation = visualTransformation,
+            trailingIcon = icon?.let { 
+                { 
+                   IconButton(onClick = { onIconClick?.invoke() }, enabled = onIconClick != null) {
+                       Icon(it, contentDescription = null, modifier = Modifier.size(18.dp), tint = if (finalIsError) MaterialTheme.colorScheme.error else colors.textMuted) 
+                   }
+                } 
+            },
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = colors.textPrimary,
+                unfocusedTextColor = colors.textPrimary,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = colors.divider,
+                errorBorderColor = MaterialTheme.colorScheme.error
+            )
         )
-    )
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+            )
+        }
+    }
 }

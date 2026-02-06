@@ -18,6 +18,10 @@ import kotlinx.datetime.toLocalDateTime
 class AcademicScreenModel(private val structureApiService: StructureApiService) : 
     StateScreenModel<AcademicUiState>(AcademicUiState()) {
 
+    // Local cache for all events/holidays to support client-side filtering
+    private var allEvents: List<AcademicEvent> = emptyList()
+    private var allHolidays: List<Holiday> = emptyList()
+
     init {
         loadData()
         loadCalendarData()
@@ -77,10 +81,12 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             if (eventDtos.isEmpty() && holidayDtos.isEmpty()) {
                 seedDefaultCalendarData()
             } else {
-                mutableState.update { it.copy(
-                    events = eventDtos.map { dto -> dto.toUiModel() },
-                    holidays = holidayDtos.map { dto -> dto.toUiModel() }
-                ) }
+                // Update cache
+                allEvents = eventDtos.map { dto -> dto.toUiModel() }
+                allHolidays = holidayDtos.map { dto -> dto.toUiModel() }
+                
+                // Update UI state with filtered data
+                updateFilteredData()
             }
         }
     }
@@ -180,13 +186,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             }
 
             // Reload everything
-            val updatedEvents = structureApiService.getAcademicEvents().getOrDefault(emptyList())
-            val updatedHolidays = structureApiService.getHolidays().getOrDefault(emptyList())
-            
-            mutableState.update { it.copy(
-                events = updatedEvents.map { it.toUiModel() },
-                holidays = updatedHolidays.map { it.toUiModel() }
-            ) }
+            loadCalendarData()
         }
     }
 
@@ -211,6 +211,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                     }
                     
                     updateStatistics()
+                    updateFilteredData()
                 }
                 .onFailure { error ->
                     mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
@@ -253,6 +254,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
     fun onSelectSchoolYear(yearId: String) {
         mutableState.update { it.copy(selectedSchoolYearId = yearId) }
         loadPeriods(yearId)
+        updateFilteredData()
     }
 
     fun onSelectPeriod(periodId: String) {
@@ -677,6 +679,45 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         )
         
         mutableState.update { it.copy(statistics = statistics) }
+    }
+
+    private fun updateFilteredData() {
+        val state = mutableState.value
+        val selectedYearId = state.selectedSchoolYearId
+        val selectedYear = state.schoolYears.find { it.id == selectedYearId }
+
+        if (selectedYear != null) {
+            val startDate = selectedYear.startDate
+            val endDate = selectedYear.endDate
+            
+            // Filter events and holidays that overlap with the selected year's date range
+            // Simple comparison for 'yyyy-MM-dd' strings works lexicographically
+            val filteredEvents = allEvents.filter { event ->
+                event.date >= startDate && event.date <= endDate
+            }
+            
+            val filteredHolidays = allHolidays.filter { holiday ->
+                holiday.startDate >= startDate && holiday.startDate <= endDate
+            }
+            
+            mutableState.update { it.copy(
+                events = filteredEvents.sortedBy { e -> e.date },
+                holidays = filteredHolidays.sortedBy { h -> h.startDate }
+            ) }
+        } else {
+            // If no year selected, maybe show everything or nothing? 
+            // Let's show everything to avoid empty screens if something is wrong with selection
+            mutableState.update { it.copy(
+                events = allEvents.sortedBy { e -> e.date },
+                holidays = allHolidays.sortedBy { h -> h.startDate }
+            ) }
+        }
+        
+        // Also update statistics as they depend on filtered events count
+        // We re-call updateStatistics here effectively
+        mutableState.update { state -> 
+             state.copy(statistics = state.statistics.copy(upcomingEvents = state.events.size))
+        }
     }
 
     private fun AcademicSettingsDto.toUiModel(gradeLevels: List<com.ecolix.atschool.api.GradeLevelDto>) = AcademicSettings(

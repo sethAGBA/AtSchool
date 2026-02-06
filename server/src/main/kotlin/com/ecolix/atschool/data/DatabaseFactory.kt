@@ -15,9 +15,6 @@ object DatabaseFactory {
         val dataSource = createHikariDataSource(config)
         Database.connect(dataSource)
         
-        // Run Flyway migrations
-        runFlyway(dataSource)
-
         // Initialize tables if they don't exist
         transaction {
             SchemaUtils.createMissingTablesAndColumns(
@@ -49,6 +46,9 @@ object DatabaseFactory {
                 GradeLevels
             )
         }
+
+        // Run Flyway migrations for any schema changes not covered by SchemaUtils
+        runFlyway(dataSource)
     }
 
     private fun createHikariDataSource(config: io.ktor.server.config.ApplicationConfig): HikariDataSource {
@@ -74,6 +74,7 @@ object DatabaseFactory {
     private fun runFlyway(dataSource: HikariDataSource) {
         val flyway = Flyway.configure()
             .dataSource(dataSource)
+            .baselineOnMigrate(true)
             .load()
         try {
             flyway.migrate()

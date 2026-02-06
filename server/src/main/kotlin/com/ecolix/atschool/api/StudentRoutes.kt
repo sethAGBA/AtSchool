@@ -73,6 +73,42 @@ fun Route.studentRoutes() {
                 repository.deleteStudent(id, tenantId)
                 call.respond(HttpStatusCode.NoContent)
             }
+
+            post("/{id}/restore") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toLongOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                
+                repository.restoreStudent(id, tenantId)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            delete("/{id}/permanent") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toLongOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                
+                repository.deleteStudentPermanently(id, tenantId)
+                call.respond(HttpStatusCode.NoContent)
+            }
+
+            post("/transfer") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                
+                val request = call.receive<TransferStudentRequest>()
+                
+                val studentIds = request.studentIds.mapNotNull { it.toLongOrNull() }
+                if (studentIds.isEmpty()) return@post call.respond(HttpStatusCode.BadRequest, "Invalid studentIds")
+                
+                val newClassroomId = request.newClassroomId.toIntOrNull()
+                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid newClassroomId")
+                
+                call.application.environment.log.info("DEBUG [StudentRoutes] Received transfer request: ids=$studentIds to class=$newClassroomId")
+                val updatedCount = repository.transferStudents(studentIds, newClassroomId, tenantId)
+                call.application.environment.log.info("DEBUG [StudentRoutes] Transfer completed. Updated count: $updatedCount")
+                call.respond(HttpStatusCode.OK, mapOf("updatedCount" to updatedCount))
+            }
         }
     }
 }

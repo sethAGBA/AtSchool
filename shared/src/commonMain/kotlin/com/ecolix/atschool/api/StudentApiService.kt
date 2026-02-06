@@ -32,4 +32,25 @@ class StudentApiService(private val client: HttpClient) {
     suspend fun deleteStudent(id: Long): Result<Unit> = runCatching {
         client.delete("students/$id").body()
     }
+
+    suspend fun restoreStudent(id: Long): Result<Unit> = runCatching {
+        client.post("students/$id/restore").body()
+    }
+
+    suspend fun deleteStudentPermanently(id: Long): Result<Unit> = runCatching {
+        client.delete("students/$id/permanent").body()
+    }
+
+    suspend fun transferStudents(studentIds: List<String>, newClassroomId: String): Result<Map<String, Int>> = runCatching {
+        println("DEBUG [StudentApiService] Transferring students: ids=$studentIds to class=$newClassroomId")
+        val response = client.post("students/transfer") {
+            setBody(TransferStudentRequest(
+                studentIds = studentIds,
+                newClassroomId = newClassroomId
+            ))
+            contentType(ContentType.Application.Json)
+        }.body<Map<String, Int>>()
+        println("DEBUG [StudentApiService] Transfer response: $response")
+        response
+    }
 }

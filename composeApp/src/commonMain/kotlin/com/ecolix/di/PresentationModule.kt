@@ -10,7 +10,7 @@ import org.koin.dsl.module
 
 val presentationModule = module {
     factory { LoginScreenModel(get()) }
-    factory { StudentsScreenModel(get()) }
+    factory { StudentsScreenModel(get(), get(), get()) }
     factory { DashboardScreenModel(get()) }
     factory { SuperAdminScreenModel(get()) }
     single { SettingsScreenModel(get(), get()) }

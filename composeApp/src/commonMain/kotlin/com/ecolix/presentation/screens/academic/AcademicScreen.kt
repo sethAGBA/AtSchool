@@ -88,7 +88,7 @@ fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean)
             if (isCompact) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Gestion Académique",
+                        text = "Gestion Académique (${state.statistics.activeYear?.name ?: ""})",
                         style = headerTitleStyle.copy(fontWeight = FontWeight.Bold),
                         color = state.colors.textPrimary
                     )
@@ -107,7 +107,7 @@ fun AcademicScreenContent(screenModel: AcademicScreenModel, isDarkMode: Boolean)
                 ) {
                     Column {
                         Text(
-                            text = "Gestion Académique",
+                            text = "Gestion Académique (${state.statistics.activeYear?.name ?: ""})",
                             style = headerTitleStyle.copy(fontWeight = FontWeight.Bold, fontSize = 32.sp),
                             color = state.colors.textPrimary
                         )

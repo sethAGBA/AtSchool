@@ -140,6 +140,20 @@ object Cycles : IntIdTable("cycles") {
     val nom = varchar("nom", 100) // Primaire, Collège, Lycée
 }
 
+object SchoolCycles : IntIdTable("school_cycles") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 100)
+    val sortOrder = integer("sort_order").default(0)
+}
+
+object SchoolLevels : IntIdTable("school_levels") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val cycleId = reference("cycle_id", SchoolCycles, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 100)
+    val sortOrder = integer("sort_order").default(0)
+    val standardCapacity = integer("standard_capacity").nullable()
+}
+
 object Niveaux : IntIdTable("niveaux") {
     val cycleId = reference("cycle_id", Cycles, onDelete = ReferenceOption.CASCADE)
     val nom = varchar("nom", 100)
@@ -147,9 +161,24 @@ object Niveaux : IntIdTable("niveaux") {
 
 object Classes : IntIdTable("classes") {
     val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
-    val niveauId = reference("niveau_id", Niveaux, onDelete = ReferenceOption.CASCADE)
-    val code = varchar("code", 20)
+    // NOTE: niveauId is old relation to Niveaux table, kept for migration
+    val niveauId = reference("niveau_id", Niveaux, onDelete = ReferenceOption.CASCADE).nullable() 
+    // NEW: Link to the structural level
+    val schoolLevelId = reference("school_level_id", SchoolLevels, onDelete = ReferenceOption.SET_NULL).nullable()
+    
+    val code = varchar("code", 50)
     val nom = varchar("nom", 100)
+    val legacyLevel = varchar("level", 100).nullable() // For the old string-based level
+    
+    val mainTeacher = varchar("main_teacher", 100).nullable()
+    val roomNumber = varchar("room_number", 50).nullable()
+    val capacity = integer("capacity").nullable()
+    val description = text("description").nullable()
+    
+    // Ensure class names are unique per tenant
+    init {
+        uniqueIndex(tenantId, nom)
+    }
 }
 
 object Eleves : LongIdTable("eleves") {
@@ -159,6 +188,21 @@ object Eleves : LongIdTable("eleves") {
     val prenom = varchar("prenom", 100)
     val dateNaissance = date("date_naissance")
     val sexe = varchar("sexe", 1)
+    
+    // Additional fields
+    val lieuNaissance = varchar("lieu_naissance", 100).nullable()
+    val adresse = text("adresse").nullable()
+    val telephone = varchar("telephone", 50).nullable()
+    val email = varchar("email", 100).nullable()
+    val contactUrgence = varchar("contact_urgence", 50).nullable()
+    val nomTuteur = varchar("nom_tuteur", 150).nullable()
+    val contactTuteur = varchar("contact_tuteur", 50).nullable()
+    val infoMedicale = text("info_medicale").nullable()
+    val groupeSanguin = varchar("groupe_sanguin", 10).nullable()
+    val remarques = text("remarques").nullable()
+    val nationalite = varchar("nationalite", 100).nullable()
+    val photoUrl = text("photo_url").nullable()
+    val deleted = bool("deleted").default(false)
 }
 
 object Inscriptions : LongIdTable("inscriptions") {
@@ -172,7 +216,7 @@ object Inscriptions : LongIdTable("inscriptions") {
 object Matieres : IntIdTable("matieres") {
     val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
     val nom = varchar("nom", 100)
-    val code = varchar("code", 20)
+    val code = varchar("code", 50)
 }
 
 object Evaluations : LongIdTable("evaluations") {

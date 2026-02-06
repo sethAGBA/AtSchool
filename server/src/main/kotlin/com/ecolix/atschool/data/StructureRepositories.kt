@@ -18,9 +18,15 @@ data class Establishment(
 data class ClassEntity(
     val id: Int? = null,
     val tenantId: Int,
-    val niveauId: Int,
+    val niveauId: Int? = null,
+    val schoolLevelId: Int? = null,
     val code: String,
-    val nom: String
+    val nom: String,
+    val legacyLevel: String? = null,
+    val mainTeacher: String? = null,
+    val roomNumber: String? = null,
+    val capacity: Int? = null,
+    val description: String? = null
 )
 
 class EstablishmentRepository {
@@ -50,12 +56,77 @@ class ClassRepository {
             .singleOrNull()
     }
 
+    fun create(entity: ClassEntity): Int = transaction {
+        try {
+            Classes.insertAndGetId {
+                it[Classes.tenantId] = entity.tenantId
+                it[Classes.niveauId] = entity.niveauId
+                it[Classes.schoolLevelId] = entity.schoolLevelId
+                it[Classes.code] = entity.code
+                it[Classes.nom] = entity.nom
+                it[Classes.legacyLevel] = entity.legacyLevel
+                it[Classes.mainTeacher] = entity.mainTeacher
+                it[Classes.roomNumber] = entity.roomNumber
+                it[Classes.capacity] = entity.capacity
+                it[Classes.description] = entity.description
+            }.value
+        } catch (e: Exception) {
+            // Check if it's a duplicate key error
+            if (e.message?.contains("unique", ignoreCase = true) == true || 
+                e.message?.contains("duplicate", ignoreCase = true) == true) {
+                throw IllegalArgumentException("Une classe avec le nom '${entity.nom}' existe déjà pour cet établissement.")
+            }
+            throw e
+        }
+    }
+
+    fun update(id: Int, entity: ClassEntity): Boolean = transaction {
+        Classes.update({ (Classes.id eq id) and (Classes.tenantId eq entity.tenantId) }) {
+            it[Classes.niveauId] = entity.niveauId
+            it[Classes.schoolLevelId] = entity.schoolLevelId
+            it[Classes.code] = entity.code
+            it[Classes.nom] = entity.nom
+            it[Classes.legacyLevel] = entity.legacyLevel
+            it[Classes.mainTeacher] = entity.mainTeacher
+            it[Classes.roomNumber] = entity.roomNumber
+            it[Classes.capacity] = entity.capacity
+            it[Classes.description] = entity.description
+        } > 0
+    }
+
+    fun delete(id: Int, tenantId: Int): Boolean = transaction {
+        Classes.deleteWhere { (Classes.id eq id) and (Classes.tenantId eq tenantId) } > 0
+    }
+
+    fun syncLevelRename(schoolLevelId: Int, oldName: String, newName: String, tenantId: Int) = transaction {
+        // Update the legacyLevel reference for all classes in this level
+        Classes.update({ (Classes.schoolLevelId eq schoolLevelId) and (Classes.tenantId eq tenantId) }) {
+            it[Classes.legacyLevel] = newName
+        }
+        
+        // Update names for classes that exactly matched the old level name
+        Classes.update({ 
+            (Classes.schoolLevelId eq schoolLevelId) and 
+            (Classes.tenantId eq tenantId) and 
+            (Classes.nom eq oldName) 
+        }) {
+            it[Classes.nom] = newName
+            it[Classes.code] = "CL-${newName.uppercase().replace(" ", "")}"
+        }
+    }
+
     private fun ResultRow.toClass() = ClassEntity(
         id = this[Classes.id].value,
         tenantId = this[Classes.tenantId].value,
-        niveauId = this[Classes.niveauId].value,
+        niveauId = this[Classes.niveauId]?.value,
+        schoolLevelId = this[Classes.schoolLevelId]?.value,
         code = this[Classes.code],
-        nom = this[Classes.nom]
+        nom = this[Classes.nom],
+        legacyLevel = this[Classes.legacyLevel],
+        mainTeacher = this[Classes.mainTeacher],
+        roomNumber = this[Classes.roomNumber],
+        capacity = this[Classes.capacity],
+        description = this[Classes.description]
     )
 }
 
@@ -515,6 +586,7 @@ data class LevelEntity(
     val nom: String
 )
 
+
 class LevelRepository {
     fun getByCycle(cycleId: Int): List<LevelEntity> = transaction {
         Niveaux.selectAll().where { Niveaux.cycleId eq cycleId }
@@ -526,4 +598,213 @@ class LevelRepository {
         cycleId = this[Niveaux.cycleId].value,
         nom = this[Niveaux.nom]
     )
+}
+
+@Serializable
+data class SchoolCycleEntity(
+    val id: Int? = null,
+    val tenantId: Int,
+    val name: String,
+    val sortOrder: Int
+)
+
+class SchoolCycleRepository {
+    fun getAll(tenantId: Int): List<SchoolCycleEntity> = transaction {
+        SchoolCycles.selectAll()
+            .where { SchoolCycles.tenantId eq tenantId }
+            .orderBy(SchoolCycles.sortOrder to SortOrder.ASC) // Corrected: Using SortOrder.ASC
+            .map { it.toSchoolCycle() }
+    }
+    
+    fun getById(id: Int, tenantId: Int): SchoolCycleEntity? = transaction {
+        SchoolCycles.selectAll()
+            .where { (SchoolCycles.id eq id) and (SchoolCycles.tenantId eq tenantId) }
+            .map { it.toSchoolCycle() }
+            .singleOrNull()
+    }
+
+    fun create(entity: SchoolCycleEntity): Int = transaction {
+        SchoolCycles.insertAndGetId {
+            it[tenantId] = entity.tenantId
+            it[name] = entity.name
+            it[sortOrder] = entity.sortOrder
+        }.value
+    }
+
+    fun update(id: Int, entity: SchoolCycleEntity): Boolean = transaction {
+        SchoolCycles.update({ (SchoolCycles.id eq id) and (SchoolCycles.tenantId eq entity.tenantId) }) {
+            it[name] = entity.name
+            it[sortOrder] = entity.sortOrder
+        } > 0
+    }
+
+    fun delete(id: Int, tenantId: Int): Boolean = transaction {
+        SchoolCycles.deleteWhere { (SchoolCycles.id eq id) and (SchoolCycles.tenantId eq tenantId) } > 0
+    }
+
+    private fun ResultRow.toSchoolCycle() = SchoolCycleEntity(
+        id = this[SchoolCycles.id].value,
+        tenantId = this[SchoolCycles.tenantId].value,
+        name = this[SchoolCycles.name],
+        sortOrder = this[SchoolCycles.sortOrder]
+    )
+}
+
+@Serializable
+data class SchoolLevelEntity(
+    val id: Int? = null,
+    val tenantId: Int,
+    val cycleId: Int,
+    val name: String,
+    val sortOrder: Int,
+    val standardCapacity: Int? = null
+)
+
+class SchoolLevelRepository(private val classRepo: ClassRepository) {
+    fun getAll(tenantId: Int): List<SchoolLevelEntity> = transaction {
+        SchoolLevels.selectAll()
+            .where { SchoolLevels.tenantId eq tenantId }
+            .orderBy(SchoolLevels.sortOrder to SortOrder.ASC) // Corrected
+            .map { it.toSchoolLevel() }
+    }
+
+    fun getByCycle(cycleId: Int, tenantId: Int): List<SchoolLevelEntity> = transaction {
+        SchoolLevels.selectAll()
+            .where { (SchoolLevels.cycleId eq cycleId) and (SchoolLevels.tenantId eq tenantId) }
+            .orderBy(SchoolLevels.sortOrder to SortOrder.ASC) // Corrected
+            .map { it.toSchoolLevel() }
+    }
+    
+    fun getById(id: Int, tenantId: Int): SchoolLevelEntity? = transaction {
+        SchoolLevels.selectAll()
+            .where { (SchoolLevels.id eq id) and (SchoolLevels.tenantId eq tenantId) }
+            .map { it.toSchoolLevel() }
+            .singleOrNull()
+    }
+
+    fun create(entity: SchoolLevelEntity): Int = transaction {
+        val levelId = SchoolLevels.insertAndGetId {
+            it[tenantId] = entity.tenantId
+            it[cycleId] = entity.cycleId
+            it[name] = entity.name
+            it[sortOrder] = entity.sortOrder
+            it[standardCapacity] = entity.standardCapacity
+        }.value
+
+        // Automatically create a matching classroom, but skip if already exists
+        try {
+            classRepo.create(
+                ClassEntity(
+                    tenantId = entity.tenantId,
+                    schoolLevelId = levelId,
+                    nom = entity.name,
+                    code = "CL-${entity.name.uppercase().replace(" ", "")}",
+                    legacyLevel = entity.name
+                )
+            )
+        } catch (e: IllegalArgumentException) {
+            // Skip if class with this name already exists
+            if (e.message?.contains("existe déjà") == true) {
+                // Silently skip - this is fine during auto-creation
+            } else {
+                throw e
+            }
+        }
+
+        levelId
+    }
+
+    fun update(id: Int, entity: SchoolLevelEntity): Boolean = transaction {
+        val oldLevel = SchoolLevels.selectAll().where { (SchoolLevels.id eq id) and (SchoolLevels.tenantId eq entity.tenantId) }.singleOrNull()
+        val oldName = oldLevel?.get(SchoolLevels.name)
+
+        val updated = SchoolLevels.update({ (SchoolLevels.id eq id) and (SchoolLevels.tenantId eq entity.tenantId) }) {
+            it[cycleId] = entity.cycleId
+            it[name] = entity.name
+            it[sortOrder] = entity.sortOrder
+            it[standardCapacity] = entity.standardCapacity
+        } > 0
+
+        if (updated && oldName != null && oldName != entity.name) {
+            classRepo.syncLevelRename(id, oldName, entity.name, entity.tenantId)
+        }
+        updated
+    }
+
+    fun delete(id: Int, tenantId: Int): Boolean = transaction {
+        SchoolLevels.deleteWhere { (SchoolLevels.id eq id) and (SchoolLevels.tenantId eq tenantId) } > 0
+    }
+
+    private fun ResultRow.toSchoolLevel() = SchoolLevelEntity(
+        id = this[SchoolLevels.id].value,
+        tenantId = this[SchoolLevels.tenantId].value,
+        cycleId = this[SchoolLevels.cycleId].value,
+        name = this[SchoolLevels.name],
+        sortOrder = this[SchoolLevels.sortOrder],
+        standardCapacity = this[SchoolLevels.standardCapacity]
+    )
+}
+
+class StructureSeedingRepository(
+    private val cycleRepo: SchoolCycleRepository,
+    private val levelRepo: SchoolLevelRepository
+) {
+    fun seedDefaultStructure(tenantId: Int, schoolLevel: String) = transaction {
+        // Only seed if no cycles exist
+        if (cycleRepo.getAll(tenantId).isNotEmpty()) return@transaction
+
+        when {
+            schoolLevel.contains("Maternelle", ignoreCase = true) -> {
+                seedMaternelle(tenantId)
+            }
+            schoolLevel.contains("Primaire", ignoreCase = true) -> {
+                seedPrimaire(tenantId)
+            }
+            schoolLevel.contains("Collège", ignoreCase = true) -> {
+                seedCollege(tenantId)
+            }
+            schoolLevel.contains("Lycée", ignoreCase = true) -> {
+                seedLycee(tenantId)
+            }
+            schoolLevel.contains("Complexe", ignoreCase = true) -> {
+                seedMaternelle(tenantId)
+                seedPrimaire(tenantId)
+                seedCollege(tenantId)
+                seedLycee(tenantId)
+            }
+        }
+    }
+
+    private fun seedMaternelle(tenantId: Int) {
+        val cycleId = cycleRepo.create(SchoolCycleEntity(tenantId = tenantId, name = "Maternelle", sortOrder = 1))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Petite Section (PS)", sortOrder = 1))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Moyenne Section (MS)", sortOrder = 2))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Grande Section (GS)", sortOrder = 3))
+    }
+
+    private fun seedPrimaire(tenantId: Int) {
+        val cycleId = cycleRepo.create(SchoolCycleEntity(tenantId = tenantId, name = "Primaire", sortOrder = 2))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Cours Initial (CI)", sortOrder = 1))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Cours Préparatoire 1 (CP1)", sortOrder = 2))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Cours Préparatoire 2 (CP2)", sortOrder = 3))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Cours Élémentaire 1 (CE1)", sortOrder = 4))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Cours Élémentaire 2 (CE2)", sortOrder = 5))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Cours Moyen 1 (CM1)", sortOrder = 6))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Cours Moyen 2 (CM2)", sortOrder = 7))
+    }
+
+    private fun seedCollege(tenantId: Int) {
+        val cycleId = cycleRepo.create(SchoolCycleEntity(tenantId = tenantId, name = "Collège", sortOrder = 3))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "6ème", sortOrder = 1))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "5ème", sortOrder = 2))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "4ème", sortOrder = 3))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "3ème", sortOrder = 4))
+    }
+
+    private fun seedLycee(tenantId: Int) {
+        val cycleId = cycleRepo.create(SchoolCycleEntity(tenantId = tenantId, name = "Lycée", sortOrder = 4))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Seconde", sortOrder = 1))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Première", sortOrder = 2))
+        levelRepo.create(SchoolLevelEntity(tenantId = tenantId, cycleId = cycleId, name = "Terminale", sortOrder = 3))
+    }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -18,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,17 +27,22 @@ import com.ecolix.data.models.DashboardColors
 import com.ecolix.data.models.Student
 import com.ecolix.data.models.StudentDocument
 import kotlin.random.Random
+import com.ecolix.presentation.utils.DateUtils
 import kotlinx.datetime.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentForm(
     student: Student? = null,
-    classrooms: List<String>,
+    classrooms: List<com.ecolix.data.models.Classroom>,
     currentAcademicYear: String,
     colors: DashboardColors,
     isCompact: Boolean = false,
+    isClassroomFixed: Boolean = false,
+    preSelectedClassroom: String? = null,
     onBack: () -> Unit,
+    onPickPhoto: ((String) -> Unit) -> Unit = {},
+    isUploadingPhoto: Boolean = false,
     onSave: (Student) -> Unit
 ) {
     // Helper to generate matricule
@@ -58,8 +65,16 @@ fun StudentForm(
     var guardianName by remember { mutableStateOf(student?.guardianName ?: "") }
     var guardianContact by remember { mutableStateOf(student?.guardianContact ?: "") }
     
-    var selectedClassroom by remember { mutableStateOf(student?.classroom ?: classrooms.firstOrNull() ?: "") }
-    var enrollmentDate by remember { mutableStateOf(student?.enrollmentDate ?: "24/01/2026") }
+    var selectedClassroom by remember { 
+        mutableStateOf(
+            classrooms.find { it.name == student?.classroom } 
+                ?: classrooms.find { it.id == student?.classroomId?.toString() } 
+                ?: classrooms.find { it.id == preSelectedClassroom }
+                ?: classrooms.find { it.name == preSelectedClassroom }
+                ?: classrooms.firstOrNull()
+        ) 
+    }
+    var enrollmentDate by remember { mutableStateOf(student?.enrollmentDate ?: DateUtils.getCurrentDateFormatted()) }
     var statusLabel by remember { mutableStateOf(student?.status ?: "Nouveau") }
     
     var medicalInfo by remember { mutableStateOf(student?.medicalInfo ?: "") }
@@ -68,57 +83,44 @@ fun StudentForm(
     var photoUrl by remember { mutableStateOf(student?.photoUrl) }
     var documents by remember { mutableStateOf(student?.documents ?: emptyList()) }
 
-    // Date Picker States
-    var showDobPicker by remember { mutableStateOf(false) }
-    var showEnrollmentPicker by remember { mutableStateOf(false) }
-
     // Validation State
     var showErrors by remember { mutableStateOf(false) }
     val isFirstNameValid = firstName.isNotBlank()
     val isLastNameValid = lastName.isNotBlank()
-    val isDateOfBirthValid = dateOfBirth.isNotBlank()
+    val isDateOfBirthValid = dateOfBirth.isNotBlank() && DateUtils.validateDate(dateOfBirth) == null
+    val isEnrollmentDateValid = enrollmentDate.isNotBlank() && DateUtils.validateDate(enrollmentDate) == null
 
-    if (showDobPicker) {
-        val datePickerState = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showDobPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let {
-                        val instant = Instant.fromEpochMilliseconds(it)
-                        val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-                        dateOfBirth = "${date.dayOfMonth.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
-                    }
-                    showDobPicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDobPicker = false }) { Text("Annuler") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-
-    if (showEnrollmentPicker) {
-        val datePickerState = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showEnrollmentPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let {
-                        val instant = Instant.fromEpochMilliseconds(it)
-                        val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-                        enrollmentDate = "${date.dayOfMonth.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
-                    }
-                    showEnrollmentPicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEnrollmentPicker = false }) { Text("Annuler") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
+    val handleSave = {
+        if (isFirstNameValid && isLastNameValid && isDateOfBirthValid && isEnrollmentDateValid) {
+            val newStudent = Student(
+                id = student?.id ?: "STU_${Random.nextInt(1000, 9999)}",
+                firstName = firstName,
+                lastName = lastName,
+                gender = gender,
+                classroom = selectedClassroom?.name ?: "Non assigné",
+                classroomId = selectedClassroom?.id?.toIntOrNull(),
+                academicYear = currentAcademicYear,
+                enrollmentDate = DateUtils.normalizeDate(enrollmentDate),
+                status = statusLabel,
+                matricule = matricule,
+                dateOfBirth = DateUtils.normalizeDate(dateOfBirth),
+                placeOfBirth = placeOfBirth,
+                address = address,
+                contactNumber = contactNumber,
+                email = email,
+                emergencyContact = emergencyContact,
+                guardianName = guardianName,
+                guardianContact = guardianContact,
+                medicalInfo = if (medicalInfo.isNotEmpty()) medicalInfo else null,
+                bloodGroup = if (bloodGroup.isNotEmpty()) bloodGroup else null,
+                remarks = if (remarks.isNotEmpty()) remarks else null,
+                nationality = if (nationality.isNotEmpty()) nationality else null,
+                photoUrl = photoUrl,
+                documents = documents
+            )
+            onSave(newStudent)
+        } else {
+            showErrors = true
         }
     }
 
@@ -156,17 +158,40 @@ fun StudentForm(
                         .clip(RoundedCornerShape(12.dp))
                         .background(colors.card)
                         .border(1.dp, colors.divider, RoundedCornerShape(12.dp))
-                        .clickable { /* Pick photo */ },
+                        .clickable(enabled = !isUploadingPhoto) { 
+                            onPickPhoto { url -> photoUrl = url } 
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (photoUrl == null) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(32.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Ajouter une photo", color = colors.textMuted, style = MaterialTheme.typography.labelMedium)
+                    when {
+                        isUploadingPhoto -> {
+                            CircularProgressIndicator(color = colors.textLink)
                         }
-                    } else {
-                        Text("Photo selected", color = colors.textPrimary)
+                        photoUrl != null -> {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                // In a real app, we would use an Image component with the URL
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = colors.success, modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Photo importe avec succes", color = colors.success, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { onPickPhoto { url -> photoUrl = url } },
+                                    colors = ButtonDefaults.buttonColors(containerColor = colors.background, contentColor = colors.textPrimary),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.divider)
+                                ) {
+                                    Text("Modifier la photo")
+                                }
+                            }
+                        }
+                        else -> {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(32.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Ajouter une photo", color = colors.textMuted, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
                     }
                 }
             }
@@ -191,13 +216,11 @@ fun StudentForm(
                         FormTextField(
                             label = "Date de Naissance *", 
                             value = dateOfBirth, 
-                            onValueChange = { }, 
+                            onValueChange = { dateOfBirth = it }, 
                             colors = colors, 
-                            modifier = Modifier.clickable { showDobPicker = true }, 
+                            placeholder = "JJ/MM/AAAA",
                             icon = Icons.Default.CalendarToday, 
-                            isError = showErrors && !isDateOfBirthValid,
-                            readOnly = true,
-                            onIconClick = { showDobPicker = true }
+                            error = if (showErrors && !isDateOfBirthValid) "Format JJ/MM/AAAA requis" else null,
                         )
                         FormTextField("Lieu de Naissance", placeOfBirth, { placeOfBirth = it }, colors)
                     } else {
@@ -205,13 +228,12 @@ fun StudentForm(
                             FormTextField(
                                 label = "Date de Naissance *", 
                                 value = dateOfBirth, 
-                                onValueChange = { }, 
+                                onValueChange = { dateOfBirth = it }, 
                                 colors = colors, 
-                                modifier = Modifier.weight(1f).clickable { showDobPicker = true }, 
+                                modifier = Modifier.weight(1f), 
+                                placeholder = "JJ/MM/AAAA",
                                 icon = Icons.Default.CalendarToday, 
-                                isError = showErrors && !isDateOfBirthValid,
-                                readOnly = true,
-                                onIconClick = { showDobPicker = true }
+                                error = if (showErrors && !isDateOfBirthValid) "Format JJ/MM/AAAA requis" else null
                             )
                             FormTextField("Lieu de Naissance", placeOfBirth, { placeOfBirth = it }, colors, Modifier.weight(1f))
                         }
@@ -268,31 +290,30 @@ fun StudentForm(
             item {
                 SectionHeader("Inscription Academique", colors)
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    FormClassDropdown(selectedClassroom, classrooms, { selectedClassroom = it }, colors)
+                    FormClassDropdown(selectedClassroom, classrooms, { selectedClassroom = it }, colors, enabled = !isClassroomFixed)
                     if (isCompact) {
                         FormTextField("Annee Scolaire", currentAcademicYear, {}, colors, readOnly = true)
                         FormTextField(
-                            label = "Date d'Inscription", 
+                            label = "Date d'Inscription *", 
                             value = enrollmentDate, 
-                            onValueChange = { }, 
+                            onValueChange = { enrollmentDate = it }, 
                             colors = colors, 
-                            modifier = Modifier.clickable { showEnrollmentPicker = true }, 
+                            placeholder = "JJ/MM/AAAA",
                             icon = Icons.Default.Today,
-                            readOnly = true,
-                            onIconClick = { showEnrollmentPicker = true }
+                            error = if (showErrors && !isEnrollmentDateValid) "Format JJ/MM/AAAA requis" else null,
                         )
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             FormTextField("Annee Scolaire", currentAcademicYear, {}, colors, Modifier.weight(1f), readOnly = true)
                             FormTextField(
-                                label = "Date d'Inscription", 
+                                label = "Date d'Inscription *", 
                                 value = enrollmentDate, 
-                                onValueChange = { }, 
+                                onValueChange = { enrollmentDate = it }, 
                                 colors = colors, 
-                                modifier = Modifier.weight(1f).clickable { showEnrollmentPicker = true }, 
+                                modifier = Modifier.weight(1f), 
+                                placeholder = "JJ/MM/AAAA",
                                 icon = Icons.Default.Today,
-                                readOnly = true,
-                                onIconClick = { showEnrollmentPicker = true }
+                                error = if (showErrors && !isEnrollmentDateValid) "Format JJ/MM/AAAA requis" else null
                             )
                         }
                     }
@@ -303,13 +324,21 @@ fun StudentForm(
             // MEDICAL SECTION
             item {
                 SectionHeader("Informations Médicales", colors)
-                FormTextField("Informations medicales / Allergies", medicalInfo, { medicalInfo = it }, colors, lines = 3)
+                FormTextField("Informations medicales / Allergies", medicalInfo, { medicalInfo = it }, colors, lines = 3, imeAction = ImeAction.Next)
             }
 
             // REMARKS SECTION
             item {
                 SectionHeader("Observations Générales", colors)
-                FormTextField("Remarques / Appréciations", remarks, { remarks = it }, colors, lines = 3)
+                FormTextField(
+                    label = "Remarques / Appréciations", 
+                    value = remarks, 
+                    onValueChange = { remarks = it }, 
+                    colors = colors, 
+                    lines = 3,
+                    imeAction = ImeAction.Done,
+                    keyboardActions = KeyboardActions(onDone = { handleSave() })
+                )
             }
 
             // DOCUMENTS SECTION
@@ -345,40 +374,8 @@ fun StudentForm(
             }
         }
 
-        // Bottom Actions
         Button(
-            onClick = { 
-                if (isFirstNameValid && isLastNameValid && isDateOfBirthValid) {
-                    val newStudent = Student(
-                        id = student?.id ?: "STU_${Random.nextInt(1000, 9999)}",
-                        firstName = firstName,
-                        lastName = lastName,
-                        gender = gender,
-                        classroom = selectedClassroom,
-                        academicYear = currentAcademicYear,
-                        enrollmentDate = enrollmentDate,
-                        status = statusLabel,
-                        matricule = matricule,
-                        dateOfBirth = dateOfBirth,
-                        placeOfBirth = placeOfBirth,
-                        address = address,
-                        contactNumber = contactNumber,
-                        email = email,
-                        emergencyContact = emergencyContact,
-                        guardianName = guardianName,
-                        guardianContact = guardianContact,
-                        medicalInfo = if (medicalInfo.isNotEmpty()) medicalInfo else null,
-                        bloodGroup = if (bloodGroup.isNotEmpty()) bloodGroup else null,
-                        remarks = if (remarks.isNotEmpty()) remarks else null,
-                        nationality = if (nationality.isNotEmpty()) nationality else null,
-                        photoUrl = photoUrl,
-                        documents = documents
-                    )
-                    onSave(newStudent)
-                } else {
-                    showErrors = true
-                }
-            },
+            onClick = handleSave,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
@@ -395,42 +392,51 @@ fun StudentForm(
 
 @Composable
 private fun FormClassDropdown(
-    selected: String,
-    options: List<String>,
-    onSelect: (String) -> Unit,
-    colors: DashboardColors
+    selected: com.ecolix.data.models.Classroom?,
+    options: List<com.ecolix.data.models.Classroom>,
+    onSelect: (com.ecolix.data.models.Classroom) -> Unit,
+    colors: DashboardColors,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
     
     Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
-            value = selected,
+            value = selected?.name ?: "",
             onValueChange = {},
             label = { Text("Classe Affectee") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().then(if (enabled) Modifier.clickable { expanded = true } else Modifier),
             readOnly = true,
+            enabled = enabled,
             trailingIcon = { 
-                IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = colors.textMuted) 
+                if (enabled) {
+                    IconButton(onClick = { expanded = true }) {
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = colors.textMuted) 
+                    }
                 }
             },
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = colors.textPrimary,
+                disabledBorderColor = colors.divider,
+                disabledLabelColor = colors.textMuted,
                 focusedTextColor = colors.textPrimary,
                 unfocusedTextColor = colors.textPrimary,
                 unfocusedBorderColor = colors.divider
             )
         )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth(0.9f).background(colors.card)
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option, color = colors.textPrimary) },
-                    onClick = { onSelect(option); expanded = false }
-                )
+        if (enabled) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f).background(colors.card)
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.name, color = colors.textPrimary) },
+                        onClick = { onSelect(option); expanded = false }
+                    )
+                }
             }
         }
     }

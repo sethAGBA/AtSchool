@@ -11,12 +11,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
@@ -31,7 +33,11 @@ import com.ecolix.data.models.DashboardColors
 import com.ecolix.presentation.components.*
 import kotlinx.coroutines.flow.StateFlow
 import org.koin.compose.koinInject
-
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
 class StudentsScreen : Screen {
     @Composable
     override fun Content() {
@@ -45,14 +51,32 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
     val uiState by screenModel.state.collectAsState<StudentsUiState>()
     val colors = if (isDarkMode) DashboardColors.dark() else DashboardColors.light()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            screenModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let {
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            screenModel.clearSuccess()
+        }
+    }
+
     LaunchedEffect(isDarkMode) {
         screenModel.onDarkModeChange(isDarkMode)
     }
+
+    val cycleNames = remember(uiState.cycles) { uiState.cycles.map { it.name }.distinct() }
     
-    val filteredStudents = remember<List<Student>>(uiState.searchQuery, uiState.selectedClassroom, uiState.selectedLevel, uiState.selectedGender, uiState.visibilityFilter) {
+    val filteredStudents = remember<List<Student>>(uiState.students, uiState.classrooms, uiState.searchQuery, uiState.selectedClassroom, uiState.selectedLevel, uiState.selectedGender, uiState.visibilityFilter) {
         uiState.students.filter { student ->
             val matchClass = uiState.selectedClassroom == null || student.classroom == uiState.classrooms.find { it.id == uiState.selectedClassroom }?.name
-            val matchLevel = uiState.selectedLevel == null || uiState.classrooms.any { it.name == student.classroom && it.level == uiState.selectedLevel }
+            val matchCycle = uiState.selectedLevel == null || uiState.classrooms.any { it.name == student.classroom && it.cycle == uiState.selectedLevel }
             val matchGender = uiState.selectedGender == null || student.gender == uiState.selectedGender
             val matchVisibility = when (uiState.visibilityFilter) {
                 "active" -> !student.isDeleted
@@ -63,15 +87,22 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                              "${student.firstName} ${student.lastName}".contains(uiState.searchQuery, ignoreCase = true) ||
                              student.matricule?.contains(uiState.searchQuery, ignoreCase = true) == true
             
-            matchClass && matchLevel && matchGender && matchVisibility && matchSearch
+            matchClass && matchCycle && matchGender && matchVisibility && matchSearch
         }
     }
 
-    val filteredClasses = remember<List<Classroom>>(uiState.searchQuery, uiState.selectedLevel) {
+    val filteredClasses = remember<List<Classroom>>(uiState.classrooms, uiState.searchQuery, uiState.selectedLevel) {
         uiState.classrooms.filter { classroom ->
-            val matchLevel = uiState.selectedLevel == null || classroom.level == uiState.selectedLevel
+            val matchCycle = uiState.selectedLevel == null || classroom.cycle == uiState.selectedLevel
             val matchSearch = uiState.searchQuery.isEmpty() || classroom.name.contains(uiState.searchQuery, ignoreCase = true)
-            matchLevel && matchSearch
+            matchCycle && matchSearch
+        }.sortedWith(compareBy({ it.cycle ?: "Zzz" }, { it.level }, { it.name })) // Sort by cycle, then level, then name
+    }
+
+    // Group classes by cycle for broad categorization
+    val groupedClasses = remember<Map<String, List<Classroom>>>(filteredClasses) {
+        filteredClasses.groupBy { classroom ->
+            classroom.cycle ?: "Autres"
         }
     }
 
@@ -93,7 +124,9 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
         derivedStateOf {
             val layoutInfo = studentsListState.layoutInfo
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItemIndex >= visibleStudents.size - 1
+            val totalVisibleItems = layoutInfo.totalItemsCount
+            // Trigger when we're within 3 items of the end to ensure smooth loading
+            lastVisibleItemIndex >= totalVisibleItems - 3
         }
     }
     LaunchedEffect(studentsEndReached) {
@@ -106,7 +139,9 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
         derivedStateOf {
             val layoutInfo = studentsGridState.layoutInfo
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItemIndex >= visibleStudents.size - 1
+            val totalVisibleItems = layoutInfo.totalItemsCount
+            // Trigger when we're within 3 items of the end to ensure smooth loading
+            lastVisibleItemIndex >= totalVisibleItems - 3
         }
     }
     LaunchedEffect(studentsGridEndReached) {
@@ -119,7 +154,9 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
         derivedStateOf {
             val layoutInfo = classesGridState.layoutInfo
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItemIndex >= visibleClasses.size - 1
+            val totalVisibleItems = layoutInfo.totalItemsCount
+            // Trigger when we're within 3 items of the end to ensure smooth loading
+            lastVisibleItemIndex >= totalVisibleItems - 3
         }
     }
     LaunchedEffect(classesEndReached) {
@@ -130,12 +167,21 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
 
     val isCompact = false // Placeholder for screen size check
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        Column(
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = colors.background,
+        modifier = Modifier.fillMaxSize()
+    ) { padding ->
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = if (isCompact) 16.dp else 32.dp)
+                .padding(padding)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = if (isCompact) 16.dp else 32.dp)
+            ) {
             // Header (Desktop)
             if (!isCompact) {
                 Spacer(modifier = Modifier.height(32.dp))
@@ -146,7 +192,11 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                 ) {
                     Column {
                         Text(
-                            text = if (uiState.viewMode == StudentsViewMode.CLASSES) "Groupes & Classes" else "Liste des Eleves",
+                            text = when(uiState.viewMode) {
+                                StudentsViewMode.STRUCTURE -> "Structure Scolaire"
+                                StudentsViewMode.CLASSES -> "Groupes & Classes"
+                                else -> "Liste des Eleves"
+                            },
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 32.sp
@@ -170,92 +220,167 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 ActionBar(
-                    onAddStudentClick = { screenModel.onViewModeChange(StudentsViewMode.STUDENT_FORM) },
-                    onAddClassClick = { screenModel.onViewModeChange(StudentsViewMode.CLASS_FORM) },
+                    onAddStudentClick = { screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.STUDENT_FORM, selectedStudentId = null)) },
+                    onAddClassClick = { screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.CLASS_FORM, selectedClassroom = null)) },
+                    onRefreshClick = { screenModel.refreshData() },
                     colors = colors,
                     isCompact = false
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                if (uiState.viewMode == StudentsViewMode.CLASSES && uiState.searchQuery.isEmpty()) {
-                    DistributionChart(distribution = uiState.levelDistribution, colors = colors)
-                }
-
-                // Filters and Search (Desktop)
-                if (uiState.viewMode != StudentsViewMode.STUDENT_FORM && uiState.viewMode != StudentsViewMode.PROFILE) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            SearchBar(
-                                query = uiState.searchQuery,
-                                onQueryChange = { screenModel.onSearchQueryChange(it) },
-                                colors = colors,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (uiState.viewMode == StudentsViewMode.STUDENTS) {
-                                StudentViewToggle(
-                                    currentMode = uiState.studentDisplayMode,
-                                    onModeChange = { screenModel.onStudentDisplayModeChange(it) },
-                                    colors = colors,
-                                    ListIcon = Icons.AutoMirrored.Filled.LibraryBooks,
-                                )
-                                IconButton(
-                                    onClick = { screenModel.updateState(uiState.copy(selectionMode = !uiState.selectionMode, selectedStudentIds = emptySet())) },
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = if (uiState.selectionMode) MaterialTheme.colorScheme.primary else colors.card,
-                                        contentColor = if (uiState.selectionMode) Color.White else colors.textPrimary
-                                    )
-                                ) {
-                                    Icon(Icons.Default.Checklist, contentDescription = null)
-                                }
-                            }
-                        }
-
-                        AdvancedFilters(
-                            selectedLevel = uiState.selectedLevel,
-                            onLevelChange = { screenModel.onLevelChange(it) },
-                            selectedGender = uiState.selectedGender,
-                            onGenderChange = { screenModel.onGenderChange(it) },
-                            visibility = uiState.visibilityFilter,
-                            onVisibilityChange = { screenModel.onVisibilityChange(it) },
-                            colors = colors,
-                            isCompact = false
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
+                // Main content handles its own header/filters in lazy containers
             }
 
             // Main Content View
             when (uiState.viewMode) {
+                StudentsViewMode.STRUCTURE -> {
+                    SchoolStructureView(
+                        uiState = uiState,
+                        screenModel = screenModel,
+                        colors = colors,
+                        isCompact = isCompact
+                    )
+                }
                 StudentsViewMode.CLASSES -> {
                     LazyVerticalGrid(
+                        state = classesGridState,
                         columns = GridCells.Adaptive(minSize = 300.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        if (!isCompact) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                                    if (uiState.viewMode == StudentsViewMode.CLASSES && uiState.searchQuery.isEmpty()) {
+                                        DistributionChart(distribution = uiState.levelDistribution, colors = colors)
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        SearchBar(
+                                            query = uiState.searchQuery,
+                                            onQueryChange = { screenModel.onSearchQueryChange(it) },
+                                            colors = colors,
+                                            modifier = Modifier.weight(1f)
+                                        )
+
+                                        YearSelector(
+                                            selectedYear = uiState.currentYear,
+                                            years = uiState.schoolYears,
+                                            onYearChange = { screenModel.onYearChange(it) },
+                                            colors = colors
+                                        )
+                                    }
+
+                                    AdvancedFilters(
+                                        levels = cycleNames,
+                                        selectedLevel = uiState.selectedLevel,
+                                        onLevelChange = { screenModel.onLevelChange(it) },
+                                        selectedGender = uiState.selectedGender,
+                                        onGenderChange = { screenModel.onGenderChange(it) },
+                                        visibility = uiState.visibilityFilter,
+                                        onVisibilityChange = { screenModel.onVisibilityChange(it) },
+                                        colors = colors,
+                                        isCompact = false
+                                    )
+                                }
+                            }
+                        }
+
                         if (isCompact) {
                             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                                 MobileStudentsHeader(
                                     uiState = uiState,
                                     colors = colors,
                                     isCompact = true,
-                                    onStateChange = { screenModel.updateState(it) }
+                                    onStateChange = { screenModel.updateState(it) },
+                                    onViewModeChange = { screenModel.onViewModeChange(it) },
+                                    onYearChange = { screenModel.onYearChange(it) },
+                                    onRefreshClick = { screenModel.refreshData() }
                                 )
                             }
                         }
 
-                        items(visibleClasses) { classroom ->
-                            ClassCard(classroom, colors, onClick = {
-                                screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.CLASS_DETAILS, selectedClassroom = classroom.id))
-                            })
+                        // Display classes grouped by level
+                        if (groupedClasses.isEmpty()) {
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 64.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        Text(
+                                            text = "🏫",
+                                            style = MaterialTheme.typography.displayMedium.copy(fontSize = 48.sp)
+                                        )
+                                        Text(
+                                            text = "Aucune classe trouvée",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 18.sp
+                                            ),
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            text = if (uiState.searchQuery.isNotEmpty())
+                                                "Aucune classe ne correspond à votre recherche."
+                                            else
+                                                "Commencez par créer des classes dans l'onglet Structure.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = colors.textMuted,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        var itemsDisplayed = 0
+                        groupedClasses.forEach { (levelName, classesInLevel) ->
+                            if (itemsDisplayed >= uiState.loadedClassesCount) return@forEach
+                            
+                            // Section header for this level
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = levelName,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp
+                                    ),
+                                    color = colors.textPrimary,
+                                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                )
+                            }
+                            
+                            // Classes for this level
+                            val visibleClassesForLevel = classesInLevel.take(
+                                (uiState.loadedClassesCount - itemsDisplayed).coerceAtLeast(0)
+                            )
+                            items(visibleClassesForLevel) { classroom ->
+                                ClassCard(
+                                    classroom = classroom, 
+                                    colors = colors, 
+                                    onClick = {
+                                        screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.CLASS_DETAILS, selectedClassroom = classroom.id))
+                                    },
+                                    onEdit = {
+                                        screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.CLASS_FORM, selectedClassroom = classroom.id))
+                                    },
+                                    onDelete = {
+                                        screenModel.onDeleteClassAttempt(classroom.id)
+                                    }
+                                )
+                            }
+                            itemsDisplayed += visibleClassesForLevel.size
                         }
 
                         if (filteredClasses.size > uiState.loadedClassesCount) {
@@ -275,24 +400,57 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = 80.dp) // Space for selection bar
                         ) {
-                            if (isCompact) {
-                                item {
-                                    MobileStudentsHeader(
-                                        uiState = uiState,
+                        if (!isCompact) {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        SearchBar(
+                                            query = uiState.searchQuery,
+                                            onQueryChange = { screenModel.onSearchQueryChange(it) },
+                                            colors = colors,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        StudentViewToggle(
+                                            currentMode = uiState.studentDisplayMode,
+                                            onModeChange = { screenModel.onStudentDisplayModeChange(it) },
+                                            colors = colors,
+                                            ListIcon = Icons.AutoMirrored.Filled.LibraryBooks,
+                                        )
+                                        IconButton(
+                                            onClick = { screenModel.updateState(uiState.copy(selectionMode = !uiState.selectionMode, selectedStudentIds = emptySet())) },
+                                            colors = IconButtonDefaults.iconButtonColors(
+                                                containerColor = if (uiState.selectionMode) MaterialTheme.colorScheme.primary else colors.card,
+                                                contentColor = if (uiState.selectionMode) Color.White else colors.textPrimary
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.Checklist, contentDescription = null)
+                                        }
+                                    }
+
+                                    AdvancedFilters(
+                                        levels = cycleNames,
+                                        selectedLevel = uiState.selectedLevel,
+                                        onLevelChange = { screenModel.onLevelChange(it) },
+                                        selectedGender = uiState.selectedGender,
+                                        onGenderChange = { screenModel.onGenderChange(it) },
+                                        visibility = uiState.visibilityFilter,
+                                        onVisibilityChange = { screenModel.onVisibilityChange(it) },
                                         colors = colors,
-                                        isCompact = true,
-                                        onStateChange = { screenModel.updateState(it) }
+                                        isCompact = false
                                     )
-                                }
-                            } else {
-                                item {
+
                                     Text(
-                                        text = "Eleves trouves (${filteredStudents.size})",
+                                        text = "Élèves trouvés (${filteredStudents.size})",
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                         color = colors.textPrimary
                                     )
                                 }
                             }
+                        }
 
                             items(visibleStudents, key = { it.id }) { student ->
                                 StudentRow(
@@ -306,6 +464,9 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                         else newSelection.add(student.id)
                                         screenModel.updateState(uiState.copy(selectedStudentIds = newSelection))
                                     },
+                                    onRestore = { screenModel.restoreStudent(student.id) },
+                                    onDelete = { screenModel.onDeleteAttempt(setOf(student.id)) },
+                                    onTransfer = { screenModel.showTransferDialog(setOf(student.id)) },
                                     onClick = { screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) }
                                 )
                             }
@@ -321,10 +482,37 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             if (filteredStudents.isEmpty()) {
                                 item {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().padding(48.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 64.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(text = "Aucun eleve trouve.", color = colors.textMuted)
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Text(
+                                                text = "🎓",
+                                                style = MaterialTheme.typography.displayMedium.copy(fontSize = 48.sp)
+                                            )
+                                            Text(
+                                                text = "Aucun élève trouvé",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp
+                                                ),
+                                                color = colors.textPrimary
+                                            )
+                                            Text(
+                                                text = if (uiState.searchQuery.isNotEmpty())
+                                                    "Aucun élève ne correspond à votre recherche."
+                                                else
+                                                    "Commencez par ajouter des élèves via le formulaire d'inscription.",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = colors.textMuted,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -338,23 +526,62 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            if (isCompact) {
-                                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                                    MobileStudentsHeader(
-                                        uiState = uiState,
-                                        colors = colors,
-                                        isCompact = true,
-                                        onStateChange = { screenModel.updateState(it) }
-                                    )
-                                }
-                            }
+                            if (!isCompact) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            SearchBar(
+                                                query = uiState.searchQuery,
+                                                onQueryChange = { screenModel.onSearchQueryChange(it) },
+                                                colors = colors,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            YearSelector(
+                                                selectedYear = uiState.currentYear,
+                                                years = uiState.schoolYears,
+                                                onYearChange = { screenModel.onYearChange(it) },
+                                                colors = colors
+                                            )
+                                            StudentViewToggle(
+                                                currentMode = uiState.studentDisplayMode,
+                                                onModeChange = { screenModel.onStudentDisplayModeChange(it) },
+                                                colors = colors,
+                                                ListIcon = Icons.AutoMirrored.Filled.LibraryBooks,
+                                            )
+                                            IconButton(
+                                                onClick = { screenModel.updateState(uiState.copy(selectionMode = !uiState.selectionMode, selectedStudentIds = emptySet())) },
+                                                colors = IconButtonDefaults.iconButtonColors(
+                                                    containerColor = if (uiState.selectionMode) MaterialTheme.colorScheme.primary else colors.card,
+                                                    contentColor = if (uiState.selectionMode) Color.White else colors.textPrimary
+                                                )
+                                            ) {
+                                                Icon(Icons.Default.Checklist, contentDescription = null)
+                                            }
+                                        }
 
-                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                                Text(
-                                    text = "Eleves trouves (${filteredStudents.size})",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = colors.textPrimary
-                                )
+                                        AdvancedFilters(
+                                            levels = cycleNames,
+                                            selectedLevel = uiState.selectedLevel,
+                                            onLevelChange = { screenModel.onLevelChange(it) },
+                                            selectedGender = uiState.selectedGender,
+                                            onGenderChange = { screenModel.onGenderChange(it) },
+                                            visibility = uiState.visibilityFilter,
+                                            onVisibilityChange = { screenModel.onVisibilityChange(it) },
+                                            colors = colors,
+                                            isCompact = false
+                                        )
+
+                                        Text(
+                                            text = "Élèves trouvés (${filteredStudents.size})",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = colors.textPrimary
+                                        )
+                                    }
+                                }
                             }
 
                             items(visibleStudents, key = { it.id }) { student ->
@@ -369,6 +596,9 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                         else newSelection.add(student.id)
                                         screenModel.updateState(uiState.copy(selectedStudentIds = newSelection))
                                     },
+                                    onRestore = { screenModel.restoreStudent(student.id) },
+                                    onDelete = { screenModel.onDeleteAttempt(setOf(student.id)) },
+                                    onTransfer = { screenModel.showTransferDialog(setOf(student.id)) },
                                     onClick = { screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = student.id)) },
                                     icon = Icons.Filled.Category,
                                 )
@@ -385,10 +615,37 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             if (filteredStudents.isEmpty()) {
                                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().padding(48.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 64.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(text = "Aucun eleve trouve.", color = colors.textMuted)
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Text(
+                                                text = "🎓",
+                                                style = MaterialTheme.typography.displayMedium.copy(fontSize = 48.sp)
+                                            )
+                                            Text(
+                                                text = "Aucun élève trouvé",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp
+                                                ),
+                                                color = colors.textPrimary
+                                            )
+                                            Text(
+                                                text = if (uiState.searchQuery.isNotEmpty())
+                                                    "Aucun élève ne correspond à votre recherche."
+                                                else
+                                                    "Commencez par ajouter des élèves via le formulaire d'inscription.",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = colors.textMuted,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -402,7 +659,10 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             student = student,
                             colors = colors,
                             isCompact = isCompact,
-                            onBack = { screenModel.onViewModeChange(StudentsViewMode.STUDENTS) }
+                            onBack = { screenModel.onViewModeChange(StudentsViewMode.STUDENTS) },
+                            onEdit = { 
+                                screenModel.onViewModeChange(StudentsViewMode.STUDENT_FORM)
+                            }
                         )
                     }
                 }
@@ -415,40 +675,68 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             colors = colors,
                             isCompact = isCompact,
                             onBack = { screenModel.onViewModeChange(StudentsViewMode.CLASSES) },
+                            onEdit = {
+                                screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.CLASS_FORM))
+                            },
+                            onDelete = {
+                                screenModel.deleteClassroom(uiState.selectedClassroom!!)
+                            },
                             onStudentClick = { studentId ->
                                 screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = studentId))
+                            },
+                            onAddStudent = {
+                                screenModel.onQuickAddStudent(classroom.id)
+                            },
+                            onStudentDelete = { studentId ->
+                                screenModel.onDeleteAttempt(setOf(studentId))
+                            },
+                            onStudentRestoreAction = { studentId ->
+                                screenModel.restoreStudent(studentId)
                             }
                         )
                     }
                 }
                 StudentsViewMode.STUDENT_FORM -> {
                     val student = uiState.students.find { it.id == uiState.selectedStudentId }
-                    StudentForm(
-                        student = student,
-                        classrooms = uiState.classrooms.map { it.name },
-                        currentAcademicYear = uiState.currentYear,
-                        colors = colors,
-                        isCompact = isCompact,
-                        onBack = { screenModel.onViewModeChange(StudentsViewMode.STUDENTS) },
-                        onSave = { updatedStudent ->
-                            screenModel.saveStudent(updatedStudent)
-                        }
-                    )
+                    key(uiState.lastSavedTimestamp) {
+                        StudentForm(
+                            student = student,
+                            classrooms = uiState.classrooms,
+                            currentAcademicYear = uiState.currentYear,
+                            colors = colors,
+                            isCompact = isCompact,
+                            isClassroomFixed = uiState.isClassroomFixed,
+                            preSelectedClassroom = uiState.selectedClassroom,
+                            onBack = { 
+                                if (uiState.isClassroomFixed) {
+                                    screenModel.onViewModeChange(StudentsViewMode.CLASS_DETAILS)
+                                } else {
+                                    screenModel.onViewModeChange(StudentsViewMode.STUDENTS)
+                                }
+                            },
+                            onPickPhoto = { callback ->
+                                screenModel.pickAndUploadPhoto { url ->
+                                    callback(url)
+                                }
+                            },
+                            isUploadingPhoto = uiState.isUploadingPhoto,
+                            onSave = { updatedStudent ->
+                                screenModel.saveStudent(updatedStudent)
+                            }
+                        )
+                    }
                 }
                 StudentsViewMode.CLASS_FORM -> {
-                    val classroom = uiState.classrooms.find { it.id == uiState.selectedClassroom }
+                    val selectedClass = uiState.classrooms.find { it.id == uiState.selectedClassroom }
                     ClassForm(
-                        classroom = classroom,
+                        classroom = selectedClass,
+                        levels = uiState.levels,
+                        cycles = uiState.cycles,
                         colors = colors,
                         isCompact = isCompact,
+                        currentAcademicYear = uiState.currentYear,
                         onBack = { screenModel.onViewModeChange(StudentsViewMode.CLASSES) },
-                        onSave = { updatedClass ->
-                            val newList = uiState.classrooms.toMutableList()
-                            val index = newList.indexOfFirst { it.id == updatedClass.id }
-                            if (index != -1) newList[index] = updatedClass
-                            else newList.add(updatedClass)
-                            screenModel.updateState(uiState.copy(classrooms = newList, viewMode = StudentsViewMode.CLASSES))
-                        }
+                        onSave = { classroom -> screenModel.saveClassroom(classroom) }
                     )
                 }
             }
@@ -463,14 +751,88 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                 selectedCount = uiState.selectedStudentIds.size,
                 onClearSelection = { screenModel.updateState(uiState.copy(selectedStudentIds = emptySet())) },
                 onDeleteSelected = { 
-                    uiState.selectedStudentIds.forEach { screenModel.deleteStudent(it) }
-                    screenModel.updateState(uiState.copy(selectedStudentIds = emptySet(), selectionMode = false))
+                    screenModel.onDeleteAttempt(uiState.selectedStudentIds)
                 },
+                onRestoreSelected = {
+                    screenModel.restoreSelectedStudents()
+                },
+                onTransferSelected = {
+                    screenModel.showTransferDialog(uiState.selectedStudentIds)
+                },
+                isTrashView = uiState.visibilityFilter == "deleted",
                 colors = colors,
                 isCompact = isCompact
             )
         }
+
+        if (uiState.showDeleteConfirmation) {
+            val isPermanent = uiState.visibilityFilter == "deleted"
+            AlertDialog(
+                onDismissRequest = { screenModel.onDismissDeleteConfirmation() },
+                title = { Text(if (isPermanent) "Suppression DEFINITIVE" else "Confirmer la suppression", color = colors.textPrimary) },
+                text = { 
+                    val count = uiState.studentToDeleteIds.size
+                    val studentLabel = if (count > 1) "$count élèves" else "cet élève"
+                    val message = if (isPermanent) {
+                        "Voulez-vous vraiment supprimer DEFINITIVEMENT $studentLabel ? Cette action supprimera également toutes leurs inscriptions et données associées."
+                    } else {
+                        "Voulez-vous vraiment mettre $studentLabel à la corbeille ?"
+                    }
+                    Text(text = message, color = colors.textPrimary) 
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { 
+                            if (isPermanent) {
+                                screenModel.deleteSelectedStudentsPermanently()
+                            } else {
+                                screenModel.deleteSelectedStudents()
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFEF4444))
+                    ) {
+                        Text(if (isPermanent) "Supprimer Définitivement" else "Supprimer", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { screenModel.onDismissDeleteConfirmation() }) {
+                        Text("Annuler", color = colors.textMuted)
+                    }
+                },
+            )
+        }
+
+        if (uiState.showTransferDialog) {
+            TransferStudentDialog(
+                classrooms = uiState.classrooms,
+                onDismiss = { screenModel.hideTransferDialog() },
+                onConfirm = { classId -> screenModel.transferStudents(classId) },
+                colors = colors
+            )
+        }
+
+        if (uiState.showClassDeleteConfirmation) {
+            AlertDialog(
+                onDismissRequest = { screenModel.dismissClassDeleteConfirmation() },
+                title = { Text("Supprimer la classe", color = colors.textPrimary) },
+                text = { Text("Voulez-vous vraiment supprimer cette classe ? Cette action est irréversible et retirera également les liens avec les élèves.", color = colors.textPrimary) },
+                confirmButton = {
+                    Button(
+                        onClick = { screenModel.confirmClassDeletion() },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Supprimer")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { screenModel.dismissClassDeleteConfirmation() }) {
+                        Text("Annuler", color = colors.textMuted)
+                    }
+                }
+            )
+        }
     }
+}
 }
 
 @Composable
@@ -478,26 +840,43 @@ private fun MobileStudentsHeader(
     uiState: StudentsUiState,
     colors: DashboardColors,
     isCompact: Boolean,
-    onStateChange: (StudentsUiState) -> Unit
+    onStateChange: (StudentsUiState) -> Unit,
+    onViewModeChange: (StudentsViewMode) -> Unit,
+    onYearChange: (String) -> Unit,
+    onRefreshClick: () -> Unit
 ) {
+    val cycleNames = remember(uiState.cycles) { uiState.cycles.map { it.name }.distinct() }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Header Row
-        Column {
-            Text(
-                text = if (uiState.viewMode == StudentsViewMode.CLASSES) "Groupes & Classes" else "Liste des Eleves",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = colors.textPrimary
-            )
-            Text(
-                text = "Gerez vos effectifs pour l'annee ${uiState.currentYear}",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = if (uiState.viewMode == StudentsViewMode.CLASSES) "Groupes & Classes" else "Liste des Eleves",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = colors.textPrimary
+                )
+                Text(
+                    text = "Gerez vos effectifs pour l'annee ${uiState.currentYear}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted
+                )
+            }
+
+            YearSelector(
+                selectedYear = uiState.currentYear,
+                years = uiState.schoolYears,
+                onYearChange = onYearChange,
+                colors = colors
             )
         }
         
         ViewToggle(
             currentMode = uiState.viewMode,
-            onModeChange = { onStateChange(uiState.copy(viewMode = it, selectionMode = false, selectedStudentIds = emptySet())) },
+            onModeChange = { onViewModeChange(it) },
             colors = colors,
             modifier = Modifier.fillMaxWidth()
         )
@@ -505,6 +884,7 @@ private fun MobileStudentsHeader(
         ActionBar(
             onAddStudentClick = { onStateChange(uiState.copy(viewMode = StudentsViewMode.STUDENT_FORM, selectedStudentId = null)) },
             onAddClassClick = { onStateChange(uiState.copy(viewMode = StudentsViewMode.CLASS_FORM, selectedClassroom = null)) },
+            onRefreshClick = onRefreshClick,
             colors = colors,
             isCompact = true
         )
@@ -548,6 +928,7 @@ private fun MobileStudentsHeader(
                 }
 
                 AdvancedFilters(
+                    levels = cycleNames,
                     selectedLevel = uiState.selectedLevel,
                     onLevelChange = { onStateChange(uiState.copy(selectedLevel = it)) },
                     selectedGender = uiState.selectedGender,
@@ -560,4 +941,83 @@ private fun MobileStudentsHeader(
             }
         }
     }
+}
+
+@Composable
+private fun TransferStudentDialog(
+    classrooms: List<Classroom>,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    colors: DashboardColors
+) {
+    var selectedClassId by remember { mutableStateOf<String?>(null) }
+    
+    val sortedClassrooms = remember(classrooms) {
+        classrooms.sortedBy { it.name }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Changer de classe", color = colors.textPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = "Sélectionnez la nouvelle classe de destination pour les élèves sélectionnés.",
+                    color = colors.textMuted
+                )
+                
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 300.dp).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(sortedClassrooms) { classroom ->
+                        val isSelected = classroom.id == selectedClassId
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
+                                .clickable { selectedClassId = classroom.id }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { selectedClassId = classroom.id },
+                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = classroom.name,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "${classroom.level} • ${classroom.studentCount} élèves",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textMuted
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { selectedClassId?.let(onConfirm) },
+                enabled = selectedClassId != null,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Transférer")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = colors.textMuted)
+            }
+        },
+        containerColor = colors.card
+    )
 }

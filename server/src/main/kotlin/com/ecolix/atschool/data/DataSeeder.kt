@@ -59,7 +59,7 @@ object DataSeeder {
                     logger.info("Created Default Admin: $adminEmail / admin")
                 }
 
-                // 3. Create basic structure
+                // 3. Create basic structure (cycles and levels only - no classes)
                 val cycleId = Cycles.insertAndGetId {
                     it[Cycles.tenantId] = tenantId
                     it[nom] = "Secondaire"
@@ -70,70 +70,20 @@ object DataSeeder {
                     it[nom] = "6ème"
                 }
 
-                val classeId = Classes.insertAndGetId {
-                    it[Classes.tenantId] = tenantId
-                    it[Classes.niveauId] = niveauId
-                    it[code] = "6A"
-                    it[nom] = "6ème A"
-                }
+                // Classes and students should be created by administrators through the UI
+                logger.info("Created basic structure (cycle and niveau). Classes and students should be added via UI.")
 
-                // 4. Create sample students
-                Eleves.insert {
-                    it[Eleves.tenantId] = tenantId
-                    it[matricule] = "MAT001"
-                    it[nom] = "Diallo"
-                    it[prenom] = "Binta"
-                    it[dateNaissance] = kotlinx.datetime.LocalDate(2012, 5, 15)
-                    it[sexe] = "F"
-                }
-
-                Eleves.insert {
-                    it[Eleves.tenantId] = tenantId
-                    it[matricule] = "MAT002"
-                    it[nom] = "Traore"
-                    it[prenom] = "Moussa"
-                    it[dateNaissance] = kotlinx.datetime.LocalDate(2012, 8, 20)
-                    it[sexe] = "M"
-                }
-
-                // 4. Create Default Establishment Settings
-                if (EstablishmentSettings.selectAll().where { EstablishmentSettings.tenantId eq tenantId }.count() == 0L) {
-                    EstablishmentSettings.insert {
-                        it[EstablishmentSettings.tenantId] = tenantId
-                        it[schoolName] = "Groupe Scolaire Ecolix"
-                        it[schoolCode] = "GS-001"
-                        it[schoolSlogan] = "L'excellence au service de l'avenir"
-                        it[schoolLevel] = "Primaire"
-                        it[ministry] = "Ministère de l'Enseignement Primaire, Secondaire et Technique"
-                        it[republicName] = "RÉPUBLIQUE TOGOLAISE"
-                        it[republicMotto] = "Travail - Liberté - Patrie"
-                        it[inspection] = "IEPP Lomé-Centre"
-                        it[educationDirection] = "Direction Régionale de l'Éducation Maritime"
-                        it[genCivility] = "M."
-                        it[genDirector] = "Seth Kouamé"
-                        it[phone] = "+228 90 00 00 00"
-                        it[email] = "contact@ecolix-togo.com"
-                        it[website] = "www.ecolix-togo.com"
-                        it[bp] = "BP 1234 Lomé"
-                        it[address] = "Lomé, Quartier Administratif"
-                        it[pdfFooter] = "Bulletin de notes officiel - Système Généré par ÉcoliX"
-                        it[useTrimesters] = true
-                        it[useSemesters] = false
-                        it[autoBackup] = true
-                        it[backupFrequency] = "Quotidienne"
-                        it[retentionDays] = 30
-                        it[updatedAt] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                    }
-                    logger.info("Created Default Establishment Settings")
-                }
+                // Establishment settings should be configured through the UI
+                logger.info("Establishment settings should be configured via UI.")
 
                 // 5. Audit Log
                 AuditLogs.insert {
                     it[AuditLogs.actorEmail] = adminEmail
                     it[AuditLogs.action] = "Initialisation système"
                     it[AuditLogs.timestamp] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                    it[AuditLogs.details] = "Initialisation des données par défaut"
+                    it[AuditLogs.details] = "Initialisation de la structure de base (utilisateurs et structure scolaire)"
                 }
+                logger.info("System initialized. Configure establishment settings, classes, and students via UI.")
                 logger.info("Database already seeded. Skipping main flow.")
             }
 

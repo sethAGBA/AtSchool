@@ -19,10 +19,14 @@ val appModule = module {
     single { CycleRepository() }
     single { LevelRepository() }
     single { AcademicEventRepository() }
+    single { SchoolCycleRepository() }
+    single { SchoolLevelRepository(get()) }
     single { HolidayRepository() }
     single { SuperAdminAdvancedRepository() }
     single { AcademicSettingsRepository() }
     single { GradeLevelRepository() }
+    single { EstablishmentSettingsRepository() }
+    single { StructureSeedingRepository(get(), get()) }
     single { 
         AuthService(
             get(),

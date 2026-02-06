@@ -3,6 +3,8 @@ package com.ecolix.presentation.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
@@ -14,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.ImeAction
 import com.ecolix.data.models.Classroom
 import com.ecolix.data.models.DashboardColors
 
@@ -21,18 +24,54 @@ import com.ecolix.data.models.DashboardColors
 @Composable
 fun ClassForm(
     classroom: Classroom? = null,
+    levels: List<com.ecolix.atschool.api.SchoolLevelDto> = emptyList(),
+    cycles: List<com.ecolix.atschool.api.SchoolCycleDto> = emptyList(),
     colors: DashboardColors,
     isCompact: Boolean = false,
+    currentAcademicYear: String,
     onBack: () -> Unit,
     onSave: (Classroom) -> Unit
 ) {
     var name by remember { mutableStateOf(classroom?.name ?: "") }
-    var level by remember { mutableStateOf(classroom?.level ?: "Primaire") }
+    var levelName by remember { mutableStateOf(classroom?.level ?: "") }
+    var schoolLevelId by remember { mutableStateOf(classroom?.schoolLevelId) }
     var roomNumber by remember { mutableStateOf(classroom?.roomNumber ?: "") }
     var capacity by remember { mutableStateOf(classroom?.capacity?.toString() ?: "") }
     var mainTeacher by remember { mutableStateOf(classroom?.mainTeacher ?: "") }
     var description by remember { mutableStateOf(classroom?.description ?: "") }
-    var academicYear by remember { mutableStateOf(classroom?.academicYear ?: "2024-2025") }
+    var academicYear by remember { mutableStateOf(classroom?.academicYear ?: currentAcademicYear) }
+
+    // Set default level if editing/creating and levels are available
+    LaunchedEffect(levels) {
+        if (schoolLevelId == null && levels.isNotEmpty()) {
+            val defaultLevel = levels.first()
+            schoolLevelId = defaultLevel.id
+            levelName = defaultLevel.name
+            if (name.isEmpty()) name = defaultLevel.name
+        }
+    }
+
+    val handleSave = {
+        if (name.isNotBlank()) {
+            onSave(
+                Classroom(
+                    id = classroom?.id ?: "CLASS_${name.uppercase()}",
+                    name = name,
+                    studentCount = classroom?.studentCount ?: 0,
+                    boysCount = classroom?.boysCount ?: 0,
+                    girlsCount = classroom?.girlsCount ?: 0,
+                    level = levelName,
+                    schoolLevelId = schoolLevelId,
+                    academicYear = academicYear,
+                    mainTeacher = if (mainTeacher.isNotBlank()) mainTeacher else null,
+                    roomNumber = if (roomNumber.isNotBlank()) roomNumber else null,
+                    capacity = capacity.toIntOrNull(),
+                    description = if (description.isNotBlank()) description else null,
+                    students = classroom?.students ?: emptyList()
+                )
+            )
+        }
+    }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = colors.textPrimary,
@@ -85,16 +124,33 @@ fun ClassForm(
                             label = { Text("Nom de la classe *") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            colors = fieldColors
+                            colors = fieldColors,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                         )
-                        OutlinedTextField(
-                            value = level,
-                            onValueChange = { level = it },
-                            label = { Text("Niveau *") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = fieldColors
-                        )
+                        
+                        if (levels.isNotEmpty()) {
+                            LevelSelection(
+                                selectedLevelId = schoolLevelId,
+                                onLevelSelected = { l -> 
+                                    schoolLevelId = l.id
+                                    levelName = l.name
+                                    name = l.name
+                                },
+                                levels = levels,
+                                cycles = cycles,
+                                colors = colors
+                            )
+                        } else {
+                            OutlinedTextField(
+                                value = levelName,
+                                onValueChange = { levelName = it },
+                                label = { Text("Niveau *") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = fieldColors,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                            )
+                        }
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             OutlinedTextField(
@@ -103,16 +159,35 @@ fun ClassForm(
                                 label = { Text("Nom de la classe *") },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = fieldColors
+                                colors = fieldColors,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                             )
-                            OutlinedTextField(
-                                value = level,
-                                onValueChange = { level = it },
-                                label = { Text("Niveau *") },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = fieldColors
-                            )
+                            
+                            if (levels.isNotEmpty()) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LevelSelection(
+                                        selectedLevelId = schoolLevelId,
+                                        onLevelSelected = { l -> 
+                                            schoolLevelId = l.id
+                                            levelName = l.name
+                                            name = l.name
+                                        },
+                                        levels = levels,
+                                        cycles = cycles,
+                                        colors = colors
+                                    )
+                                }
+                            } else {
+                                OutlinedTextField(
+                                    value = levelName,
+                                    onValueChange = { levelName = it },
+                                    label = { Text("Niveau *") },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = fieldColors,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                                )
+                            }
                         }
                     }
 
@@ -123,7 +198,8 @@ fun ClassForm(
                             label = { Text("Numéro de salle") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            colors = fieldColors
+                            colors = fieldColors,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                         )
                         OutlinedTextField(
                             value = capacity,
@@ -131,7 +207,8 @@ fun ClassForm(
                             label = { Text("Capacité max") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            colors = fieldColors
+                            colors = fieldColors,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                         )
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -141,7 +218,8 @@ fun ClassForm(
                                 label = { Text("Numéro de salle") },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = fieldColors
+                                colors = fieldColors,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                             )
                             OutlinedTextField(
                                 value = capacity,
@@ -149,7 +227,8 @@ fun ClassForm(
                                 label = { Text("Capacité max") },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = fieldColors
+                                colors = fieldColors,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                             )
                         }
                     }
@@ -171,7 +250,8 @@ fun ClassForm(
                         label = { Text("Professeur Principal") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = fieldColors
+                        colors = fieldColors,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                     )
 
                     OutlinedTextField(
@@ -202,33 +282,16 @@ fun ClassForm(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         minLines = 3,
-                        colors = fieldColors
+                        colors = fieldColors,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { handleSave() })
                     )
                 }
             }
         }
 
         Button(
-            onClick = {
-                if (name.isNotBlank()) {
-                    onSave(
-                        Classroom(
-                            id = classroom?.id ?: "CLASS_${name.uppercase()}",
-                            name = name,
-                            studentCount = classroom?.studentCount ?: 0,
-                            boysCount = classroom?.boysCount ?: 0,
-                            girlsCount = classroom?.girlsCount ?: 0,
-                            level = level,
-                            academicYear = academicYear,
-                            mainTeacher = if (mainTeacher.isNotBlank()) mainTeacher else null,
-                            roomNumber = if (roomNumber.isNotBlank()) roomNumber else null,
-                            capacity = capacity.toIntOrNull(),
-                            description = if (description.isNotBlank()) description else null,
-                            students = classroom?.students ?: emptyList()
-                        )
-                    )
-                }
-            },
+            onClick = handleSave,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
@@ -239,6 +302,87 @@ fun ClassForm(
             Icon(Icons.Default.Save, contentDescription = null)
             Spacer(modifier = Modifier.width(12.dp))
             Text("Enregistrer la Classe", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LevelSelection(
+    selectedLevelId: Int?,
+    onLevelSelected: (com.ecolix.atschool.api.SchoolLevelDto) -> Unit,
+    levels: List<com.ecolix.atschool.api.SchoolLevelDto>,
+    cycles: List<com.ecolix.atschool.api.SchoolCycleDto>,
+    colors: DashboardColors
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Niveau Scolaire *",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selectedLevelId == null) colors.textMuted else MaterialTheme.colorScheme.primary
+        )
+        val levelsByCycle = remember(levels) { levels.groupBy { it.cycleId } }
+        val sortedCycles = remember(cycles) { cycles.sortedBy { it.sortOrder } }
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            sortedCycles.forEach { cycle ->
+                val cycleLevels = levelsByCycle[cycle.id] ?: emptyList()
+                if (cycleLevels.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = cycle.name,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colors.textMuted
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            cycleLevels.sortedBy { it.sortOrder }.forEach { l ->
+                                FilterChip(
+                                    selected = selectedLevelId == l.id,
+                                    onClick = { onLevelSelected(l) },
+                                    label = { Text(l.name) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                        selectedLabelColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Show levels without cycles if any
+            val levelsWithoutCycle = levels.filter { it.cycleId == 0 || !cycles.any { c -> c.id == it.cycleId } }
+            if (levelsWithoutCycle.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Autres",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colors.textMuted
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        levelsWithoutCycle.forEach { l ->
+                            FilterChip(
+                                selected = selectedLevelId == l.id,
+                                onClick = { onLevelSelected(l) },
+                                label = { Text(l.name) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

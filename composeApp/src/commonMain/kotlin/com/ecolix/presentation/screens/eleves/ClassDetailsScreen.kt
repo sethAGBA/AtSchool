@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ecolix.data.models.Classroom
@@ -32,6 +33,7 @@ import com.ecolix.data.models.Student
 import com.ecolix.presentation.components.CardContainer
 import com.ecolix.presentation.components.StudentRow
 import com.ecolix.presentation.components.TagPill
+import com.ecolix.presentation.components.SearchBar
 
 @Composable
 fun ClassDetailsScreen(
@@ -40,9 +42,16 @@ fun ClassDetailsScreen(
     colors: DashboardColors,
     isCompact: Boolean = false,
     onBack: () -> Unit,
-    onStudentClick: (String) -> Unit
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onStudentClick: (String) -> Unit,
+    onAddStudent: () -> Unit,
+    onStudentDelete: (String) -> Unit = {},
+    onStudentRestoreAction: (String) -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showInUseDialog by remember { mutableStateOf(false) }
     val tabs = listOf("Infos Générales", "Élèves (${students.size})")
 
     Column(
@@ -73,8 +82,14 @@ fun ClassDetailsScreen(
                         )
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = null, tint = colors.textLink)
+                    }
+                    IconButton(onClick = { 
+                        if (classroom.studentCount > 0) showInUseDialog = true 
+                        else showDeleteDialog = true 
+                    }) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444))
                     }
                 }
             }
@@ -97,16 +112,67 @@ fun ClassDetailsScreen(
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                Button(
-                    onClick = {},
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.textLink, contentColor = Color.White),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Modifier", fontSize = 13.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onEdit,
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.textLink, contentColor = Color.White),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Modifier", fontSize = 13.sp)
+                    }
+                    
+                    Button(
+                        onClick = { 
+                            if (classroom.studentCount > 0) showInUseDialog = true 
+                            else showDeleteDialog = true 
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.1f), contentColor = Color(0xFFEF4444)),
+                        shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f))
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Supprimer", fontSize = 13.sp)
+                    }
                 }
             }
+        }
+
+        // Dialogs
+        if (showDeleteDialog) {
+            com.ecolix.presentation.components.ConfirmationDialog(
+                title = "Supprimer la classe",
+                message = "Êtes-vous sûr de vouloir supprimer la classe \"${classroom.name}\" ? Cette action est irréversible.",
+                onConfirm = {
+                    showDeleteDialog = false
+                    onDelete()
+                },
+                onDismiss = { showDeleteDialog = false },
+                colors = colors
+            )
+        }
+
+        if (showInUseDialog) {
+            AlertDialog(
+                onDismissRequest = { showInUseDialog = false },
+                containerColor = colors.card,
+                title = { 
+                    Text("Action impossible", color = colors.textPrimary, fontWeight = FontWeight.Bold) 
+                },
+                text = { 
+                    Text(
+                        "Impossible de supprimer cette classe car elle contient encore ${classroom.studentCount} élève(s). Veuillez d'abord retirer ou transférer tous les élèves.",
+                        color = colors.textPrimary
+                    ) 
+                },
+                confirmButton = {
+                    TextButton(onClick = { showInUseDialog = false }) {
+                        Text("D'accord", color = colors.textLink)
+                    }
+                }
+            )
         }
 
         // Tabs
@@ -173,7 +239,14 @@ fun ClassDetailsScreen(
             ) { targetTab ->
                 when (targetTab) {
                     0 -> ClassOverviewTab(classroom, colors, isCompact)
-                    1 -> ClassStudentsTab(students, colors, onStudentClick)
+                    1 -> ClassStudentsTab(
+                        students = students,
+                        colors = colors,
+                        onStudentClick = onStudentClick,
+                        onAddStudent = onAddStudent,
+                        onStudentDelete = onStudentDelete,
+                        onStudentRestoreAction = onStudentRestoreAction
+                    )
                 }
             }
         }
@@ -264,12 +337,28 @@ private fun ClassOverviewTab(classroom: Classroom, colors: DashboardColors, isCo
 }
 
 @Composable
-private fun ClassStudentsTab(students: List<Student>, colors: DashboardColors, onStudentClick: (String) -> Unit) {
+private fun ClassStudentsTab(
+    students: List<Student>, 
+    colors: DashboardColors, 
+    onStudentClick: (String) -> Unit,
+    onAddStudent: () -> Unit,
+    onStudentDelete: (String) -> Unit = {},
+    onStudentRestoreAction: (String) -> Unit = {}
+) {
+    var searchQuery by remember { mutableStateOf("") }
     var loadedCount by remember { mutableStateOf(10) }
     val batchSize = 10
     
-    val visibleStudents = remember(students, loadedCount) {
-        students.take(loadedCount)
+    val filteredStudents = remember(students, searchQuery) {
+        if (searchQuery.isEmpty()) students
+        else students.filter { 
+            "${it.firstName} ${it.lastName}".contains(searchQuery, ignoreCase = true) ||
+            it.matricule?.contains(searchQuery, ignoreCase = true) == true
+        }
+    }
+    
+    val visibleStudents = remember(filteredStudents, loadedCount) {
+        filteredStudents.take(loadedCount)
     }
     
     val listState = rememberLazyListState()
@@ -292,31 +381,102 @@ private fun ClassStudentsTab(students: List<Student>, colors: DashboardColors, o
         }
     }
 
-    LazyColumn(
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(bottom = 20.dp)
-    ) {
-        items(visibleStudents) { student ->
-            StudentRow(
-                student = student,
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = { 
+                    searchQuery = it
+                    loadedCount = 10 // Reset loading when searching
+                },
                 colors = colors,
-                selectionMode = false,
-                isSelected = false,
-                onToggleSelect = {},
-                onClick = { onStudentClick(student.id) }
+                modifier = Modifier.weight(1f)
             )
+            
+            Button(
+                onClick = onAddStudent,
+                colors = ButtonDefaults.buttonColors(containerColor = colors.textLink, contentColor = Color.White),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.height(48.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Inscrire", fontSize = 13.sp)
+            }
+                }
         }
-        
-        if (students.size > loadedCount) {
-            item {
-                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 20.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (filteredStudents.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 64.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "🎓",
+                                style = MaterialTheme.typography.displayMedium.copy(fontSize = 48.sp)
+                            )
+                            Text(
+                                text = "Aucun élève trouvé",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                ),
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = if (searchQuery.isNotEmpty())
+                                    "Aucun élève ne correspond à votre recherche."
+                                else
+                                    "Aucun élève dans cette classe. Ajoutez-en via le bouton d'inscription.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textMuted,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(visibleStudents) { student ->
+                    StudentRow(
+                        student = student,
+                        colors = colors,
+                        selectionMode = false,
+                        isSelected = false,
+                        onToggleSelect = {},
+                        onDelete = { onStudentDelete(student.id) },
+                        onRestore = { onStudentRestoreAction(student.id) },
+                        onClick = { onStudentClick(student.id) }
+                    )
+                }
+                
+                if (filteredStudents.size > loadedCount) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
             }
         }
     }
-}
 
 @Composable
 private fun ClassDetailRow(icon: ImageVector, label: String, value: String, colors: DashboardColors) {

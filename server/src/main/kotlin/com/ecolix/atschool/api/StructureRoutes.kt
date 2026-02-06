@@ -23,13 +23,28 @@ fun Route.structureRoutes() {
     val academicPeriodRepository by lazy { application.getKoin().get<AcademicPeriodRepository>() }
     val cycleRepository by lazy { application.getKoin().get<CycleRepository>() }
     val levelRepository by lazy { application.getKoin().get<LevelRepository>() }
+    val schoolCycleRepository by lazy { application.getKoin().get<SchoolCycleRepository>() }
+    val schoolLevelRepository by lazy { application.getKoin().get<SchoolLevelRepository>() }
+    val seedingRepository by lazy { application.getKoin().get<StructureSeedingRepository>() }
+    val settingsRepository by lazy { application.getKoin().get<EstablishmentSettingsRepository>() }
 
     authenticate("auth-jwt") {
-        route("/establishments") {
-            get {
+        route("/structure") {
+            post("/seed-defaults") {
                 val principal = call.principal<JWTPrincipal>()
-                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
-                call.respond(establishmentRepository.getAll(tenantId))
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                
+                val settings = settingsRepository.getSettings(tenantId) ?: return@post call.respond(HttpStatusCode.NotFound, mapOf("error" to "Paramètres non trouvés"))
+                
+                seedingRepository.seedDefaultStructure(tenantId, settings.schoolLevel)
+                call.respond(HttpStatusCode.OK)
+            }
+            route("/establishments") {
+                get {
+                    val principal = call.principal<JWTPrincipal>()
+                    val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                    call.respond(establishmentRepository.getAll(tenantId))
+                }
             }
         }
 
@@ -213,6 +228,14 @@ fun Route.structureRoutes() {
                 call.respond(classRepository.getAllByTenant(tenantId))
             }
 
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val classroom = call.receive<ClassEntity>().copy(tenantId = tenantId)
+                val id = classRepository.create(classroom)
+                call.respond(HttpStatusCode.Created, id)
+            }
+
             get("/{id}") {
                 val principal = call.principal<JWTPrincipal>()
                 val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
@@ -220,6 +243,90 @@ fun Route.structureRoutes() {
                 
                 val classEntity = classRepository.getById(id, tenantId)
                 if (classEntity != null) call.respond(classEntity) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            put("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@put call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@put call.respond(HttpStatusCode.BadRequest)
+                val classroom = call.receive<ClassEntity>().copy(tenantId = tenantId)
+                if (classRepository.update(id, classroom)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            delete("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                if (classRepository.delete(id, tenantId)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
+        route("/school-cycles") {
+            get {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                call.respond(schoolCycleRepository.getAll(tenantId))
+            }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val cycle = call.receive<SchoolCycleEntity>().copy(tenantId = tenantId)
+                val id = schoolCycleRepository.create(cycle)
+                call.respond(HttpStatusCode.Created, id)
+            }
+
+            get("/{id}/levels") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                val cycleId = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                call.respond(schoolLevelRepository.getByCycle(cycleId, tenantId))
+            }
+
+            put("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@put call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@put call.respond(HttpStatusCode.BadRequest)
+                val cycle = call.receive<SchoolCycleEntity>().copy(tenantId = tenantId)
+                if (schoolCycleRepository.update(id, cycle)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            delete("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                if (schoolCycleRepository.delete(id, tenantId)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
+        route("/school-levels") {
+            get {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                call.respond(schoolLevelRepository.getAll(tenantId))
+            }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val level = call.receive<SchoolLevelEntity>().copy(tenantId = tenantId)
+                val id = schoolLevelRepository.create(level)
+                call.respond(HttpStatusCode.Created, id)
+            }
+
+            put("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@put call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@put call.respond(HttpStatusCode.BadRequest)
+                val level = call.receive<SchoolLevelEntity>().copy(tenantId = tenantId)
+                if (schoolLevelRepository.update(id, level)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            delete("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                if (schoolLevelRepository.delete(id, tenantId)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
             }
         }
     }

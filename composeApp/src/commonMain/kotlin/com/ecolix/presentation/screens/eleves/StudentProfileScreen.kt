@@ -36,7 +36,8 @@ fun StudentProfileScreen(
     student: Student,
     colors: DashboardColors,
     isCompact: Boolean = false,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEdit: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Aperçu", "Académique", "Documents")
@@ -54,11 +55,18 @@ fun StudentProfileScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.textPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Profil Étudiant",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = colors.textPrimary
-            )
+            Column {
+                Text(
+                    text = "Profil Étudiant",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = colors.textPrimary
+                )
+                Text(
+                    text = "Année Académique: ${student.academicYear}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted
+                )
+            }
         }
 
         // Student Brief Header
@@ -212,7 +220,7 @@ fun StudentProfileScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
-                onClick = { },
+                onClick = onEdit,
                 modifier = Modifier.weight(if (isCompact) 1f else 1.1f).height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(

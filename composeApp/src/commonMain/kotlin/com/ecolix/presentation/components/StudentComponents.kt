@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Category as ClassIcon
@@ -27,6 +28,11 @@ import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Male
 import androidx.compose.material.icons.filled.Female
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material.icons.filled.AddHome
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.FileUpload
@@ -35,8 +41,16 @@ import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +65,7 @@ import com.ecolix.data.models.StudentDisplayMode
 import com.ecolix.data.models.StudentsViewMode
 import com.ecolix.data.models.DashboardColors
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DistributionChart(distribution: Map<String, Int>, colors: DashboardColors) {
     CardContainer(containerColor = colors.card) {
@@ -78,12 +93,12 @@ fun DistributionChart(distribution: Map<String, Int>, colors: DashboardColors) {
                 }
             }
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                distribution.entries.forEachIndexed { index, entry ->
+                distribution.entries.filter { it.key != "Niveaux" || it.value > 0 }.forEachIndexed { index, entry ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(levelColors[index % levelColors.size]))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -104,6 +119,9 @@ fun SelectionActionBar(
     selectedCount: Int,
     onClearSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
+    onRestoreSelected: (() -> Unit)? = null,
+    onTransferSelected: (() -> Unit)? = null,
+    isTrashView: Boolean = false,
     colors: DashboardColors,
     isCompact: Boolean = false
 ) {
@@ -128,16 +146,30 @@ fun SelectionActionBar(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
-                        onClick = { },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp)
-                    ) {
-                        Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Changer", fontSize = 12.sp)
+                    if (isTrashView && onRestoreSelected != null) {
+                        Button(
+                            onClick = onRestoreSelected,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981), contentColor = Color.White),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp)) // Use SwapHoriz as Restore if not available
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Restaurer", fontSize = 12.sp)
+                        }
+                    } else {
+                        Button(
+                            onClick = { onTransferSelected?.invoke() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Changer", fontSize = 12.sp)
+                        }
                     }
                     Button(
                         onClick = onDeleteSelected,
@@ -148,7 +180,7 @@ fun SelectionActionBar(
                     ) {
                         Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Supprimer", fontSize = 12.sp)
+                        Text(if (isTrashView) "Suppr. Definitive" else "Supprimer", fontSize = 12.sp)
                     }
                 }
             }
@@ -171,14 +203,26 @@ fun SelectionActionBar(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Changer Classe")
+                    if (isTrashView && onRestoreSelected != null) {
+                        Button(
+                            onClick = onRestoreSelected,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981), contentColor = Color.White),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Restaurer")
+                        }
+                    } else {
+                        Button(
+                            onClick = { onTransferSelected?.invoke() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Changer Classe")
+                        }
                     }
                     Button(
                         onClick = onDeleteSelected,
@@ -187,7 +231,7 @@ fun SelectionActionBar(
                     ) {
                         Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Supprimer")
+                        Text(if (isTrashView) "Supprimer Definitivement" else "Supprimer")
                     }
                 }
             }
@@ -209,6 +253,14 @@ fun ViewToggle(
             .border(1.dp, colors.divider, RoundedCornerShape(12.dp))
             .padding(4.dp)
     ) {
+        ToggleItem(
+            selected = currentMode == StudentsViewMode.STRUCTURE,
+            onClick = { onModeChange(StudentsViewMode.STRUCTURE) },
+            label = "Structure",
+            icon = Icons.Filled.AccountTree,
+            colors = colors,
+            modifier = if (modifier != Modifier) Modifier.weight(1f) else Modifier
+        )
         ToggleItem(
             selected = currentMode == StudentsViewMode.CLASSES,
             onClick = { onModeChange(StudentsViewMode.CLASSES) },
@@ -256,7 +308,15 @@ private fun ToggleItem(
 }
 
 @Composable
-fun ClassCard(classroom: Classroom, colors: DashboardColors, onClick: () -> Unit) {
+fun ClassCard(
+    classroom: Classroom, 
+    colors: DashboardColors, 
+    onClick: () -> Unit,
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit = {}
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     CardContainer(
         containerColor = colors.card,
         modifier = Modifier.clickable { onClick() }
@@ -267,7 +327,7 @@ fun ClassCard(classroom: Classroom, colors: DashboardColors, onClick: () -> Unit
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = classroom.name,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -279,7 +339,39 @@ fun ClassCard(classroom: Classroom, colors: DashboardColors, onClick: () -> Unit
                         color = colors.textMuted
                     )
                 }
-                TagPill(classroom.academicYear, Color(0xFF6366F1))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TagPill(classroom.academicYear, Color(0xFF6366F1))
+                    
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = null, tint = colors.textMuted)
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(colors.card)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Modifier", color = colors.textPrimary) },
+                                onClick = {
+                                    showMenu = false
+                                    onEdit()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = colors.textPrimary) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Supprimer", color = Color(0xFFEF4444)) },
+                                onClick = {
+                                    showMenu = false
+                                    onDelete()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444)) }
+                            )
+                        }
+                    }
+                }
             }
 
             Row(
@@ -346,6 +438,7 @@ private fun StatPill(icon: ImageVector, value: String, label: String, color: Col
 fun ActionBar(
     onAddStudentClick: () -> Unit,
     onAddClassClick: () -> Unit,
+    onRefreshClick: () -> Unit = {},
     colors: DashboardColors,
     isCompact: Boolean = false
 ) {
@@ -354,6 +447,7 @@ fun ActionBar(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionButton(Icons.Filled.PersonAdd, "Eleve", colors.textLink, Color.White, modifier = Modifier.weight(1f), onClick = onAddStudentClick)
                 ActionButton(Icons.Filled.AddHome, "Classe", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f), onClick = onAddClassClick)
+                ActionButton(Icons.Default.Refresh, "", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.width(48.dp), onClick = onRefreshClick)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionButton(Icons.Filled.FileUpload, "Importer", colors.background, colors.textPrimary, border = true, colors = colors, modifier = Modifier.weight(1f))
@@ -368,6 +462,7 @@ fun ActionBar(
         ) {
             ActionButton(Icons.Filled.PersonAdd, "Eleve", colors.textLink, Color.White, onClick = onAddStudentClick)
             ActionButton(Icons.Filled.AddHome, "Classe", colors.background, colors.textPrimary, border = true, colors = colors, onClick = onAddClassClick)
+            ActionButton(Icons.Default.Refresh, "Actualiser", colors.background, colors.textPrimary, border = true, colors = colors, onClick = onRefreshClick)
             ActionButton(Icons.Filled.HowToReg, "Reinscription", Color(0xFFF59E0B), Color.White)
             Spacer(modifier = Modifier.weight(1f))
             ActionButton(Icons.Filled.FileUpload, "Importer", colors.background, colors.textPrimary, border = true, colors = colors)
@@ -379,6 +474,7 @@ fun ActionBar(
 
 @Composable
 fun AdvancedFilters(
+    levels: List<String>,
     selectedLevel: String?,
     onLevelChange: (String?) -> Unit,
     selectedGender: String?,
@@ -392,8 +488,8 @@ fun AdvancedFilters(
         LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 FilterChipGroup(
-                    title = "Niveaux",
-                    items = listOf(null, "Primaire", "College", "Lycee"),
+                    title = "Cycles",
+                    items = listOf(null) + levels,
                     selectedItem = selectedLevel,
                     onSelect = onLevelChange,
                     colors = colors
@@ -491,8 +587,13 @@ fun StudentRow(
     selectionMode: Boolean,
     isSelected: Boolean,
     onToggleSelect: () -> Unit,
+    onDelete: () -> Unit = {},
+    onRestore: () -> Unit = {},
+    onTransfer: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     CardContainer(
         containerColor = colors.card,
         modifier = Modifier.padding(vertical = 4.dp).clickable { 
@@ -538,16 +639,57 @@ fun StudentRow(
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                StatusIndicator(student.status)
-                if (student.isDeleted) {
-                    TagPill("Supprime", Color(0xFFEF4444))
-                }
+                StatusIndicator(if (student.isDeleted) "Supprimé" else student.status)
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            IconButton(onClick = { }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = null, tint = colors.textMuted)
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = null, tint = colors.textMuted)
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(colors.card)
+                ) {
+                    if (student.isDeleted) {
+                        DropdownMenuItem(
+                            text = { Text("Restaurer", color = colors.textPrimary) },
+                            onClick = {
+                                showMenu = false
+                                onRestore()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Restore, contentDescription = null, tint = Color(0xFF10B981)) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Supprimer définitivement", color = Color(0xFFEF4444)) },
+                            onClick = {
+                                showMenu = false
+                                onDelete()
+                            },
+                            leadingIcon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = Color(0xFFEF4444)) }
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text("Changer de classe", color = colors.textPrimary) },
+                            onClick = {
+                                showMenu = false
+                                onTransfer()
+                            },
+                            leadingIcon = { Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = colors.textPrimary) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Supprimer", color = Color(0xFFEF4444)) },
+                            onClick = {
+                                showMenu = false
+                                onDelete()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444)) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -559,6 +701,7 @@ private fun StatusIndicator(status: String) {
         "ACTIF", "ACTIVE" -> Color(0xFF10B981)
         "INACTIF", "INACTIVE" -> Color(0xFF64748B)
         "SUSPENDU", "SUSPENDED" -> Color(0xFFEF4444)
+        "SUPPRIMÉ", "SUPPRIME", "DELETED" -> Color(0xFFEF4444)
         "DIPLOME", "GRADUATED" -> Color(0xFFF59E0B)
         else -> Color(0xFF6366F1) // Default for new statuses like "Nouveau", "Transfert"
     }
@@ -581,9 +724,15 @@ fun StudentCard(
     selectionMode: Boolean = false,
     isSelected: Boolean = false,
     onToggleSelect: () -> Unit = {},
+    onDelete: () -> Unit = {},
+    onRestore: () -> Unit = {},
+    onTransfer: () -> Unit = {},
     onClick: () -> Unit,
     icon: ImageVector
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
+
     CardContainer(
         containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) else colors.card,
         modifier = Modifier.clickable { if (selectionMode) onToggleSelect() else onClick() }
@@ -613,7 +762,57 @@ fun StudentCard(
                         Icon(Icons.Filled.Person, contentDescription = null, tint = colors.textMuted)
                     }
                 }
-                StatusIndicator(student.status)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusIndicator(if (student.isDeleted) "Supprimé" else student.status)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = null, tint = colors.textMuted)
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(colors.card)
+                        ) {
+                            if (student.isDeleted) {
+                                DropdownMenuItem(
+                                    text = { Text("Restaurer", color = colors.textPrimary) },
+                                    onClick = {
+                                        showMenu = false
+                                        onRestore()
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Restore, contentDescription = null, tint = Color(0xFF10B981)) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Supprimer définitivement", color = Color(0xFFEF4444)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onDelete()
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = Color(0xFFEF4444)) }
+                                )
+                            } else {
+                                DropdownMenuItem(
+                                    text = { Text("Changer de classe", color = colors.textPrimary) },
+                                    onClick = {
+                                        showMenu = false
+                                        onTransfer()
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = colors.textPrimary) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Supprimer", color = Color(0xFFEF4444)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onDelete()
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444)) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Column {
@@ -714,6 +913,80 @@ private fun ToggleItemGeneric(
         if (label.isNotEmpty()) {
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = label, color = contentColor, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+@Composable
+fun YearSelector(
+    selectedYear: String,
+    years: List<com.ecolix.atschool.api.SchoolYearDto>,
+    onYearChange: (String) -> Unit,
+    colors: DashboardColors,
+    modifier: Modifier = Modifier
+) {
+    var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(colors.card)
+                .border(1.dp, colors.divider, RoundedCornerShape(12.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CalendarToday,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = colors.textLink
+            )
+            Text(
+                text = selectedYear,
+                color = colors.textPrimary,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+            )
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = colors.textMuted
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(colors.card).width(IntrinsicSize.Min)
+        ) {
+            years.forEach { year ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = year.libelle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (year.libelle == selectedYear) MaterialTheme.colorScheme.primary else colors.textPrimary
+                        )
+                    },
+                    onClick = {
+                        onYearChange(year.libelle)
+                        expanded = false
+                    },
+                    leadingIcon = {
+                        if (year.isDefault) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = "Active",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color(0xFFF59E0B)
+                            )
+                        }
+                    }
+                )
+            }
         }
     }
 }

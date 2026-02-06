@@ -52,9 +52,9 @@ class TimetableScreenModel {
         )
 
         val sampleClassrooms = listOf(
-            Classroom("C1", "6ème A", 28, 14, 14, "Collège", "2024-2025"),
-            Classroom("C2", "5ème B", 25, 12, 13, "Collège", "2024-2025"),
-            Classroom("C3", "Terminal S1", 20, 10, 10, "Lycée", "2024-2025")
+            Classroom("C1", "6ème A", 28, 14, 14, "Collège", null, "2024-2025"),
+            Classroom("C2", "5ème B", 25, 12, 13, "Collège", null, "2024-2025"),
+            Classroom("C3", "Terminal S1", 20, 10, 10, "Lycée", null, "2024-2025")
         )
 
         val sampleTeachers = listOf(

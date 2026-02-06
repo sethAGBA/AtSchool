@@ -144,6 +144,37 @@ class StructureApiService(private val client: HttpClient) {
         response.body()
     }
 
+    suspend fun createClass(classroom: ClassDto): Result<Int> = runCatching {
+        val response = client.post("classes") {
+            contentType(ContentType.Application.Json)
+            setBody(classroom)
+        }
+        if (response.status != HttpStatusCode.Created) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la création de la classe (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun updateClass(id: Int, classroom: ClassDto): Result<Unit> = runCatching {
+        val response = client.put("classes/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(classroom)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour de la classe (${response.status.value})")
+        }
+    }
+
+    suspend fun deleteClass(id: Int): Result<Unit> = runCatching {
+        val response = client.delete("classes/$id")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la suppression de la classe (${response.status.value})")
+        }
+    }
+
     // Academic Events
     suspend fun getAcademicEvents(): Result<List<AcademicEventDto>> = runCatching {
         val response = client.get("academic-events")
@@ -265,6 +296,104 @@ class StructureApiService(private val client: HttpClient) {
         if (response.status != HttpStatusCode.OK) {
             val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
             throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour des échelons (${response.status.value})")
+        }
+    }
+
+    // School Structure (Cycles & Levels)
+    suspend fun getSchoolCycles(): Result<List<SchoolCycleDto>> = runCatching {
+        val response = client.get("school-cycles")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la récupération des cycles scolaires (${response.status.value})")
+        }
+         response.body()
+    }
+
+    suspend fun createSchoolCycle(cycle: SchoolCycleDto): Result<Int> = runCatching {
+        val response = client.post("school-cycles") {
+            contentType(ContentType.Application.Json)
+            setBody(cycle)
+        }
+        if (response.status != HttpStatusCode.Created) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la création du cycle (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun updateSchoolCycle(id: Int, cycle: SchoolCycleDto): Result<Unit> = runCatching {
+        val response = client.put("school-cycles/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(cycle)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour du cycle (${response.status.value})")
+        }
+    }
+
+    suspend fun deleteSchoolCycle(id: Int): Result<Unit> = runCatching {
+        val response = client.delete("school-cycles/$id")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+             throw Exception(errorBody?.get("error") ?: "Erreur lors de la suppression du cycle (${response.status.value})")
+        }
+    }
+
+    suspend fun getSchoolLevelsByCycle(cycleId: Int): Result<List<SchoolLevelDto>> = runCatching {
+        val response = client.get("school-cycles/$cycleId/levels")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la récupération des niveaux (${response.status.value})")
+        }
+        response.body()
+    }
+    
+    suspend fun getAllSchoolLevels(): Result<List<SchoolLevelDto>> = runCatching {
+        val response = client.get("school-levels")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la récupération des niveaux (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun createSchoolLevel(level: SchoolLevelDto): Result<Int> = runCatching {
+        val response = client.post("school-levels") {
+            contentType(ContentType.Application.Json)
+            setBody(level)
+        }
+        if (response.status != HttpStatusCode.Created) {
+             val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la création du niveau (${response.status.value})")
+        }
+        response.body()
+    }
+
+    suspend fun updateSchoolLevel(id: Int, level: SchoolLevelDto): Result<Unit> = runCatching {
+        val response = client.put("school-levels/$id") {
+            contentType(ContentType.Application.Json)
+             setBody(level)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+             throw Exception(errorBody?.get("error") ?: "Erreur lors de la mise à jour du niveau (${response.status.value})")
+        }
+    }
+
+    suspend fun deleteSchoolLevel(id: Int): Result<Unit> = runCatching {
+        val response = client.delete("school-levels/$id")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la suppression du niveau (${response.status.value})")
+        }
+    }
+
+    suspend fun seedDefaultStructure(): Result<Unit> = runCatching {
+        val response = client.post("structure/seed-defaults")
+        if (response.status != HttpStatusCode.OK) {
+            val errorBody = try { response.body<Map<String, String>>() } catch (e: Exception) { null }
+            throw Exception(errorBody?.get("error") ?: "Erreur lors de la génération de la structure (${response.status.value})")
         }
     }
 }

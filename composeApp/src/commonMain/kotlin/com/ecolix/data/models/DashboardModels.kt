@@ -120,7 +120,9 @@ data class DashboardColors(
     val textPrimary: Color,
     val textMuted: Color,
     val divider: Color,
-    val textLink: Color
+    val textLink: Color,
+    val success: Color = Color(0xFF10B981),
+    val error: Color = Color(0xFFEF4444)
 ) {
     companion object {
         fun light() = DashboardColors(
@@ -129,7 +131,9 @@ data class DashboardColors(
             textPrimary = Color(0xFF1E293B),
             textMuted = Color(0xFF64748B),
             divider = Color(0xFFE2E8F0),
-            textLink = Color(0xFF3B82F6)
+            textLink = Color(0xFF3B82F6),
+            success = Color(0xFF10B981),
+            error = Color(0xFFEF4444)
         )
 
         fun dark() = DashboardColors(
@@ -138,7 +142,9 @@ data class DashboardColors(
             textPrimary = Color(0xFFF8FAFC),
             textMuted = Color(0xFF94A3B8),
             divider = Color(0xFF1F2937),
-            textLink = Color(0xFF60A5FA)
+            textLink = Color(0xFF60A5FA),
+            success = Color(0xFF10B981),
+            error = Color(0xFFEF4444)
         )
     }
 }

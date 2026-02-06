@@ -10,6 +10,7 @@ data class Student(
     val lastName: String,
     val gender: String, // "M" or "F"
     val classroom: String,
+    val classroomId: Int? = null,
     val academicYear: String,
     val enrollmentDate: String,
     val status: String, // Dynamic from form (Nouveau, Redoublant, etc.)
@@ -55,7 +56,9 @@ data class Classroom(
     val boysCount: Int,
     val girlsCount: Int,
     val level: String,
+    val schoolLevelId: Int? = null,
     val academicYear: String,
+    val cycle: String? = null,
     val mainTeacher: String? = null,
     val roomNumber: String? = null,
     val capacity: Int? = null,
@@ -75,13 +78,29 @@ data class StudentsUiState(
     val selectedGender: String? = null,
     val visibilityFilter: String = "active", // "active", "deleted", "all"
     val searchQuery: String = "",
-    val currentYear: String = "2024-2025",
+    val currentYear: String = "",
     val selectionMode: Boolean = false,
     val selectedStudentIds: Set<String> = emptySet(),
     val isDarkMode: Boolean = false,
     val loadedStudentsCount: Int = 10,
     val loadedClassesCount: Int = 10,
-    val batchSize: Int = 10
+    val batchSize: Int = 50,
+    val isClassroomFixed: Boolean = false,
+    val showDeleteConfirmation: Boolean = false,
+    val studentToDeleteIds: Set<String> = emptySet(),
+    val schoolYears: List<com.ecolix.atschool.api.SchoolYearDto> = emptyList(),
+    // School Structure
+    val cycles: List<com.ecolix.atschool.api.SchoolCycleDto> = emptyList(),
+    val levels: List<com.ecolix.atschool.api.SchoolLevelDto> = emptyList(),
+    val isUploadingPhoto: Boolean = false,
+    val photoUploadError: String? = null,
+    val showTransferDialog: Boolean = false,
+    val transferStudentIds: Set<String> = emptySet(),
+    val errorMessage: String? = null,
+    val successMessage: String? = null,
+    val lastSavedTimestamp: Long? = null,
+    val showClassDeleteConfirmation: Boolean = false,
+    val classToDeleteId: String? = null
 ) {
     val colors: DashboardColors
         get() = if (isDarkMode) DashboardColors.dark() else DashboardColors.light()
@@ -91,24 +110,11 @@ data class StudentsUiState(
 
     companion object {
         fun sample(isDarkMode: Boolean): StudentsUiState {
-            val year = "2024-2025"
             return StudentsUiState(
                 isDarkMode = isDarkMode,
-                currentYear = year,
-                students = listOf(
-                    Student("S1", "Binta", "Diallo", "F", "6e A", year, "12/09/2024", "ACTIF", 14.5, "2024-001", "15/05/2012"),
-                    Student("S2", "Moussa", "Traore", "M", "6e A", year, "12/09/2024", "ACTIF", 12.8, "2024-002", "20/08/2012"),
-                    Student("S3", "Fatoumata", "Sow", "F", "5e B", year, "12/09/2024", "ACTIF", 15.2, "2024-003", "10/02/2011"),
-                    Student("S4", "Amadou", "Barry", "M", "Terminale S", year, "10/09/2024", "ACTIF", 13.4, "2024-004", "05/11/2007"),
-                    Student("S5", "Awa", "Keita", "F", "4e C", year, "14/09/2024", "SUSPENDU", 9.5, "2024-005", "12/12/2010"),
-                    Student("S6", "Deleted", "User", "M", "6e A", year, "01/01/2024", "INACTIF", 0.0, isDeleted = true)
-                ),
-                classrooms = listOf(
-                    Classroom("C1", "6e A", 42, 22, 20, "College", year, students = emptyList()),
-                    Classroom("C2", "6e B", 40, 20, 20, "College", year, students = emptyList()),
-                    Classroom("C3", "5e A", 38, 18, 20, "College", year, students = emptyList()),
-                    Classroom("C4", "Terminale S", 32, 16, 16, "Lycee", year, students = emptyList())
-                )
+                currentYear = "",
+                students = emptyList(),
+                classrooms = emptyList()
             )
         }
     }
@@ -122,6 +128,7 @@ enum class StudentDisplayMode {
 enum class StudentsViewMode {
     CLASSES,
     STUDENTS,
+    STRUCTURE,
     PROFILE,
     CLASS_DETAILS,
     STUDENT_FORM,

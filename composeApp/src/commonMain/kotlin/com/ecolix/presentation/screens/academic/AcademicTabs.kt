@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.key.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,6 +36,7 @@ import kotlinx.datetime.*
 import androidx.compose.animation.*
 import com.ecolix.presentation.components.FormTextField
 import com.ecolix.presentation.components.SectionHeader
+import com.ecolix.presentation.utils.DateUtils
 
 @Composable
 fun AcademicOverviewTab(
@@ -492,6 +495,17 @@ fun SchoolYearsTab(
                 onSetStatus = { onSetStatus(year.id, it) }
             )
         }
+
+        if (state.schoolYears.isEmpty()) {
+            item {
+                AcademicEmptyState(
+                    title = "Aucune année scolaire",
+                    subtitle = "Commencez par créer une nouvelle année scolaire ci-dessus.",
+                    icon = "📅",
+                    colors = colors
+                )
+            }
+        }
     }
 }
 
@@ -674,13 +688,27 @@ fun PeriodsTab(
                     )
                 }
 
-                Button(
-                    onClick = { showNewPeriodDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Nouvelle Période")
+                val hasActiveYear = state.statistics.activeYear != null
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!hasActiveYear) {
+                        Text(
+                            "Aucune année active",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Button(
+                        onClick = { showNewPeriodDialog = true },
+                        enabled = hasActiveYear,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Nouvelle Période")
+                    }
                 }
             }
         }
@@ -696,6 +724,17 @@ fun PeriodsTab(
                 onDelete = { onDeletePeriod(period.id) },
                 onSetStatus = { onSetStatus(period.id, it) }
             )
+        }
+
+        if (state.periods.isEmpty()) {
+            item {
+                AcademicEmptyState(
+                    title = "Aucune période",
+                    subtitle = "Créez des périodes pour l'année en cours (Trimestres/Semestres).",
+                    icon = "⏳",
+                    colors = colors
+                )
+            }
         }
     }
 }
@@ -918,13 +957,13 @@ fun NewSchoolYearDialog(
     // Auto-generation logic
     LaunchedEffect(startDate, endDate, selectedTypes) {
         if (!isManualEditing) {
-            val startValid = try { LocalDate.parse(normalizeDate(startDate)); true } catch (e: Exception) { false }
-            val endValid = try { LocalDate.parse(normalizeDate(endDate)); true } catch (e: Exception) { false }
+            val startValid = try { LocalDate.parse(DateUtils.normalizeDate(startDate)); true } catch (e: Exception) { false }
+            val endValid = try { LocalDate.parse(DateUtils.normalizeDate(endDate)); true } catch (e: Exception) { false }
             
             if (startValid && endValid && name.isNotBlank()) {
                 generatedPeriods = generateDefaultPeriods(
-                    normalizeDate(startDate),
-                    normalizeDate(endDate),
+                    DateUtils.normalizeDate(startDate),
+                    DateUtils.normalizeDate(endDate),
                     selectedTypes
                 )
                 numPeriods = generatedPeriods.size
@@ -943,8 +982,8 @@ fun NewSchoolYearDialog(
                 } else if (event.key == Key.Enter && event.type == KeyEventType.KeyDown) {
                     val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank()
                     if (isFormValid) {
-                        val normalizedStart = normalizeDate(startDate)
-                        val normalizedEnd = normalizeDate(endDate)
+                        val normalizedStart = DateUtils.normalizeDate(startDate)
+                        val normalizedEnd = DateUtils.normalizeDate(endDate)
                         onConfirm(name, normalizedStart, normalizedEnd, selectedTypes.toList(), numPeriods, generatedPeriods)
                     }
                     true
@@ -989,7 +1028,7 @@ fun NewSchoolYearDialog(
                     )
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        val startError = validateDate(startDate)
+                        val startError = DateUtils.validateDate(startDate)
                         FormTextField(
                             label = "Date de début *",
                             value = startDate,
@@ -1001,7 +1040,7 @@ fun NewSchoolYearDialog(
                             isError = startError != null
                         )
                         
-                        val endError = validateDate(endDate)
+                        val endError = DateUtils.validateDate(endDate)
                         FormTextField(
                             label = "Date de fin *",
                             value = endDate,
@@ -1014,8 +1053,8 @@ fun NewSchoolYearDialog(
                         )
                     }
                     
-                    val rangeError = if (validateDate(startDate) == null && validateDate(endDate) == null) 
-                        validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) else null
+                    val rangeError = if (DateUtils.validateDate(startDate) == null && DateUtils.validateDate(endDate) == null) 
+                        DateUtils.validateDateRange(DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate)) else null
                     if (rangeError != null) {
                         Text(rangeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     }
@@ -1089,7 +1128,7 @@ fun NewSchoolYearDialog(
                 // Section: Aperçu des Périodes
                 if (generatedPeriods.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
+                        val periodError = validatePeriodsSequence(generatedPeriods, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1102,7 +1141,7 @@ fun NewSchoolYearDialog(
                             }
                             TextButton(onClick = { 
                                 if (isManualEditing) {
-                                    generatedPeriods = generateDefaultPeriods(normalizeDate(startDate), normalizeDate(endDate), selectedTypes)
+                                    generatedPeriods = generateDefaultPeriods(DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate), selectedTypes)
                                 }
                                 isManualEditing = !isManualEditing 
                             }) {
@@ -1193,14 +1232,14 @@ fun NewSchoolYearDialog(
             }
         },
         confirmButton = {
-            val rangeError = validateDateRange(normalizeDate(startDate), normalizeDate(endDate))
-            val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
+            val rangeError = DateUtils.validateDateRange(DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
+            val periodError = validatePeriodsSequence(generatedPeriods, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
             val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && 
-                             validateDate(startDate) == null && validateDate(endDate) == null &&
+                             DateUtils.validateDate(startDate) == null && DateUtils.validateDate(endDate) == null &&
                              rangeError == null && periodError == null
             Button(
                 onClick = { 
-                    onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods) 
+                    onConfirm(name, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods) 
                 },
                 enabled = isFormValid,
                 shape = RoundedCornerShape(12.dp),
@@ -1219,49 +1258,6 @@ fun NewSchoolYearDialog(
             }
         }
     )
-}
-
-private fun validateDate(input: String): String? {
-    if (input.isBlank()) return null
-    val parts = input.trim().split(Regex("[\\-\\s/]+"))
-    if (parts.size != 3) return "Format: AAAA-MM-JJ"
-    
-    val year = parts[0].toIntOrNull() ?: return "Année invalide"
-    val month = parts[1].toIntOrNull() ?: return "Mois invalide"
-    val day = parts[2].toIntOrNull() ?: return "Jour invalide"
-    
-    if (month !in 1..12) return "Mois (1-12)"
-    if (year < 1900 || year > 2100) return "Année (1900-2100)"
-    
-    val maxDays = when (month) {
-        1, 3, 5, 7, 8, 10, 12 -> 31
-        4, 6, 9, 11 -> 30
-        2 -> if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) 29 else 28
-        else -> 0
-    }
-    
-    if (day !in 1..maxDays) return "Jour (1-$maxDays)"
-    
-    return null
-}
-
-private fun normalizeDate(input: String): String {
-    val parts = input.trim().split(Regex("[\\-\\s/]+"))
-    if (parts.size != 3) return input
-    return "${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}"
-}
-
-private fun validateDateRange(start: String, end: String): String? {
-    val s = try { LocalDate.parse(start) } catch (e: Exception) { return null }
-    val e = try { LocalDate.parse(end) } catch (e: Exception) { return null }
-    
-    if (e <= s) return "La date de fin doit être après la date de début"
-    
-    val days = e.toEpochDays() - s.toEpochDays()
-    if (days > 548) return "La durée ne peut pas dépasser 18 mois"
-    if (days < 90) return "La durée doit être d'au moins 3 mois"
-    
-    return null
 }
 
 private fun validatePeriodsSequence(periods: List<AcademicPeriodDto>, yearStart: String, yearEnd: String): String? {
@@ -1394,13 +1390,13 @@ fun EditSchoolYearDialog(
     // Auto-generation logic (same as NewSchoolYearDialog)
     LaunchedEffect(startDate, endDate, selectedTypes) {
         if (!isManualEditing) {
-            val startValid = try { LocalDate.parse(normalizeDate(startDate)); true } catch (e: Exception) { false }
-            val endValid = try { LocalDate.parse(normalizeDate(endDate)); true } catch (e: Exception) { false }
+            val startValid = try { LocalDate.parse(DateUtils.normalizeDate(startDate)); true } catch (e: Exception) { false }
+            val endValid = try { LocalDate.parse(DateUtils.normalizeDate(endDate)); true } catch (e: Exception) { false }
             
             if (startValid && endValid && name.isNotBlank()) {
                 generatedPeriods = generateDefaultPeriods(
-                    normalizeDate(startDate),
-                    normalizeDate(endDate),
+                    DateUtils.normalizeDate(startDate),
+                    DateUtils.normalizeDate(endDate),
                     selectedTypes
                 )
                 numPeriods = generatedPeriods.size
@@ -1415,14 +1411,14 @@ fun EditSchoolYearDialog(
                 onDismiss()
                 true
             } else if (event.key == Key.Enter && event.type == KeyEventType.KeyDown) {
-                val rangeError = validateDateRange(normalizeDate(startDate), normalizeDate(endDate))
-                val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
+                val rangeError = DateUtils.validateDateRange(DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
+                val periodError = validatePeriodsSequence(generatedPeriods, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
                 val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && 
-                                 validateDate(startDate) == null && validateDate(endDate) == null &&
+                                 DateUtils.validateDate(startDate) == null && DateUtils.validateDate(endDate) == null &&
                                  rangeError == null && periodError == null
                 if (isFormValid) {
-                    val normalizedStart = normalizeDate(startDate)
-                    val normalizedEnd = normalizeDate(endDate)
+                    val normalizedStart = DateUtils.normalizeDate(startDate)
+                    val normalizedEnd = DateUtils.normalizeDate(endDate)
                     onConfirm(name, normalizedStart, normalizedEnd, selectedTypes.toList(), numPeriods, generatedPeriods)
                 }
                 true
@@ -1467,7 +1463,7 @@ fun EditSchoolYearDialog(
                     )
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        val startError = validateDate(startDate)
+                        val startError = DateUtils.validateDate(startDate)
                         FormTextField(
                             label = "Date de début *",
                             value = startDate,
@@ -1479,7 +1475,7 @@ fun EditSchoolYearDialog(
                             isError = startError != null
                         )
                         
-                        val endError = validateDate(endDate)
+                        val endError = DateUtils.validateDate(endDate)
                         FormTextField(
                             label = "Date de fin *",
                             value = endDate,
@@ -1492,8 +1488,8 @@ fun EditSchoolYearDialog(
                         )
                     }
                     
-                    val rangeError = if (validateDate(startDate) == null && validateDate(endDate) == null) 
-                        validateDateRange(normalizeDate(startDate), normalizeDate(endDate)) else null
+                    val rangeError = if (DateUtils.validateDate(startDate) == null && DateUtils.validateDate(endDate) == null) 
+                        DateUtils.validateDateRange(DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate)) else null
                     if (rangeError != null) {
                         Text(rangeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     }
@@ -1561,7 +1557,7 @@ fun EditSchoolYearDialog(
                 // Period Preview Section
                 if (generatedPeriods.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
+                        val periodError = validatePeriodsSequence(generatedPeriods, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1698,14 +1694,14 @@ fun EditSchoolYearDialog(
             }
         },
         confirmButton = {
-            val rangeError = validateDateRange(normalizeDate(startDate), normalizeDate(endDate))
-            val periodError = validatePeriodsSequence(generatedPeriods, normalizeDate(startDate), normalizeDate(endDate))
+            val rangeError = DateUtils.validateDateRange(DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
+            val periodError = validatePeriodsSequence(generatedPeriods, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate))
             val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && 
-                             validateDate(startDate) == null && validateDate(endDate) == null &&
+                             DateUtils.validateDate(startDate) == null && DateUtils.validateDate(endDate) == null &&
                              rangeError == null && periodError == null
             Button(
                 onClick = { 
-                    onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods) 
+                    onConfirm(name, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate), selectedTypes.toList(), numPeriods, generatedPeriods) 
                 },
                 enabled = isFormValid,
                 shape = RoundedCornerShape(12.dp),
@@ -1783,7 +1779,7 @@ fun NewPeriodDialog(
                     )
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        val startError = validateDate(startDate)
+                        val startError = DateUtils.validateDate(startDate)
                         FormTextField(
                             label = "Date de début *",
                             value = startDate,
@@ -1795,7 +1791,7 @@ fun NewPeriodDialog(
                             isError = startError != null
                         )
                         
-                        val endError = validateDate(endDate)
+                        val endError = DateUtils.validateDate(endDate)
                         FormTextField(
                             label = "Date de fin *",
                             value = endDate,
@@ -1840,9 +1836,9 @@ fun NewPeriodDialog(
         },
         confirmButton = {
             val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && 
-                             validateDate(startDate) == null && validateDate(endDate) == null
+                             DateUtils.validateDate(startDate) == null && DateUtils.validateDate(endDate) == null
             Button(
-                onClick = { onConfirm(name, number, normalizeDate(startDate), normalizeDate(endDate), type) },
+                onClick = { onConfirm(name, number, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate), type) },
                 enabled = isFormValid,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -1920,7 +1916,7 @@ fun EditPeriodDialog(
                     )
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        val startError = validateDate(startDate)
+                        val startError = DateUtils.validateDate(startDate)
                         FormTextField(
                             label = "Date de début *",
                             value = startDate,
@@ -1932,7 +1928,7 @@ fun EditPeriodDialog(
                             isError = startError != null
                         )
                         
-                        val endError = validateDate(endDate)
+                        val endError = DateUtils.validateDate(endDate)
                         FormTextField(
                             label = "Date de fin *",
                             value = endDate,
@@ -1977,9 +1973,9 @@ fun EditPeriodDialog(
         },
         confirmButton = {
             val isFormValid = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && 
-                             validateDate(startDate) == null && validateDate(endDate) == null
+                             DateUtils.validateDate(startDate) == null && DateUtils.validateDate(endDate) == null
             Button(
-                onClick = { onConfirm(name, number, normalizeDate(startDate), normalizeDate(endDate), type) },
+                onClick = { onConfirm(name, number, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate), type) },
                 enabled = isFormValid,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -2227,7 +2223,14 @@ fun CalendarTab(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     if (state.events.isEmpty()) {
-                        Text("Aucun événement prévu", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                        AcademicEmptyState(
+                            title = "Aucun événement",
+                            subtitle = "Ajoutez des examens ou réunions.",
+                            icon = "📅",
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            colors = colors,
+                            isCompact = true
+                        )
                     }
 
                     state.events.forEach { event ->
@@ -2268,7 +2271,14 @@ fun CalendarTab(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     if (state.holidays.isEmpty()) {
-                        Text("Aucune vacance prévue", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                        AcademicEmptyState(
+                            title = "Aucune vacance",
+                            subtitle = "Planifiez les congés scolaires.",
+                            icon = "🏖️",
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            colors = colors,
+                            isCompact = true
+                        )
                     }
 
                     state.holidays.forEach { holiday ->
@@ -2366,6 +2376,20 @@ private fun TimelinePeriodItem(
             color = colors.textMuted
         )
         
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = period.status.toColor().copy(alpha = 0.1f)
+        ) {
+            Text(
+                period.status.toFrench(),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = period.status.toColor()
+            )
+        }
+        
         Spacer(modifier = Modifier.height(8.dp))
         
         DeadlineIndicator("Évaluations", period.evaluationDeadline, Icons.Default.Assignment, colors)
@@ -2433,7 +2457,7 @@ fun EditDeadlinesDialog(
                     colors = colors,
                     placeholder = "AAAA-MM-JJ",
                     icon = Icons.Default.Assignment,
-                    isError = evaluationDeadline.isNotEmpty() && validateDate(evaluationDeadline) != null
+                    isError = evaluationDeadline.isNotEmpty() && DateUtils.validateDate(evaluationDeadline) != null
                 )
                 
                 FormTextField(
@@ -2443,13 +2467,13 @@ fun EditDeadlinesDialog(
                     colors = colors,
                     placeholder = "AAAA-MM-JJ",
                     icon = Icons.Default.Description,
-                    isError = reportCardDeadline.isNotEmpty() && validateDate(reportCardDeadline) != null
+                    isError = reportCardDeadline.isNotEmpty() && DateUtils.validateDate(reportCardDeadline) != null
                 )
             }
         },
         confirmButton = {
-            val isValid = (evaluationDeadline.isEmpty() || validateDate(evaluationDeadline) == null) &&
-                         (reportCardDeadline.isEmpty() || validateDate(reportCardDeadline) == null)
+            val isValid = (evaluationDeadline.isEmpty() || DateUtils.validateDate(evaluationDeadline) == null) &&
+                         (reportCardDeadline.isEmpty() || DateUtils.validateDate(reportCardDeadline) == null)
             Button(
                 onClick = { 
                     onConfirm(
@@ -2512,6 +2536,7 @@ fun EventDialog(
                     icon = Icons.Default.Description
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val startError = DateUtils.validateDate(date)
                     FormTextField(
                         label = "Date *",
                         value = date,
@@ -2519,8 +2544,10 @@ fun EventDialog(
                         colors = colors,
                         modifier = Modifier.weight(1f),
                         placeholder = "AAAA-MM-JJ",
-                        icon = Icons.Default.CalendarToday
+                        icon = Icons.Default.CalendarToday,
+                        isError = startError != null
                     )
+                    val endError = if (endDate?.isNotEmpty() == true) DateUtils.validateDate(endDate!!) else null
                     FormTextField(
                         label = "Date de fin",
                         value = endDate ?: "",
@@ -2528,7 +2555,8 @@ fun EventDialog(
                         colors = colors,
                         modifier = Modifier.weight(1f),
                         placeholder = "AAAA-MM-JJ",
-                        icon = Icons.Default.Event
+                        icon = Icons.Default.Event,
+                        isError = endError != null
                     )
                 }
                 
@@ -2575,9 +2603,11 @@ fun EventDialog(
             }
         },
         confirmButton = {
+            val startError = DateUtils.validateDate(date)
+            val endError = if (endDate?.isNotEmpty() == true) DateUtils.validateDate(endDate!!) else null
             Button(
-                onClick = { onConfirm(title, description.ifBlank { null }, normalizeDate(date), endDate?.ifBlank { null }?.let { normalizeDate(it) }, type, color) },
-                enabled = title.isNotBlank() && date.isNotBlank(),
+                onClick = { onConfirm(title, description.ifBlank { null }, DateUtils.normalizeDate(date), endDate?.ifBlank { null }?.let { DateUtils.normalizeDate(it) }, type, color) },
+                enabled = title.isNotBlank() && date.isNotBlank() && startError == null && endError == null,
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Enregistrer")
@@ -2623,6 +2653,7 @@ fun HolidayDialog(
                     icon = Icons.Default.Badge
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val startError = DateUtils.validateDate(startDate)
                     FormTextField(
                         label = "Date de début *",
                         value = startDate,
@@ -2630,8 +2661,10 @@ fun HolidayDialog(
                         colors = colors,
                         modifier = Modifier.weight(1f),
                         placeholder = "AAAA-MM-JJ",
-                        icon = Icons.Default.CalendarToday
+                        icon = Icons.Default.CalendarToday,
+                        isError = startError != null
                     )
+                    val endError = DateUtils.validateDate(endDate)
                     FormTextField(
                         label = "Date de fin *",
                         value = endDate,
@@ -2639,7 +2672,8 @@ fun HolidayDialog(
                         colors = colors,
                         modifier = Modifier.weight(1f),
                         placeholder = "AAAA-MM-JJ",
-                        icon = Icons.Default.Event
+                        icon = Icons.Default.Event,
+                        isError = endError != null
                     )
                 }
                 
@@ -2660,9 +2694,13 @@ fun HolidayDialog(
             }
         },
         confirmButton = {
+            val startError = DateUtils.validateDate(startDate)
+            val endError = DateUtils.validateDate(endDate)
+            val rangeError = if (startError == null && endError == null) DateUtils.validateDateRange(DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate)) else null
+            
             Button(
-                onClick = { onConfirm(name, normalizeDate(startDate), normalizeDate(endDate), type) },
-                enabled = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank(),
+                onClick = { onConfirm(name, DateUtils.normalizeDate(startDate), DateUtils.normalizeDate(endDate), type) },
+                enabled = name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && startError == null && endError == null && rangeError == null,
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Enregistrer")
@@ -2717,4 +2755,46 @@ fun GenericDeleteDialog(
             }
         }
     )
+}
+
+@Composable
+private fun AcademicEmptyState(
+    title: String,
+    subtitle: String,
+    icon: String,
+    modifier: Modifier = Modifier,
+    colors: DashboardColors,
+    isCompact: Boolean = false
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = if (isCompact) 16.dp else 48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 16.dp)
+        ) {
+            Text(
+                text = icon,
+                style = MaterialTheme.typography.displayMedium.copy(fontSize = if (isCompact) 32.sp else 48.sp)
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (isCompact) 16.sp else 18.sp
+                ),
+                color = colors.textPrimary,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
 }

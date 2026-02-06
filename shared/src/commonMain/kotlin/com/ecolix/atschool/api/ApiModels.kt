@@ -26,7 +26,23 @@ data class StudentResponse(
     val nom: String,
     val prenom: String,
     val dateNaissance: String, // String for simplicity across platforms
-    val sexe: String
+    val sexe: String,
+    val classeId: Int? = null,
+    val classeNom: String? = null,
+    val dateInscription: String? = null,
+    val lieuNaissance: String? = null,
+    val adresse: String? = null,
+    val telephone: String? = null,
+    val email: String? = null,
+    val contactUrgence: String? = null,
+    val nomTuteur: String? = null,
+    val contactTuteur: String? = null,
+    val infoMedicale: String? = null,
+    val groupeSanguin: String? = null,
+    val remarques: String? = null,
+    val nationalite: String? = null,
+    val photoUrl: String? = null,
+    val deleted: Boolean = false
 )
 @Serializable
 data class DashboardStatsResponse(
@@ -382,9 +398,15 @@ data class LevelDto(
 data class ClassDto(
     val id: Int? = null,
     val tenantId: Int,
-    val niveauId: Int,
+    val niveauId: Int? = null,
+    val schoolLevelId: Int? = null,
     val code: String,
-    val nom: String
+    val nom: String,
+    val legacyLevel: String? = null,
+    val mainTeacher: String? = null,
+    val roomNumber: String? = null,
+    val capacity: Int? = null,
+    val description: String? = null
 )
 
 @Serializable
@@ -437,4 +459,28 @@ data class GradeLevelDto(
     val maxValue: Float,
     val description: String? = null,
     val color: String = "#000000"
+)
+
+@Serializable
+data class SchoolCycleDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val name: String,
+    val sortOrder: Int = 0
+)
+
+@Serializable
+data class SchoolLevelDto(
+    val id: Int? = null,
+    val tenantId: Int,
+    val cycleId: Int,
+    val name: String,
+    val sortOrder: Int = 0,
+    val standardCapacity: Int? = null
+)
+
+@Serializable
+data class TransferStudentRequest(
+    val studentIds: List<String>,
+    val newClassroomId: String
 )
