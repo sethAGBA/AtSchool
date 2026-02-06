@@ -100,6 +100,7 @@ data class StudentsUiState(
     val successMessage: String? = null,
     val lastSavedTimestamp: Long? = null,
     val showClassDeleteConfirmation: Boolean = false,
+    val showClassInUseDialog: Boolean = false,
     val classToDeleteId: String? = null
 ) {
     val colors: DashboardColors

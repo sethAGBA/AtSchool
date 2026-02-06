@@ -47,11 +47,11 @@ fun ClassDetailsScreen(
     onStudentClick: (String) -> Unit,
     onAddStudent: () -> Unit,
     onStudentDelete: (String) -> Unit = {},
-    onStudentRestoreAction: (String) -> Unit = {}
+    onStudentRestoreAction: (String) -> Unit = {},
+    onStudentTransfer: (String) -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showInUseDialog by remember { mutableStateOf(false) }
+    // Dialog states removed to use global screenModel state
     val tabs = listOf("Infos Générales", "Élèves (${students.size})")
 
     Column(
@@ -85,10 +85,7 @@ fun ClassDetailsScreen(
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = null, tint = colors.textLink)
                     }
-                    IconButton(onClick = { 
-                        if (classroom.studentCount > 0) showInUseDialog = true 
-                        else showDeleteDialog = true 
-                    }) {
+                    IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444))
                     }
                 }
@@ -124,10 +121,7 @@ fun ClassDetailsScreen(
                     }
                     
                     Button(
-                        onClick = { 
-                            if (classroom.studentCount > 0) showInUseDialog = true 
-                            else showDeleteDialog = true 
-                        },
+                        onClick = onDelete,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.1f), contentColor = Color(0xFFEF4444)),
                         shape = RoundedCornerShape(10.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f))
@@ -140,40 +134,6 @@ fun ClassDetailsScreen(
             }
         }
 
-        // Dialogs
-        if (showDeleteDialog) {
-            com.ecolix.presentation.components.ConfirmationDialog(
-                title = "Supprimer la classe",
-                message = "Êtes-vous sûr de vouloir supprimer la classe \"${classroom.name}\" ? Cette action est irréversible.",
-                onConfirm = {
-                    showDeleteDialog = false
-                    onDelete()
-                },
-                onDismiss = { showDeleteDialog = false },
-                colors = colors
-            )
-        }
-
-        if (showInUseDialog) {
-            AlertDialog(
-                onDismissRequest = { showInUseDialog = false },
-                containerColor = colors.card,
-                title = { 
-                    Text("Action impossible", color = colors.textPrimary, fontWeight = FontWeight.Bold) 
-                },
-                text = { 
-                    Text(
-                        "Impossible de supprimer cette classe car elle contient encore ${classroom.studentCount} élève(s). Veuillez d'abord retirer ou transférer tous les élèves.",
-                        color = colors.textPrimary
-                    ) 
-                },
-                confirmButton = {
-                    TextButton(onClick = { showInUseDialog = false }) {
-                        Text("D'accord", color = colors.textLink)
-                    }
-                }
-            )
-        }
 
         // Tabs
         if (isCompact) {
@@ -245,7 +205,8 @@ fun ClassDetailsScreen(
                         onStudentClick = onStudentClick,
                         onAddStudent = onAddStudent,
                         onStudentDelete = onStudentDelete,
-                        onStudentRestoreAction = onStudentRestoreAction
+                        onStudentRestoreAction = onStudentRestoreAction,
+                        onStudentTransfer = onStudentTransfer
                     )
                 }
             }
@@ -343,7 +304,8 @@ private fun ClassStudentsTab(
     onStudentClick: (String) -> Unit,
     onAddStudent: () -> Unit,
     onStudentDelete: (String) -> Unit = {},
-    onStudentRestoreAction: (String) -> Unit = {}
+    onStudentRestoreAction: (String) -> Unit = {},
+    onStudentTransfer: (String) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var loadedCount by remember { mutableStateOf(10) }
@@ -408,14 +370,13 @@ private fun ClassStudentsTab(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Inscrire", fontSize = 13.sp)
             }
-                }
         }
 
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 20.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f).fillMaxWidth()
         ) {
             if (filteredStudents.isEmpty()) {
                 item {
@@ -463,6 +424,7 @@ private fun ClassStudentsTab(
                         onToggleSelect = {},
                         onDelete = { onStudentDelete(student.id) },
                         onRestore = { onStudentRestoreAction(student.id) },
+                        onTransfer = { onStudentTransfer(student.id) },
                         onClick = { onStudentClick(student.id) }
                     )
                 }
@@ -477,6 +439,7 @@ private fun ClassStudentsTab(
             }
         }
     }
+}
 
 @Composable
 private fun ClassDetailRow(icon: ImageVector, label: String, value: String, colors: DashboardColors) {

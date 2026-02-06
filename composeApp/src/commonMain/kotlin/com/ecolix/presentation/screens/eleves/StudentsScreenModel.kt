@@ -113,11 +113,20 @@ class StudentsScreenModel(
     }
 
     fun onDeleteClassAttempt(classId: String) {
-        mutableState.update { it.copy(showClassDeleteConfirmation = true, classToDeleteId = classId) }
+        val classroom = state.value.classrooms.find { it.id == classId } ?: return
+        if (classroom.studentCount > 0) {
+            mutableState.update { it.copy(showClassInUseDialog = true, classToDeleteId = classId) }
+        } else {
+            mutableState.update { it.copy(showClassDeleteConfirmation = true, classToDeleteId = classId) }
+        }
     }
 
     fun dismissClassDeleteConfirmation() {
         mutableState.update { it.copy(showClassDeleteConfirmation = false, classToDeleteId = null) }
+    }
+
+    fun dismissClassInUseDialog() {
+        mutableState.update { it.copy(showClassInUseDialog = false, classToDeleteId = null) }
     }
 
     fun confirmClassDeletion() {

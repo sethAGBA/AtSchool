@@ -679,7 +679,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                                 screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.CLASS_FORM))
                             },
                             onDelete = {
-                                screenModel.deleteClassroom(uiState.selectedClassroom!!)
+                                screenModel.onDeleteClassAttempt(uiState.selectedClassroom!!)
                             },
                             onStudentClick = { studentId ->
                                 screenModel.updateState(uiState.copy(viewMode = StudentsViewMode.PROFILE, selectedStudentId = studentId))
@@ -692,6 +692,9 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                             },
                             onStudentRestoreAction = { studentId ->
                                 screenModel.restoreStudent(studentId)
+                            },
+                            onStudentTransfer = { studentId ->
+                                screenModel.showTransferDialog(setOf(studentId))
                             }
                         )
                     }
@@ -769,7 +772,8 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
             val isPermanent = uiState.visibilityFilter == "deleted"
             AlertDialog(
                 onDismissRequest = { screenModel.onDismissDeleteConfirmation() },
-                title = { Text(if (isPermanent) "Suppression DEFINITIVE" else "Confirmer la suppression", color = colors.textPrimary) },
+                containerColor = colors.card,
+                title = { Text(if (isPermanent) "Suppression DEFINITIVE" else "Confirmer la suppression", color = colors.textPrimary, fontWeight = FontWeight.Bold) },
                 text = { 
                     val count = uiState.studentToDeleteIds.size
                     val studentLabel = if (count > 1) "$count élèves" else "cet élève"
@@ -798,7 +802,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                     TextButton(onClick = { screenModel.onDismissDeleteConfirmation() }) {
                         Text("Annuler", color = colors.textMuted)
                     }
-                },
+                }
             )
         }
 
@@ -814,12 +818,14 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
         if (uiState.showClassDeleteConfirmation) {
             AlertDialog(
                 onDismissRequest = { screenModel.dismissClassDeleteConfirmation() },
-                title = { Text("Supprimer la classe", color = colors.textPrimary) },
+                containerColor = colors.card,
+                title = { Text("Supprimer la classe", color = colors.textPrimary, fontWeight = FontWeight.Bold) },
                 text = { Text("Voulez-vous vraiment supprimer cette classe ? Cette action est irréversible et retirera également les liens avec les élèves.", color = colors.textPrimary) },
                 confirmButton = {
                     Button(
                         onClick = { screenModel.confirmClassDeletion() },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Supprimer")
                     }
@@ -830,6 +836,30 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                     }
                 }
             )
+        }
+
+        if (uiState.showClassInUseDialog) {
+            val classroom = uiState.classrooms.find { it.id == uiState.classToDeleteId }
+            if (classroom != null) {
+                AlertDialog(
+                    onDismissRequest = { screenModel.dismissClassInUseDialog() },
+                    containerColor = colors.card,
+                    title = { 
+                        Text("Action impossible", color = colors.textPrimary, fontWeight = FontWeight.Bold) 
+                    },
+                    text = { 
+                        Text(
+                            "Impossible de supprimer cette classe car elle contient encore ${classroom.studentCount} élève(s). Veuillez d'abord retirer ou transférer tous les élèves.",
+                            color = colors.textPrimary
+                        ) 
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { screenModel.dismissClassInUseDialog() }) {
+                            Text("D'accord", color = colors.textLink)
+                        }
+                    }
+                )
+            }
         }
     }
 }
