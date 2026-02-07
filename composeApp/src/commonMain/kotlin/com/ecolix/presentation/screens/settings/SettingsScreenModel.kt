@@ -5,6 +5,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.ecolix.atschool.api.EstablishmentSettingsDto
 import com.ecolix.atschool.api.SettingsApiService
 import com.ecolix.atschool.api.UploadApiService
+import com.ecolix.data.services.SettingsDataCache
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -110,7 +111,8 @@ data class SettingsUiState(
 
 class SettingsScreenModel(
     private val settingsApiService: SettingsApiService,
-    private val uploadApiService: UploadApiService
+    private val uploadApiService: UploadApiService,
+    private val settingsCache: SettingsDataCache? = null
 ) : StateScreenModel<SettingsUiState>(SettingsUiState()) {
     
     init {
@@ -120,51 +122,21 @@ class SettingsScreenModel(
     fun loadSettings() {
         mutableState.update { it.copy(isLoading = true, error = null) }
         screenModelScope.launch {
+            // Vérifier le cache d'abord
+            val cacheKey = SettingsDataCache.KEY_SETTINGS
+            val cachedSettings = settingsCache?.get(cacheKey)
+            
+            if (cachedSettings != null) {
+                updateStateFromDto(cachedSettings)
+                return@launch
+            }
+            
+            // Sinon, charger depuis l'API
             settingsApiService.getSettings()
                 .onSuccess { dto ->
-                    mutableState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            schoolName = dto.schoolName,
-                            schoolCode = dto.schoolCode,
-                            schoolSlogan = dto.schoolSlogan ?: "",
-                            schoolLevel = dto.schoolLevel,
-                            logoUrl = dto.logoUrl,
-                            republicLogoUrl = dto.republicLogoUrl,
-                            ministry = dto.ministry ?: "",
-                            republicName = dto.republicName ?: "",
-                            republicMotto = dto.republicMotto ?: "",
-                            educationDirection = dto.educationDirection ?: "",
-                            inspection = dto.inspection ?: "",
-                            genCivility = dto.genCivility,
-                            genDirector = dto.genDirector ?: "",
-                            matCivility = dto.matCivility,
-                            matDirector = dto.matDirector ?: "",
-                            priCivility = dto.priCivility,
-                            priDirector = dto.priDirector ?: "",
-                            colCivility = dto.colCivility,
-                            colDirector = dto.colDirector ?: "",
-                            lycCivility = dto.lycCivility,
-                            lycDirector = dto.lycDirector ?: "",
-                            uniCivility = dto.uniCivility,
-                            uniDirector = dto.uniDirector ?: "",
-                            supCivility = dto.supCivility,
-                            supDirector = dto.supDirector ?: "",
-                            phone = dto.phone ?: "",
-                            email = dto.email ?: "",
-                            website = dto.website ?: "",
-                            bp = dto.bp ?: "",
-                            address = dto.address ?: "",
-                            pdfFooter = dto.pdfFooter ?: "",
-                            useTrimesters = dto.useTrimesters,
-                            useSemesters = dto.useSemesters,
-                            autoBackup = dto.autoBackup,
-                            backupFrequency = dto.backupFrequency,
-                            retentionDays = dto.retentionDays.toFloat(),
-                            localLogoBytes = null,
-                            localRepublicLogoBytes = null
-                        )
-                    }
+                    // Mettre en cache
+                    settingsCache?.put(cacheKey, dto)
+                    updateStateFromDto(dto)
                 }
                 .onFailure { error ->
                     val cleanError = when {
@@ -174,6 +146,52 @@ class SettingsScreenModel(
                     }
                     mutableState.update { it.copy(isLoading = false, error = cleanError) }
                 }
+        }
+    }
+
+    private fun updateStateFromDto(dto: EstablishmentSettingsDto) {
+        mutableState.update { state ->
+            state.copy(
+                isLoading = false,
+                schoolName = dto.schoolName,
+                schoolCode = dto.schoolCode,
+                schoolSlogan = dto.schoolSlogan ?: "",
+                schoolLevel = dto.schoolLevel,
+                logoUrl = dto.logoUrl,
+                republicLogoUrl = dto.republicLogoUrl,
+                ministry = dto.ministry ?: "",
+                republicName = dto.republicName ?: "",
+                republicMotto = dto.republicMotto ?: "",
+                educationDirection = dto.educationDirection ?: "",
+                inspection = dto.inspection ?: "",
+                genCivility = dto.genCivility,
+                genDirector = dto.genDirector ?: "",
+                matCivility = dto.matCivility,
+                matDirector = dto.matDirector ?: "",
+                priCivility = dto.priCivility,
+                priDirector = dto.priDirector ?: "",
+                colCivility = dto.colCivility,
+                colDirector = dto.colDirector ?: "",
+                lycCivility = dto.lycCivility,
+                lycDirector = dto.lycDirector ?: "",
+                uniCivility = dto.uniCivility,
+                uniDirector = dto.uniDirector ?: "",
+                supCivility = dto.supCivility,
+                supDirector = dto.supDirector ?: "",
+                phone = dto.phone ?: "",
+                email = dto.email ?: "",
+                website = dto.website ?: "",
+                bp = dto.bp ?: "",
+                address = dto.address ?: "",
+                pdfFooter = dto.pdfFooter ?: "",
+                useTrimesters = dto.useTrimesters,
+                useSemesters = dto.useSemesters,
+                autoBackup = dto.autoBackup,
+                backupFrequency = dto.backupFrequency,
+                retentionDays = dto.retentionDays.toFloat(),
+                localLogoBytes = null,
+                localRepublicLogoBytes = null
+            )
         }
     }
     
@@ -187,6 +205,9 @@ class SettingsScreenModel(
             
             settingsApiService.updateSettings(dto)
                 .onSuccess {
+                    // Update cache with new values
+                    settingsCache?.put(SettingsDataCache.KEY_SETTINGS, dto)
+                    
                     mutableState.update { it.copy(
                         isLoading = false, 
                         saveSuccess = true

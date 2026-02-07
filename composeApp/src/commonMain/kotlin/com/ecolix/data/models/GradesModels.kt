@@ -66,11 +66,16 @@ data class EvaluationSession(
     val gradeCount: Int
 )
 
+data class EvaluationSummary(
+    val typeName: String,
+    val mark: Float,
+    val weight: Float = 1f
+)
+
 data class ReportCardSubject(
     val name: String,
     val professor: String,
-    val devoir: Float?,
-    val composition: Float?,
+    val evaluations: List<EvaluationSummary>,
     val average: Float,
     val coefficient: Float,
     val total: Float,
@@ -120,7 +125,9 @@ data class ReportCard(
     val directorName: String = "",
     val isDuplicate: Boolean = false,
     val serie: String = "",
-    val nb: String = ""
+    val nb: String = "",
+    val schoolInfo: com.ecolix.atschool.api.EstablishmentSettingsDto? = null,
+    val generatedDate: String? = null
 )
 
 data class AcademicSummary(
@@ -160,7 +167,8 @@ data class GradesUiState(
         EvaluationTemplate("T1", "6ème A", EvaluationType.DEVOIR, "Devoir", 20f, 1f),
         EvaluationTemplate("T2", "6ème A", EvaluationType.COMPOSITION, "Composition", 20f, 2f),
         EvaluationTemplate("T3", "5ème A", EvaluationType.DEVOIR, "Interrogation SVT", 10f, 1f)
-    )
+    ),
+    val schoolInfo: com.ecolix.atschool.api.EstablishmentSettingsDto? = null
 ) {
     val colors: DashboardColors
         get() = if (isDarkMode) {

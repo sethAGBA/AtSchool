@@ -31,9 +31,93 @@ fun BulletinsListView(
     onGenerateAll: () -> Unit
 ) {
     val state by screenModel.state.collectAsState()
+    val generationProgress by screenModel.generationProgress.collectAsState()
     val filteredBulletins = screenModel.getFilteredBulletins()
     val paginatedBulletins = screenModel.getPaginatedBulletins()
     val totalPages = (filteredBulletins.size + state.itemsPerPage - 1) / state.itemsPerPage
+    
+    // Progress Dialog
+    if (generationProgress.total > 0 && !generationProgress.isComplete) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { 
+                Text(
+                    "Génération en cours...",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LinearProgressIndicator(
+                        progress = { generationProgress.progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    
+                    Text(
+                        "${generationProgress.completed + generationProgress.failed}/${generationProgress.total} bulletins traités",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    if (generationProgress.currentStudentName != null) {
+                        Text(
+                            "En cours: ${generationProgress.currentStudentName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = state.colors.textMuted
+                        )
+                    }
+                    
+                    if (generationProgress.failed > 0) {
+                        Text(
+                            "${generationProgress.failed} erreur(s)",
+                            color = Color(0xFFEF4444),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { screenModel.cancelBulletinGeneration() }) {
+                    Text("Annuler", color = Color(0xFFEF4444))
+                }
+            }
+        )
+    }
+    
+    // Success Dialog
+    if (generationProgress.isComplete && generationProgress.total > 0) {
+        AlertDialog(
+            onDismissRequest = { /* Reset progress */ },
+            title = { 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Génération terminée")
+                }
+            },
+            text = {
+                Column {
+                    Text("${generationProgress.completed} bulletin(s) généré(s) avec succès")
+                    if (generationProgress.failed > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "${generationProgress.failed} échec(s)",
+                            color = Color(0xFFEF4444)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { screenModel.cancelBulletinGeneration() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
     
     val selectedReportCard = state.selectedReportCard
     if (selectedReportCard != null) {

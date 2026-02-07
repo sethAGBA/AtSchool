@@ -4,13 +4,38 @@ import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.ecolix.data.models.*
 import com.ecolix.domain.services.PdfExportService
+import com.ecolix.domain.services.BulletinGenerationQueue
+import com.ecolix.domain.services.GenerationProgress
 import com.ecolix.data.services.PdfExportServiceImpl
+import com.ecolix.data.services.SettingsDataCache
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class GradesScreenModel(
-    private val pdfExportService: PdfExportService = PdfExportServiceImpl()
+    private val pdfExportService: PdfExportService = PdfExportServiceImpl(),
+    private val generationQueue: BulletinGenerationQueue? = null,
+    private val settingsCache: SettingsDataCache? = null
 ) : StateScreenModel<GradesUiState>(GradesUiState.sample(false)) {
+    
+    // Observe generation progress
+    val generationProgress: StateFlow<GenerationProgress> = generationQueue?.observeProgress()
+        ?.stateIn(screenModelScope, SharingStarted.Lazily, GenerationProgress.empty())
+        ?: kotlinx.coroutines.flow.MutableStateFlow(GenerationProgress.empty())
+
+    init {
+        if (settingsCache != null) {
+            screenModelScope.launch {
+                val settings = settingsCache.get(SettingsDataCache.KEY_SETTINGS)
+                if (settings != null) {
+                    mutableState.update { it.copy(schoolInfo = settings) }
+                }
+            }
+        }
+    }
+
 
     fun onViewModeChange(mode: GradesViewMode) {
         mutableState.update { it.copy(viewMode = mode) }
@@ -240,8 +265,10 @@ class GradesScreenModel(
                 ReportCardSubject(
                     name = name,
                     professor = prof,
-                    devoir = avg + 0.5f,
-                    composition = avg - 0.5f,
+                    evaluations = listOf(
+                        EvaluationSummary("Devoir", avg + 0.5f),
+                        EvaluationSummary("Composition", avg - 0.5f, 2f)
+                    ),
                     average = avg,
                     coefficient = (4 - (index % 3)).toFloat(), 
                     total = avg * (4 - (index % 3)),
@@ -275,10 +302,11 @@ class GradesScreenModel(
             absInjustifiees = 2,
             absJustifiees = 0,
             retards = 1,
-            forces = "OUI",
             pointsADevelopper = "NON",
             serie = "D",
-            nb = "NB: Il n'est délivré qu'un seul Bulletin. Delai de reclamation : 30 jours date de reception."
+            nb = "NB: Il n'est délivré qu'un seul Bulletin. Delai de reclamation : 30 jours date de reception.",
+            schoolInfo = mutableState.value.schoolInfo,
+            generatedDate = com.ecolix.presentation.utils.DateUtils.getCurrentDateFormatted()
         )
     }
     
@@ -337,6 +365,7 @@ class GradesScreenModel(
 
     /**
      * Exporte tous les bulletins de la classe en PDF (en fonction des filtres actuels)
+     * Utilise la file de génération asynchrone pour de meilleures performances
      */
     fun exportAllBulletinsToPdf() {
         screenModelScope.launch {
@@ -346,49 +375,73 @@ class GradesScreenModel(
                 return@launch
             }
             
-            try {
-                // Demander à l'utilisateur de choisir le dossier de destination
-                val destinationPath = com.ecolix.utils.FolderPicker.selectFolder()
-                if (destinationPath == null) {
-                    println("ℹ️ Batch export cancelled by user")
-                    return@launch
-                }
-
-                // Mettre à jour l'état pour indiquer l'export en cours
-                mutableState.update { 
-                    it.copy(
-                        isExporting = true, 
-                        exportProgress = 0f,
-                        batchExportCount = bulletins.size
-                    ) 
-                }
-                
-                bulletins.forEachIndexed { index, bulletinPreview ->
-                    val reportCard = createReportCardForBulletin(bulletinPreview.id)
-                    if (reportCard != null) {
-                        println("📄 Batch generating PDF for: ${reportCard.studentName} (${index + 1}/${bulletins.size})")
-                        
-                        // Générer le PDF
-                        val pdfData = pdfExportService.generateReportCardPdf(reportCard)
-                        
-                        // Exporter vers un fichier
-                        val fileName = "Bulletin_${reportCard.studentName.replace(" ", "_")}_${reportCard.period}"
-                        pdfExportService.exportToFile(pdfData, fileName, destinationPath)
-                    }
-                    
-                    // Mettre à jour le progrès
-                    mutableState.update { it.copy(exportProgress = (index + 1).toFloat() / bulletins.size) }
-                }
-                
-                println("✅ Batch export completed successfully")
-                
-            } catch (e: Exception) {
-                println("❌ Unexpected error during batch export: ${e.message}")
-            } finally {
-                mutableState.update { it.copy(isExporting = false, exportProgress = 0f) }
+            // Utiliser la file de génération si disponible
+            if (generationQueue != null) {
+                val bulletinIds = bulletins.map { it.id }
+                generationQueue.queueBulletins(bulletinIds)
+            } else {
+                // Fallback vers l'ancienne méthode synchrone
+                exportAllBulletinsSynchronously(bulletins)
             }
         }
     }
+    
+    /**
+     * Méthode de fallback pour l'export synchrone (sans file d'attente)
+     */
+    private suspend fun exportAllBulletinsSynchronously(bulletins: List<BulletinPreview>) {
+        try {
+            // Demander à l'utilisateur de choisir le dossier de destination
+            val destinationPath = com.ecolix.utils.FolderPicker.selectFolder()
+            if (destinationPath == null) {
+                println("ℹ️ Batch export cancelled by user")
+                return
+            }
+
+            // Mettre à jour l'état pour indiquer l'export en cours
+            mutableState.update { 
+                it.copy(
+                    isExporting = true, 
+                    exportProgress = 0f,
+                    batchExportCount = bulletins.size
+                ) 
+            }
+            
+            bulletins.forEachIndexed { index, bulletinPreview ->
+                val reportCard = createReportCardForBulletin(bulletinPreview.id)
+                if (reportCard != null) {
+                    println("📄 Batch generating PDF for: ${reportCard.studentName} (${index + 1}/${bulletins.size})")
+                    
+                    // Générer le PDF
+                    val pdfData = pdfExportService.generateReportCardPdf(reportCard)
+                    
+                    // Exporter vers un fichier
+                    val fileName = "Bulletin_${reportCard.studentName.replace(" ", "_")}_${reportCard.period}"
+                    pdfExportService.exportToFile(pdfData, fileName, destinationPath)
+                }
+                
+                // Mettre à jour le progrès
+                mutableState.update { it.copy(exportProgress = (index + 1).toFloat() / bulletins.size) }
+            }
+            
+            println("✅ Batch export completed successfully")
+            
+        } catch (e: Exception) {
+            println("❌ Unexpected error during batch export: ${e.message}")
+        } finally {
+            mutableState.update { it.copy(isExporting = false, exportProgress = 0f) }
+        }
+    }
+    
+    /**
+     * Annule la génération en cours
+     */
+    fun cancelBulletinGeneration() {
+        screenModelScope.launch {
+            generationQueue?.cancelAll()
+        }
+    }
+
 
 
     fun updateState(newState: GradesUiState) {

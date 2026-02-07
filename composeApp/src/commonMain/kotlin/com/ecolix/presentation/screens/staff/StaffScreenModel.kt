@@ -7,11 +7,13 @@ import com.ecolix.atschool.models.Staff
 import com.ecolix.atschool.models.StaffRole
 import com.ecolix.data.models.StaffUiState
 import com.ecolix.data.models.StaffViewMode
+import com.ecolix.data.services.StaffDataCache
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class StaffScreenModel(
-    private val staffApiService: StaffApiService
+    private val staffApiService: StaffApiService,
+    private val staffCache: StaffDataCache? = null
 ) : StateScreenModel<StaffUiState>(StaffUiState()) {
 
     init {
@@ -21,20 +23,46 @@ class StaffScreenModel(
     }
 
     suspend fun loadStaff() {
-        staffApiService.getAllStaff().onSuccess { staff ->
+        // Vérifier le cache d'abord
+        val cacheKey = StaffDataCache.KEY_ALL_STAFF
+        val cachedStaff = staffCache?.get(cacheKey)
+        
+        if (cachedStaff != null) {
             mutableState.update { 
-                // Extract unique departments from staff and merge with existing list
+                val distinctDepartments = cachedStaff.map { it.department }
+                    .filter { it.isNotEmpty() }
+                    .distinct()
+                
+                val updatedDepartments = (it.departments + distinctDepartments)
+                    .distinct()
+                    .filter { dept -> dept != "Toutes" }
+                    .sorted()
+                
+                val finalDepartments = listOf("Toutes") + updatedDepartments
+
+                it.copy(
+                    staffMembers = cachedStaff,
+                    departments = finalDepartments
+                ) 
+            }
+            return
+        }
+        
+        // Sinon, charger depuis l'API
+        staffApiService.getAllStaff().onSuccess { staff ->
+            // Mettre en cache
+            staffCache?.put(cacheKey, staff)
+            
+            mutableState.update { 
                 val distinctDepartments = staff.map { it.department }
                     .filter { it.isNotEmpty() }
                     .distinct()
                 
-                // Combine with default/existing departments, remove duplicates, sort
                 val updatedDepartments = (it.departments + distinctDepartments)
                     .distinct()
-                    .filter { dept -> dept != "Toutes" } // Remove "Toutes" to re-add it at start if needed, but usually UI handles "Toutes"
+                    .filter { dept -> dept != "Toutes" }
                     .sorted()
                 
-                // Ensure "Toutes" is first if used in filters, but for management list we might want just the list
                 val finalDepartments = listOf("Toutes") + updatedDepartments
 
                 it.copy(
@@ -83,6 +111,9 @@ class StaffScreenModel(
             }
             
             result.onSuccess {
+                // Invalider le cache
+                staffCache?.invalidateAll()
+                
                 // Wait for staff to load before resetting filters
                 loadStaff()
                 // Also ensure the department of the saved staff is in the list
@@ -112,6 +143,9 @@ class StaffScreenModel(
     fun deleteStaff(id: String) {
         screenModelScope.launch {
             staffApiService.deleteStaff(id).onSuccess {
+                // Invalider le cache
+                staffCache?.invalidateAll()
+                
                 loadStaff()
                 mutableState.update { it.copy(successMessage = "Membre du personnel supprimé") }
                 onViewModeChange(StaffViewMode.LIST)
@@ -129,6 +163,9 @@ class StaffScreenModel(
             if (idsToDelete.isEmpty()) return@launch
 
             staffApiService.deleteStaffBatch(idsToDelete).onSuccess {
+                // Invalider le cache
+                staffCache?.invalidateAll()
+                
                 loadStaff()
                 mutableState.update { 
                     it.copy(
@@ -151,6 +188,9 @@ class StaffScreenModel(
             if (idsToUpdate.isEmpty()) return@launch
 
             staffApiService.updateStaffStatusBatch(idsToUpdate, status).onSuccess {
+                // Invalider le cache
+                staffCache?.invalidateAll()
+                
                 loadStaff()
                 mutableState.update {
                     it.copy(

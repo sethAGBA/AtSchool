@@ -1,14 +1,50 @@
 package com.ecolix.data.services.templates
 
 import com.ecolix.data.models.ReportCard
+import com.ecolix.domain.services.BulletinCacheService
 
 /**
  * Génère le HTML du bulletin scolaire
  * Template basé sur la structure de ReportCardView.kt
+ * Utilise un cache pour améliorer les performances
  */
 object HtmlBulletinTemplate {
     
-    fun generateHtml(reportCard: ReportCard): String {
+    // Cache service injecté (optionnel pour rétrocompatibilité)
+    private var cacheService: BulletinCacheService? = null
+    
+    /**
+     * Configure le service de cache
+     * Doit être appelé au démarrage de l'application
+     */
+    fun setCacheService(service: BulletinCacheService) {
+        cacheService = service
+    }
+    
+    /**
+     * Génère le HTML du bulletin avec support de cache
+     */
+    suspend fun generateHtml(reportCard: ReportCard): String {
+        val cacheKey = "bulletin_${reportCard.id}_${reportCard.period}"
+        
+        // Vérifier le cache d'abord
+        cacheService?.getCachedBulletin(cacheKey)?.let { 
+            return it 
+        }
+        
+        // Générer si pas en cache
+        val html = generateHtmlInternal(reportCard)
+        
+        // Mettre en cache
+        cacheService?.cacheBulletin(cacheKey, html)
+        
+        return html
+    }
+    
+    /**
+     * Génération interne du HTML (sans cache)
+     */
+    private fun generateHtmlInternal(reportCard: ReportCard): String {
         return """
 <!DOCTYPE html>
 <html lang="fr">
@@ -210,22 +246,22 @@ object HtmlBulletinTemplate {
             <table class="header-table">
                 <tr>
                     <td>
-                        <h3>MINISTERE DES ENSEIGNEMENTS<br />PRIMAIRE, SECONDAIRE, TECHNIQUE</h3>
+                        <h3>${reportCard.schoolInfo?.ministry ?: "MINISTERE DES ENSEIGNEMENTS<br />PRIMAIRE, SECONDAIRE, TECHNIQUE"}</h3>
                         <p>---</p>
-                        <h3>DRE-MARITIME</h3>
+                        <h3>${reportCard.schoolInfo?.educationDirection ?: "DRE-MARITIME"}</h3>
                         <p>---</p>
-                        <h3>IESG-VOGAN</h3>
+                        <h3>${reportCard.schoolInfo?.inspection ?: "IESG-VOGAN"}</h3>
                     </td>
                     <td>
-                        <div class="logo">🎓</div>
-                        <h3>GROUPE SCOLAIRE ECOLIX</h3>
-                        <p>BP : 1234 Lomé</p>
-                        <p>Tel: 22 22 22 22</p>
-                        <p style="font-style: italic; font-size: 8px;">"Discipline - Travail - Succès"</p>
+                        <div class="logo">${if (reportCard.schoolInfo?.logoUrl != null) "<img src=\"${reportCard.schoolInfo?.logoUrl}\" style=\"max-height: 50px;\" alt=\"Logo\"/>" else "🎓"}</div>
+                        <h3>${reportCard.schoolInfo?.schoolName ?: "GROUPE SCOLAIRE ECOLIX"}</h3>
+                        <p>${reportCard.schoolInfo?.bp ?: "BP : 1234 Lomé"}</p>
+                        <p>${reportCard.schoolInfo?.phone?.let { "Tel: $it" } ?: "Tel: 22 22 22 22"}</p>
+                        <p style="font-style: italic; font-size: 8px;">"${reportCard.schoolInfo?.schoolSlogan ?: "Discipline - Travail - Succès"}"</p>
                     </td>
                     <td style="vertical-align: middle;">
-                        <h3>RÉPUBLIQUE TOGOLAISE</h3>
-                        <p>Travail - Liberté - Patrie</p>
+                        <h3>${reportCard.schoolInfo?.republicName ?: "RÉPUBLIQUE TOGOLAISE"}</h3>
+                        <p>${reportCard.schoolInfo?.republicMotto ?: "Travail - Liberté - Patrie"}</p>
                         <p style="margin-top: 10px; font-weight: bold;">Année Scolaire<br />${reportCard.academicYear}</p>
                     </td>
                 </tr>
@@ -371,7 +407,7 @@ object HtmlBulletinTemplate {
         
         <!-- Signatures -->
         <div class="card">
-            <p class="mb-2">Fait à Lomé, le ${getCurrentDate()}</p>
+            <p class="mb-2">Fait à ${reportCard.schoolInfo?.address?.split(",")?.lastOrNull()?.trim() ?: "Lomé"}, le ${getCurrentDate(reportCard)}</p>
             <table style="width: 100%; border: none;">
                 <tr>
                     <td style="width: 50%; border: 1px solid #e5e7eb; padding: 4px; text-align: center; vertical-align: top; min-height: 40px;">
@@ -405,11 +441,14 @@ object HtmlBulletinTemplate {
             } else ""
             
             val rows = subjects.joinToString("") { subject ->
+                val devoirs = subject.evaluations.filter { it.typeName == "Devoir" }.joinToString(", ") { it.mark.toString() }
+                val composition = subject.evaluations.find { it.typeName == "Composition" }?.mark?.toString() ?: "-"
+                
                 """
                 <tr>
                     <td class="subject-name">${subject.name}</td>
-                    <td>${subject.devoir ?: "-"}</td>
-                    <td>${subject.composition ?: "-"}</td>
+                    <td>${if (devoirs.isNotEmpty()) devoirs else "-"}</td>
+                    <td>${composition}</td>
                     <td class="font-bold">${subject.average}</td>
                     <td>${subject.coefficient.toInt()}</td>
                     <td>${subject.total}</td>
@@ -455,8 +494,8 @@ object HtmlBulletinTemplate {
             .replace("&lt;hr/&gt;", "<hr/>")
     }
     
-    private fun getCurrentDate(): String {
+    private fun getCurrentDate(reportCard: ReportCard): String {
         // Simple date formatting - you can use kotlinx-datetime for better formatting
-        return "24/01/2026"
+        return (reportCard.generatedDate ?: "24/01/2026")
     }
 }

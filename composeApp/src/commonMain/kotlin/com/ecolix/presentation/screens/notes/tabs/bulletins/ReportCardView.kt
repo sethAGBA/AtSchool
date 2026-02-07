@@ -87,11 +87,15 @@ fun ReportCardView(
                         ) {
                             // Column 1: Ministry, DRE, Inspection
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text("MINISTERE DES ENSEIGNEMENTS\nPRIMAIRE, SECONDAIRE, TECHNIQUE", style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center, color = colors.textPrimary)
+                                val ministry = reportCard.schoolInfo?.ministry ?: "MINISTERE DES ENSEIGNEMENTS\nPRIMAIRE, SECONDAIRE, TECHNIQUE"
+                                val dre = reportCard.schoolInfo?.educationDirection ?: "DRE-MARITIME"
+                                val inspection = reportCard.schoolInfo?.inspection ?: "IESG-VOGAN"
+
+                                Text(ministry, style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center, color = colors.textPrimary)
                                 Text("-----------------------------", style = MaterialTheme.typography.labelSmall.copy(fontSize = 6.sp), color = colors.textMuted)
-                                Text("DRE-MARITIME", style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center, color = colors.textPrimary)
+                                Text(dre, style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center, color = colors.textPrimary)
                                 Text("-----------------------------", style = MaterialTheme.typography.labelSmall.copy(fontSize = 6.sp), color = colors.textMuted)
-                                Text("IESG-VOGAN", style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center, color = colors.textPrimary)
+                                Text(inspection, style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center, color = colors.textPrimary)
                                 Text("-----------------------------", style = MaterialTheme.typography.labelSmall.copy(fontSize = 6.sp), color = colors.textMuted)
                             }
                             
@@ -107,16 +111,24 @@ fun ReportCardView(
                                     Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("GROUPE SCOLAIRE ECOLIX", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp), color = colors.textPrimary, textAlign = TextAlign.Center)
-                                Text("BP : 1234 Lomé", style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp), color = colors.textPrimary)
-                                Text("Tel: 22 22 22 22", style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp), color = colors.textPrimary)
-                                Text("\"Discipline - Travail - Succès\"", style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = colors.textMuted, textAlign = TextAlign.Center)
+                                val schoolName = reportCard.schoolInfo?.schoolName ?: "GROUPE SCOLAIRE ECOLIX"
+                                val bp = reportCard.schoolInfo?.bp ?: "BP : 1234 Lomé"
+                                val phone = reportCard.schoolInfo?.phone?.let { "Tel: $it" } ?: "Tel: 22 22 22 22"
+                                val slogan = reportCard.schoolInfo?.schoolSlogan ?: "Discipline - Travail - Succès"
+
+                                Text(schoolName, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp), color = colors.textPrimary, textAlign = TextAlign.Center)
+                                Text(bp, style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp), color = colors.textPrimary)
+                                Text(phone, style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp), color = colors.textPrimary)
+                                Text("\"$slogan\"", style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = colors.textMuted, textAlign = TextAlign.Center)
                             }
 
                             // Column 3: Republic Info
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text("RÉPUBLIQUE TOGOLAISE", style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), color = colors.textPrimary, textAlign = TextAlign.Center)
-                                Text("Travail - Liberté - Patrie", style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp), color = colors.textPrimary, textAlign = TextAlign.Center)
+                                val republic = reportCard.schoolInfo?.republicName ?: "RÉPUBLIQUE TOGOLAISE"
+                                val motto = reportCard.schoolInfo?.republicMotto ?: "Travail - Liberté - Patrie"
+                                
+                                Text(republic, style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), color = colors.textPrimary, textAlign = TextAlign.Center)
+                                Text(motto, style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp), color = colors.textPrimary, textAlign = TextAlign.Center)
                                 Spacer(modifier = Modifier.weight(1f))
                                 Text("Année Scolaire\n${reportCard.academicYear}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), textAlign = TextAlign.Center, color = colors.textPrimary)
                             }
@@ -204,10 +216,13 @@ fun ReportCardView(
                                        .padding(vertical = 8.dp, horizontal = 4.dp),
                                    verticalAlignment = Alignment.CenterVertically
                                ) {
+                                    val devoirs = subject.evaluations.filter { it.typeName == "Devoir" }.joinToString(", ") { it.mark.toString() }
+                                    val composition = subject.evaluations.find { it.typeName == "Composition" }?.mark?.toString() ?: "-"
+
                                    Text(subject.name, modifier = Modifier.weight(2.2f), fontWeight = FontWeight.Medium, fontSize = 12.sp, color = colors.textPrimary)
                                    
-                                   Text(subject.devoir?.toString() ?: "-", modifier = Modifier.weight(0.7f), fontSize = 11.sp, textAlign = TextAlign.Center, color = colors.textPrimary)
-                                   Text(subject.composition?.toString() ?: "-", modifier = Modifier.weight(0.7f), fontSize = 11.sp, textAlign = TextAlign.Center, color = colors.textPrimary)
+                                    Text(if (devoirs.isNotEmpty()) devoirs else "-", modifier = Modifier.weight(0.7f), fontSize = 11.sp, textAlign = TextAlign.Center, color = colors.textPrimary)
+                                    Text(composition, modifier = Modifier.weight(0.7f), fontSize = 11.sp, textAlign = TextAlign.Center, color = colors.textPrimary)
                                    Text(subject.average.toString(), modifier = Modifier.weight(0.8f), fontSize = 11.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                                    Text(subject.coefficient.toInt().toString(), modifier = Modifier.weight(0.5f), fontSize = 11.sp, textAlign = TextAlign.Center, color = colors.textPrimary)
                                    Text(subject.total.toString(), modifier = Modifier.weight(0.8f), fontSize = 11.sp, textAlign = TextAlign.Center, color = colors.textPrimary)
@@ -328,7 +343,9 @@ fun ReportCardView(
             item {
                 CardContainer(containerColor = colors.card) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Fait à Lomé, le 24/01/2026", style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
+                        val location = reportCard.schoolInfo?.address?.split(",")?.lastOrNull()?.trim() ?: "Lomé"
+                        val date = reportCard.generatedDate ?: "24/01/2026"
+                        Text("Fait à $location, le $date", style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         

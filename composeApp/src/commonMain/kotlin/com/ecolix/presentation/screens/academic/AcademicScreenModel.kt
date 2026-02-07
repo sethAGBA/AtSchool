@@ -15,8 +15,12 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-class AcademicScreenModel(private val structureApiService: StructureApiService) : 
-    StateScreenModel<AcademicUiState>(AcademicUiState()) {
+import com.ecolix.data.services.AcademicDataCache
+
+class AcademicScreenModel(
+    private val structureApiService: StructureApiService,
+    private val academicCache: AcademicDataCache? = null
+) : StateScreenModel<AcademicUiState>(AcademicUiState()) {
 
     // Local cache for all events/holidays to support client-side filtering
     private var allEvents: List<AcademicEvent> = emptyList()
@@ -30,10 +34,25 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
 
     private fun fetchAcademicSettings() {
         screenModelScope.launch {
+            // Check cache
+            val cachedSettings = academicCache?.get(AcademicDataCache.KEY_SETTINGS) as? AcademicSettingsDto
+            val cachedGrades = academicCache?.get(AcademicDataCache.KEY_GRADE_LEVELS) as? List<GradeLevelDto>
+            
+            if (cachedSettings != null && cachedGrades != null) {
+                mutableState.update { state ->
+                    state.copy(settings = cachedSettings.toUiModel(cachedGrades))
+                }
+                return@launch
+            }
+            
             structureApiService.getAcademicSettings()
                 .onSuccess { settingsDto ->
                     structureApiService.getGradeLevels()
                         .onSuccess { gradeLevelDtos ->
+                            // Update cache
+                            academicCache?.put(AcademicDataCache.KEY_SETTINGS, settingsDto)
+                            academicCache?.put(AcademicDataCache.KEY_GRADE_LEVELS, gradeLevelDtos)
+                            
                             mutableState.update { state ->
                                 state.copy(
                                     settings = settingsDto.toUiModel(gradeLevelDtos)
@@ -54,6 +73,10 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                     val gradeDtos = settings.gradeScale.gradeLevels.map { it.toDto(0) }
                     structureApiService.updateGradeLevels(gradeDtos)
                         .onSuccess {
+                            // Invalidate cache
+                            academicCache?.invalidate(AcademicDataCache.KEY_SETTINGS)
+                            academicCache?.invalidate(AcademicDataCache.KEY_GRADE_LEVELS)
+                            
                             mutableState.update { it.copy(
                                 isLoading = false,
                                 successMessage = "Paramètres enregistrés avec succès"
@@ -72,6 +95,17 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
 
     private fun loadCalendarData() {
         screenModelScope.launch {
+            // Check cache
+            val cachedEvents = academicCache?.get(AcademicDataCache.KEY_ALL_EVENTS) as? List<com.ecolix.atschool.api.AcademicEventDto>
+            val cachedHolidays = academicCache?.get(AcademicDataCache.KEY_ALL_HOLIDAYS) as? List<com.ecolix.atschool.api.HolidayDto>
+            
+            if (cachedEvents != null && cachedHolidays != null) {
+                allEvents = cachedEvents.map { dto -> dto.toUiModel() }
+                allHolidays = cachedHolidays.map { dto -> dto.toUiModel() }
+                updateFilteredData()
+                return@launch
+            }
+            
             val eventsResult = structureApiService.getAcademicEvents()
             val holidaysResult = structureApiService.getHolidays()
 
@@ -82,6 +116,9 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
                 seedDefaultCalendarData()
             } else {
                 // Update cache
+                academicCache?.put(AcademicDataCache.KEY_ALL_EVENTS, eventDtos)
+                academicCache?.put(AcademicDataCache.KEY_ALL_HOLIDAYS, holidayDtos)
+                
                 allEvents = eventDtos.map { dto -> dto.toUiModel() }
                 allHolidays = holidayDtos.map { dto -> dto.toUiModel() }
                 
@@ -194,36 +231,66 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
         screenModelScope.launch {
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             
+            // Check Cache
+            val cachedYears = academicCache?.get(AcademicDataCache.KEY_SCHOOL_YEARS) as? List<SchoolYearDto>
+            if (cachedYears != null) {
+                handleSchoolYears(cachedYears)
+                return@launch
+            }
+            
             structureApiService.getSchoolYears()
                 .onSuccess { yearDtos ->
-                    val uiYears = yearDtos.map { it.toUiModel() }
-                    mutableState.update { state ->
-                        state.copy(
-                            schoolYears = uiYears,
-                            isLoading = false
-                        )
-                    }
-                    
-                    // If there's an active year, load its periods
-                    uiYears.find { it.status == AcademicStatus.ACTIVE }?.let { activeYear ->
-                        mutableState.update { it.copy(selectedSchoolYearId = activeYear.id) }
-                        loadPeriods(activeYear.id)
-                    }
-                    
-                    updateStatistics()
-                    updateFilteredData()
+                    // Cache
+                    academicCache?.put(AcademicDataCache.KEY_SCHOOL_YEARS, yearDtos)
+                    handleSchoolYears(yearDtos)
                 }
                 .onFailure { error ->
                     mutableState.update { it.copy(isLoading = false, errorMessage = error.message) }
                 }
         }
     }
+    
+    private fun handleSchoolYears(yearDtos: List<SchoolYearDto>) {
+        val uiYears = yearDtos.map { it.toUiModel() }
+        mutableState.update { state ->
+            state.copy(
+                schoolYears = uiYears,
+                isLoading = false
+            )
+        }
+        
+        // If there's an active year, load its periods
+        uiYears.find { it.status == AcademicStatus.ACTIVE }?.let { activeYear ->
+            mutableState.update { it.copy(selectedSchoolYearId = activeYear.id) }
+            loadPeriods(activeYear.id)
+        }
+        
+        updateStatistics()
+        updateFilteredData()
+    }
 
     fun loadPeriods(yearId: String) {
         val idInt = yearId.toIntOrNull() ?: return
         screenModelScope.launch {
+            // Check Cache
+            val cacheKey = AcademicDataCache.keyForPeriods(idInt)
+            val cachedPeriods = academicCache?.get(cacheKey) as? List<AcademicPeriodDto>
+            
+            if (cachedPeriods != null) {
+                mutableState.update { state ->
+                    state.copy(
+                        periods = cachedPeriods.map { it.toUiModel() }
+                    )
+                }
+                updateStatistics()
+                return@launch
+            }
+            
             structureApiService.getPeriodsByYear(idInt)
                 .onSuccess { periodDtos ->
+                    // Cache
+                    academicCache?.put(cacheKey, periodDtos)
+                    
                     mutableState.update { state ->
                         state.copy(
                             periods = periodDtos.map { it.toUiModel() }
@@ -278,6 +345,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.createSchoolYear(dto)
                 .onSuccess { 
+                    academicCache?.invalidate(AcademicDataCache.KEY_SCHOOL_YEARS)
                     mutableState.update { it.copy(successMessage = "Année scolaire créée avec succès") }
                     loadData() 
                 }
@@ -305,6 +373,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.updateSchoolYear(idInt, dto)
                 .onSuccess { 
+                    academicCache?.invalidate(AcademicDataCache.KEY_SCHOOL_YEARS)
                     mutableState.update { it.copy(successMessage = "Année scolaire modifiée") }
                     loadData() 
                 }
@@ -320,6 +389,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             structureApiService.deleteSchoolYear(idInt)
                 .onSuccess { 
+                    academicCache?.invalidate(AcademicDataCache.KEY_SCHOOL_YEARS)
                     mutableState.update { it.copy(successMessage = "Année scolaire supprimée") }
                     loadData() 
                 }
@@ -335,6 +405,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             structureApiService.setDefaultSchoolYear(idInt)
                 .onSuccess { 
+                    academicCache?.invalidate(AcademicDataCache.KEY_SCHOOL_YEARS)
                     mutableState.update { it.copy(successMessage = "Année définie par défaut") }
                     loadData() 
                 }
@@ -361,6 +432,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.createAcademicPeriod(dto)
                 .onSuccess { 
+                    academicCache?.invalidate(AcademicDataCache.keyForPeriods(yearId))
                     mutableState.update { it.copy(successMessage = "Période créée avec succès") }
                     loadPeriods(yearId.toString())
                 }
@@ -390,6 +462,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.updateAcademicPeriod(idInt, dto)
                 .onSuccess { 
+                    academicCache?.invalidate(AcademicDataCache.keyForPeriods(yearId.toInt()))
                     mutableState.update { it.copy(successMessage = "Période modifiée") }
                     loadPeriods(yearId)
                 }
@@ -420,6 +493,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             structureApiService.deleteAcademicPeriod(idInt)
                 .onSuccess { 
+                    academicCache?.invalidate(AcademicDataCache.keyForPeriods(yearId.toInt()))
                     mutableState.update { it.copy(successMessage = "Période supprimée") }
                     loadPeriods(yearId)
                 }
@@ -444,6 +518,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.createAcademicEvent(dto)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.KEY_ALL_EVENTS)
                     mutableState.update { it.copy(successMessage = "Événement créé") }
                     loadCalendarData()
                 }
@@ -470,6 +545,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.updateAcademicEvent(idInt, dto)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.KEY_ALL_EVENTS)
                     mutableState.update { it.copy(successMessage = "Événement mis à jour") }
                     loadCalendarData()
                 }
@@ -485,6 +561,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             mutableState.update { it.copy(isLoading = true) }
             structureApiService.deleteAcademicEvent(idInt)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.KEY_ALL_EVENTS)
                     mutableState.update { it.copy(successMessage = "Événement supprimé") }
                     loadCalendarData()
                 }
@@ -507,6 +584,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.createHoliday(dto)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.KEY_ALL_HOLIDAYS)
                     mutableState.update { it.copy(successMessage = "Vacances créées") }
                     loadCalendarData()
                 }
@@ -530,6 +608,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             )
             structureApiService.updateHoliday(idInt, dto)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.KEY_ALL_HOLIDAYS)
                     mutableState.update { it.copy(successMessage = "Vacances mises à jour") }
                     loadCalendarData()
                 }
@@ -545,6 +624,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             mutableState.update { it.copy(isLoading = true) }
             structureApiService.deleteHoliday(idInt)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.KEY_ALL_HOLIDAYS)
                     mutableState.update { it.copy(successMessage = "Vacances supprimées") }
                     loadCalendarData()
                 }
@@ -576,6 +656,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             structureApiService.setAcademicPeriodStatus(idInt, statusString)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.keyForPeriods(yearId.toInt()))
                     mutableState.update { it.copy(successMessage = "Statut mis à jour") }
                     loadPeriods(yearId)
                 }
@@ -598,6 +679,7 @@ class AcademicScreenModel(private val structureApiService: StructureApiService) 
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             structureApiService.setSchoolYearStatus(idInt, statusString)
                 .onSuccess {
+                    academicCache?.invalidate(AcademicDataCache.KEY_SCHOOL_YEARS)
                     mutableState.update { it.copy(successMessage = "Statut de l'année mis à jour") }
                     loadData()
                 }

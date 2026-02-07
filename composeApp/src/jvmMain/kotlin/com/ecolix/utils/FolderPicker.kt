@@ -16,6 +16,31 @@ actual object FolderPicker {
      * @return Le chemin du dossier sélectionné, ou null si l'utilisateur a annulé
      */
     actual fun selectFolder(initialDirectory: String?): String? {
+        val osName = System.getProperty("os.name").lowercase()
+        val isMac = osName.contains("mac")
+        
+        if (isMac) {
+            System.setProperty("apple.awt.fileDialogForDirectories", "true")
+            try {
+                val dialog = java.awt.FileDialog(null as java.awt.Frame?, "Choisir le dossier de destination", java.awt.FileDialog.LOAD)
+                if (initialDirectory != null) {
+                    dialog.directory = initialDirectory
+                }
+                dialog.isVisible = true
+                
+                return if (dialog.directory != null && dialog.file != null) {
+                    File(dialog.directory, dialog.file).absolutePath
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                // Fallback to JFileChooser if native fails
+                e.printStackTrace()
+            } finally {
+                System.setProperty("apple.awt.fileDialogForDirectories", "false")
+            }
+        }
+
         return try {
             // Utiliser le look and feel du système pour une meilleure intégration
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())

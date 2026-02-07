@@ -126,14 +126,7 @@ fun EvaluationConfigView(
                         }
                         
                         Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Barème", style = MaterialTheme.typography.labelSmall, color = state.colors.textMuted)
-                                Text("/${template.maxValue.toInt()}", fontWeight = FontWeight.Bold, color = state.colors.textPrimary)
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Coeff.", style = MaterialTheme.typography.labelSmall, color = state.colors.textMuted)
-                                Text("x${template.coefficient.toInt()}", fontWeight = FontWeight.Bold, color = state.colors.textPrimary)
-                            }
+
                             
                             Row {
                                 IconButton(onClick = { 
@@ -287,62 +280,9 @@ private fun EvaluationTemplateDialog(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedTextField(
-                        value = maxValue,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) maxValue = it },
-                        label = { Text("Base / Barème") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = {
-                            if (label.isNotBlank()) {
-                                onSave(
-                                    EvaluationTemplate(
-                                        id = template?.id ?: "TMP_${kotlin.random.Random.nextInt(10000)}",
-                                        className = className,
-                                        type = type,
-                                        label = label,
-                                        maxValue = maxValue.toFloatOrNull() ?: 20f,
-                                        coefficient = coefficient.toFloatOrNull() ?: 1f
-                                    )
-                                )
-                            }
-                        }),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary,
-                            unfocusedBorderColor = colors.divider
-                        )
-                    )
-                    OutlinedTextField(
-                        value = coefficient,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) coefficient = it },
-                        label = { Text("Coefficient") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = {
-                            if (label.isNotBlank()) {
-                                onSave(
-                                    EvaluationTemplate(
-                                        id = template?.id ?: "TMP_${kotlin.random.Random.nextInt(10000)}",
-                                        className = className,
-                                        type = type,
-                                        label = label,
-                                        maxValue = maxValue.toFloatOrNull() ?: 20f,
-                                        coefficient = coefficient.toFloatOrNull() ?: 1f
-                                    )
-                                )
-                            }
-                        }),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary,
-                            unfocusedBorderColor = colors.divider
-                        )
-                    )
-                }
+                // Barème et Coefficient sont fixés par défaut (20 et 1)
+                // car gérés au niveau global ou matière
+
             }
         },
         confirmButton = {

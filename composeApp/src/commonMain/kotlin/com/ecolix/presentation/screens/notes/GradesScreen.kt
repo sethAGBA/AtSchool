@@ -20,9 +20,11 @@ import com.ecolix.presentation.screens.notes.tabs.grades.EvaluationConfigView
 import com.ecolix.presentation.screens.notes.tabs.bulletins.BulletinsListView
 import com.ecolix.presentation.screens.notes.tabs.archives.ArchivesView
 
+import org.koin.compose.koinInject
+
 @Composable
 fun GradesScreenContent(isDarkMode: Boolean) {
-    val screenModel = remember { GradesScreenModel() }
+    val screenModel = koinInject<com.ecolix.presentation.screens.notes.GradesScreenModel>()
     val state by screenModel.state.collectAsState()
 
     LaunchedEffect(isDarkMode) {

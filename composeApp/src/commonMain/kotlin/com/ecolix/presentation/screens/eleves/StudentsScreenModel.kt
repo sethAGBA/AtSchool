@@ -7,6 +7,9 @@ import com.ecolix.atschool.api.StudentResponse
 import com.ecolix.data.models.Student
 import com.ecolix.data.models.StudentsUiState
 import com.ecolix.data.models.StudentsViewMode
+import com.ecolix.data.services.StudentDataCache
+import com.ecolix.data.services.ClassroomDataCache
+import com.ecolix.data.services.StructureDataCache
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -18,7 +21,10 @@ class StudentsScreenModel(
     private val studentApiService: StudentApiService,
     private val structureApiService: com.ecolix.atschool.api.StructureApiService,
     private val staffApiService: com.ecolix.atschool.api.StaffApiService,
-    private val uploadApiService: com.ecolix.atschool.api.UploadApiService
+    private val uploadApiService: com.ecolix.atschool.api.UploadApiService,
+    private val studentCache: StudentDataCache? = null,
+    private val classroomCache: ClassroomDataCache? = null,
+    private val structureCache: StructureDataCache<Any>? = null
 ) : StateScreenModel<StudentsUiState>(StudentsUiState.sample(false)) {
 
     init {
@@ -33,7 +39,21 @@ class StudentsScreenModel(
 
     private fun loadClassrooms(): kotlinx.coroutines.Job {
         return screenModelScope.launch {
+            // Vérifier le cache d'abord
+            val cacheKey = ClassroomDataCache.KEY_ALL_CLASSES
+            val cachedClasses = classroomCache?.get(cacheKey)
+            
+            if (cachedClasses != null) {
+                val mappedClassrooms = cachedClasses.map { it.toUiClassroom() }
+                updateClassroomCounts(mappedClassrooms)
+                return@launch
+            }
+            
+            // Sinon, charger depuis l'API
             structureApiService.getClasses().onSuccess { classes ->
+                // Mettre en cache
+                classroomCache?.put(cacheKey, classes)
+                
                 val mappedClassrooms = classes.map { it.toUiClassroom() }
                 updateClassroomCounts(mappedClassrooms)
             }
@@ -91,6 +111,9 @@ class StudentsScreenModel(
             }
             
             result.onSuccess {
+                // Invalider le cache des classes
+                classroomCache?.invalidateAll()
+                
                 loadClassrooms()
                 mutableState.update { it.copy(successMessage = if (dto.id == null) "Classe créée avec succès" else "Classe mise à jour avec succès") }
                 onViewModeChange(com.ecolix.data.models.StudentsViewMode.CLASSES)
@@ -105,6 +128,9 @@ class StudentsScreenModel(
         screenModelScope.launch {
             val id = classId.toIntOrNull() ?: return@launch
             structureApiService.deleteClass(id).onSuccess {
+                // Invalider le cache des classes
+                classroomCache?.invalidateAll()
+                
                 loadClassrooms()
                 mutableState.update { it.copy(successMessage = "Classe supprimée avec succès") }
                 onViewModeChange(com.ecolix.data.models.StudentsViewMode.CLASSES)
@@ -140,14 +166,36 @@ class StudentsScreenModel(
 
     private fun loadStructure(): kotlinx.coroutines.Job {
         return screenModelScope.launch {
+            // Vérifier le cache pour cycles et niveaux
+            val cachedCycles = structureCache?.get(StructureDataCache.KEY_ALL_CYCLES) as? List<com.ecolix.atschool.api.SchoolCycleDto>
+            val cachedLevels = structureCache?.get(StructureDataCache.KEY_ALL_LEVELS) as? List<com.ecolix.atschool.api.SchoolLevelDto>
+            
+            if (cachedCycles != null && cachedLevels != null) {
+                mutableState.update { 
+                    it.copy(
+                        cycles = cachedCycles,
+                        levels = cachedLevels
+                    ) 
+                }
+                return@launch
+            }
+            
+            // Sinon, charger depuis l'API
             val cyclesResult = structureApiService.getSchoolCycles()
             val levelsResult = structureApiService.getAllSchoolLevels()
             
             if (cyclesResult.isSuccess && levelsResult.isSuccess) {
+                val cycles = cyclesResult.getOrDefault(emptyList())
+                val levels = levelsResult.getOrDefault(emptyList())
+                
+                // Mettre en cache
+                structureCache?.put(StructureDataCache.KEY_ALL_CYCLES, cycles as List<Any>)
+                structureCache?.put(StructureDataCache.KEY_ALL_LEVELS, levels as List<Any>)
+                
                 mutableState.update { 
                     it.copy(
-                        cycles = cyclesResult.getOrDefault(emptyList()),
-                        levels = levelsResult.getOrDefault(emptyList())
+                        cycles = cycles,
+                        levels = levels
                     ) 
                 }
             }
@@ -156,7 +204,22 @@ class StudentsScreenModel(
 
     private fun loadStudents() {
         screenModelScope.launch {
+            // Vérifier le cache d'abord
+            val cacheKey = StudentDataCache.KEY_ALL_STUDENTS
+            val cachedStudents = studentCache?.get(cacheKey)
+            
+            if (cachedStudents != null) {
+                val mappedStudents = cachedStudents.map { it.toUiStudent() }
+                mutableState.update { it.copy(students = mappedStudents) }
+                updateClassroomCounts(state.value.classrooms)
+                return@launch
+            }
+            
+            // Sinon, charger depuis l'API
             studentApiService.getStudents().onSuccess { responses ->
+                // Mettre en cache
+                studentCache?.put(cacheKey, responses)
+                
                 val mappedStudents = responses.map { it.toUiStudent() }
                 mutableState.update { it.copy(students = mappedStudents) }
                 updateClassroomCounts(state.value.classrooms)
@@ -281,6 +344,10 @@ class StudentsScreenModel(
             }
             
             result.onSuccess {
+                // Invalider les caches élèves et classes (pour les compteurs)
+                studentCache?.invalidateAll()
+                classroomCache?.invalidateAll()
+                
                 loadStudents()
                 mutableState.update { 
                     it.copy(
@@ -310,6 +377,10 @@ class StudentsScreenModel(
         screenModelScope.launch {
             val longId = id.toLongOrNull() ?: return@launch
             studentApiService.deleteStudent(longId).onSuccess {
+                // Invalider les caches
+                studentCache?.invalidateAll()
+                classroomCache?.invalidateAll()
+                
                 loadStudents()
                 mutableState.update { 
                     it.copy(
@@ -692,6 +763,11 @@ class StudentsScreenModel(
 
             studentApiService.transferStudents(studentIds.map { it }, newClassroomId).onSuccess { result ->
                 println("DEBUG [StudentsScreenModel] Transfer success: $result")
+                
+                // Invalider les caches
+                studentCache?.invalidateAll()
+                classroomCache?.invalidateAll()
+                
                 loadStudents()
                 mutableState.update {
                     it.copy(
