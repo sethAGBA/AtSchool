@@ -26,12 +26,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ecolix.data.models.DashboardColors
-import com.ecolix.data.models.Staff
-import com.ecolix.data.models.StaffRole
+import com.ecolix.atschool.models.Staff
+import com.ecolix.atschool.models.StaffRole
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,7 +61,7 @@ fun StaffForm(
     var gender by remember { mutableStateOf(staff?.gender ?: "M") }
     var birthDate by remember { mutableStateOf(staff?.birthDate ?: "") }
     var birthPlace by remember { mutableStateOf(staff?.birthPlace ?: "") }
-    var nationality by remember { mutableStateOf(staff?.nationality ?: "Ivoirienne") }
+    var nationality by remember { mutableStateOf(staff?.nationality ?: "Togolaise") }
     var maritalStatus by remember { mutableStateOf(staff?.maritalStatus ?: "Célibataire") }
     var numberOfChildren by remember { mutableStateOf(staff?.numberOfChildren?.toString() ?: "0") }
     
@@ -321,7 +322,7 @@ fun StaffForm(
             onClick = {
                 if (isFirstNameValid && isLastNameValid && isEmailValid) {
                     val newStaff = Staff(
-                        id = staff?.id ?: "STAFF_${Random.nextInt(1000, 9999)}",
+                        id = staff?.id ?: "",
                         firstName = firstName,
                         lastName = lastName,
                         email = email,
@@ -393,7 +394,8 @@ private fun FormTextField(
     placeholder: String = "",
     icon: ImageVector? = null,
     isError: Boolean = false,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next
 ) {
     OutlinedTextField(
         value = value,
@@ -402,7 +404,7 @@ private fun FormTextField(
         placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
         modifier = modifier.fillMaxWidth(),
         isError = isError,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         trailingIcon = icon?.let { { Icon(it, null, modifier = Modifier.size(18.dp), tint = colors.textMuted) } },
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(

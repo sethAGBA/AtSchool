@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ecolix.data.models.DashboardColors
-import com.ecolix.data.models.Staff
+import com.ecolix.atschool.models.Staff
 import com.ecolix.data.models.Subject
 import com.ecolix.presentation.components.CardContainer
 

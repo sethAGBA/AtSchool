@@ -1,6 +1,8 @@
 package com.ecolix.presentation.screens.subjects
 
 import cafe.adriel.voyager.core.model.ScreenModel
+import com.ecolix.atschool.models.Staff
+import com.ecolix.atschool.models.StaffRole
 import com.ecolix.data.models.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -96,8 +98,7 @@ class SubjectsScreenModel : ScreenModel {
     // Teachers Management
     fun getAvailableTeachers(): List<Staff> {
         // In a real app, this would come from a Repository. 
-        // For now we use the sample from StaffUiState filtered by Role.TEACHER
-        return StaffUiState.sample(false).staffMembers.filter { it.role == StaffRole.TEACHER }
+        return emptyList()
     }
 
     fun updateClassSubjectProfessor(className: String, subjectId: String, professorId: String?) {

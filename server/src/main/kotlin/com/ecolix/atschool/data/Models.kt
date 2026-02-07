@@ -341,6 +341,43 @@ object GradeLevels : IntIdTable("grade_levels") {
     val color = varchar("color", 10).default("#000000") // Hex code
 }
 
+object StaffTable : IntIdTable("staff") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val firstName = varchar("first_name", 100)
+    val lastName = varchar("last_name", 100)
+    val role = varchar("role", 50)
+    val department = varchar("department", 100)
+    val email = varchar("email", 100).uniqueIndex()
+    val phone = varchar("phone", 50)
+    val joinDate = varchar("join_date", 20)
+    val status = varchar("status", 20).default("Actif")
+    val photoUrl = text("photo_url").nullable()
+    val matricule = varchar("matricule", 50).nullable()
+    val address = text("address").nullable()
+    val gender = varchar("gender", 1).default("M")
+    val specialty = varchar("specialty", 100).nullable()
+    val assignedClasses = text("assigned_classes").default("") 
+    val isDeleted = bool("is_deleted").default(false)
+    
+    val qualifications = text("qualifications").default("")
+    val birthDate = varchar("birth_date", 20).nullable()
+    val birthPlace = varchar("birth_place", 100).nullable()
+    val nationality = varchar("nationality", 200).nullable()
+    val idNumber = varchar("id_number", 50).nullable()
+    val socialSecurityNumber = varchar("social_security_number", 50).nullable()
+    val maritalStatus = varchar("marital_status", 50).nullable()
+    val numberOfChildren = integer("number_of_children").default(0)
+    val region = varchar("region", 100).nullable()
+    val highestDegree = varchar("highest_degree", 100).nullable()
+    val experienceYears = integer("experience_years").default(0)
+    val previousInstitution = varchar("previous_institution", 200).nullable()
+    val contractType = varchar("contract_type", 50).nullable()
+    val baseSalary = double("base_salary").nullable()
+    val weeklyHours = integer("weekly_hours").default(0)
+    val supervisor = varchar("supervisor", 100).nullable()
+    val retirementDate = varchar("retirement_date", 20).nullable()
+}
+
 @Serializable
 data class GlobalStatsResponse(
     val totalSchools: Int,

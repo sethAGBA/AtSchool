@@ -203,31 +203,21 @@ fun ConfirmationDialog(
     message: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    colors: com.ecolix.data.models.DashboardColors
+    colors: com.ecolix.data.models.DashboardColors,
+    confirmText: String = "Supprimer",
+    confirmColor: Color = MaterialTheme.colorScheme.error
 ) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.card,
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(title, color = colors.textPrimary, fontWeight = FontWeight.Bold)
-                androidx.compose.material3.IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, null, tint = colors.textMuted)
-                }
-            }
-        },
+        title = { Text(title, color = colors.textPrimary, fontWeight = FontWeight.Bold) },
         text = { Text(message, color = colors.textPrimary) },
         confirmButton = {
-            androidx.compose.material3.Button(
+            androidx.compose.material3.TextButton(
                 onClick = onConfirm,
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White),
-                shape = RoundedCornerShape(8.dp),
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = confirmColor)
             ) {
-                Text("Supprimer")
+                Text(confirmText, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -370,3 +360,5 @@ fun FormTextField(
         }
     }
 }
+
+

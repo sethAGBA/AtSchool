@@ -10,6 +10,7 @@ import com.ecolix.atschool.api.structureRoutes
 import com.ecolix.atschool.api.academicRoutes
 import com.ecolix.atschool.api.settingsRoutes
 import com.ecolix.atschool.api.uploadRoutes
+import com.ecolix.atschool.api.staffRoutes
 import com.ecolix.atschool.data.DatabaseFactory
 import com.ecolix.atschool.di.appModule
 import io.ktor.serialization.kotlinx.json.*
@@ -108,6 +109,7 @@ fun Application.module() {
         superAdminRoutes()
         settingsRoutes()
         uploadRoutes()
+        staffRoutes()
 
         get("/uploads/{filename}") {
             val filename = call.parameters["filename"] ?: return@get call.respond(io.ktor.http.HttpStatusCode.BadRequest)

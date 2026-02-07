@@ -43,8 +43,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ecolix.data.models.DashboardColors
-import com.ecolix.data.models.Staff
+import com.ecolix.atschool.models.Staff
+import com.ecolix.atschool.models.StaffRole
+import com.ecolix.data.models.*
 import com.ecolix.presentation.components.CardContainer
 import com.ecolix.presentation.components.TagPill
 
@@ -205,7 +206,7 @@ fun StaffProfileScreen(
             }
 
             // Assigned Classes (if teacher)
-            if (staff.role == com.ecolix.data.models.StaffRole.TEACHER && staff.assignedClasses.isNotEmpty()) {
+            if (staff.role == StaffRole.TEACHER && staff.assignedClasses.isNotEmpty()) {
                 item {
                     CardContainer(containerColor = colors.card) {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {

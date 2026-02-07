@@ -43,7 +43,8 @@ object DatabaseFactory {
                 AcademicEvents,
                 Holidays,
                 AcademicSettings,
-                GradeLevels
+                GradeLevels,
+                StaffTable
             )
         }
 

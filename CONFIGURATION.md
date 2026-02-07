@@ -185,3 +185,27 @@ curl -X POST http://localhost:8080/auth/login \
     "nom": "Admin",
     "prenom": "Principal"
   }' -->
+
+
+
+
+  docker exec atschool-db-1 psql -U atschool -d atschool -c "SELECT COUNT(*) FROM staff WHERE is_deleted = false;"
+ count 
+-------
+     3
+(1 row)
+
+seth@MacBook-Pro-de-seth AtSchool % docker exec atschool-db-1 psql -U atschool -d atschool -c "SELECT id, tenant_id, first_name, last_name, status, is_deleted FROM staff;"
+ id | tenant_id | first_name | last_name | status | is_deleted 
+----+-----------+------------+-----------+--------+------------
+  1 |         1 | Pakam      | AGBA      | Actif  | f
+  2 |         1 | Robert     | Pakam     | Actif  | f
+  3 |         1 | Georges    | Momo      | Actif  | f
+(3 rows)
+
+seth@MacBook-Pro-de-seth AtSchool % docker exec atschool-db-1 psql -U atschool -d atschool -c "SELECT id, tenant_id, email, role FROM users;"
+ id | tenant_id |       email        |    role     
+----+-----------+--------------------+-------------
+  1 |         1 | seth@atschool.com  | SUPER_ADMIN
+  2 |         1 | admin@atschool.com | ADMIN
+(2 rows)

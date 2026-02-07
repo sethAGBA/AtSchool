@@ -23,9 +23,9 @@ data class ActivityDto(
 
 class DashboardRepository {
     fun getDashboardStats(tenantId: Int): DashboardStatsResponse = transaction {
-        val studentsCount = Eleves.selectAll().where { Eleves.tenantId eq tenantId }.count().toInt()
+        val studentsCount = Eleves.selectAll().where { (Eleves.tenantId eq tenantId) and (Eleves.deleted eq false) }.count().toInt()
         val classesCount = Classes.selectAll().where { Classes.tenantId eq tenantId }.count().toInt()
-        val staffCount = Users.selectAll().where { (Users.tenantId eq tenantId) and (Users.role neq "PARENT") }.count().toInt()
+        val staffCount = StaffTable.selectAll().where { (StaffTable.tenantId eq tenantId) and (StaffTable.isDeleted eq false) }.count().toInt()
         
         val revenue = Paiements.selectAll().where { Paiements.tenantId eq tenantId }
             .sumOf { it[Paiements.montant] }

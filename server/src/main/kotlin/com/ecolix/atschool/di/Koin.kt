@@ -26,6 +26,7 @@ val appModule = module {
     single { AcademicSettingsRepository() }
     single { GradeLevelRepository() }
     single { EstablishmentSettingsRepository() }
+    single { StaffRepository() }
     single { StructureSeedingRepository(get(), get()) }
     single { 
         AuthService(

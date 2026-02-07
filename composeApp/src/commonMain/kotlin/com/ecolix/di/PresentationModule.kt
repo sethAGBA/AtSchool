@@ -15,4 +15,5 @@ val presentationModule = module {
     factory { SuperAdminScreenModel(get()) }
     single { SettingsScreenModel(get(), get()) }
     factory { AcademicScreenModel(get()) }
+    factory { com.ecolix.presentation.screens.staff.StaffScreenModel(get()) }
 }

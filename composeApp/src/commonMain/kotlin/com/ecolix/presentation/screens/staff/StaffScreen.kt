@@ -22,23 +22,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ecolix.atschool.models.Staff
+import com.ecolix.atschool.models.StaffRole
 import com.ecolix.data.models.DashboardColors
-import com.ecolix.data.models.StaffRole
 import com.ecolix.data.models.StaffViewMode
 import com.ecolix.presentation.components.*
+import org.koin.compose.koinInject
 
 @Composable
 fun StaffScreenContent(isDarkMode: Boolean) {
-    val screenModel = remember { StaffScreenModel() }
+    val screenModel: StaffScreenModel = koinInject()
     val state by screenModel.state.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            screenModel.clearError()
+        }
+    }
+
+    LaunchedEffect(state.successMessage) {
+        state.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            screenModel.clearSuccess()
+        }
+    }
 
     LaunchedEffect(isDarkMode) {
         screenModel.onDarkModeChange(isDarkMode)
     }
     
-    val filteredStaff = remember(state.searchQuery, state.roleFilter, state.departmentFilter, state.selectedGender, state.statusFilter) {
+    val filteredStaff = remember(state.staffMembers, state.searchQuery, state.roleFilter, state.departmentFilter, state.selectedGender, state.statusFilter) {
         state.staffMembers.filter { member ->
             val matchRole = state.roleFilter == null || member.role == state.roleFilter
             val matchDept = state.departmentFilter == null || member.department == state.departmentFilter
@@ -96,8 +115,28 @@ fun StaffScreenContent(isDarkMode: Boolean) {
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isCompact = maxWidth < 800.dp
+    var showDeleteStaffDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteStaffDialog) {
+        ConfirmationDialog(
+            title = "Supprimer la sélection ?",
+            message = "Êtes-vous sûr de vouloir supprimer ${state.selectedStaffIds.size} membre(s) du personnel ? Cette action est irréversible.",
+            onConfirm = {
+                screenModel.deleteSelectedStaff()
+                showDeleteStaffDialog = false
+            },
+            onDismiss = { showDeleteStaffDialog = false },
+            colors = state.colors
+        )
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = state.colors.background,
+        modifier = Modifier.fillMaxSize()
+    ) { padding ->
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val isCompact = maxWidth < 800.dp
         
         Column(
             modifier = Modifier
@@ -175,6 +214,7 @@ fun StaffScreenContent(isDarkMode: Boolean) {
                         modifier = Modifier.weight(1f)
                     )
                     
+                    
                     if (state.viewMode == StaffViewMode.LIST || state.viewMode == StaffViewMode.GRID) {
                         IconButton(
                             onClick = { screenModel.onToggleSelectionMode() },
@@ -184,6 +224,19 @@ fun StaffScreenContent(isDarkMode: Boolean) {
                             )
                         ) {
                             Icon(Icons.Default.Checklist, contentDescription = "Sélectionner")
+                        }
+                        
+                        IconButton(
+                            onClick = { 
+                                screenModel.onViewModeChange(StaffViewMode.LIST)
+                                screenModel.refreshStaff() 
+                            },
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = state.colors.card,
+                                contentColor = state.colors.textPrimary
+                            )
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Actualiser")
                         }
                     }
 
@@ -283,10 +336,39 @@ fun StaffScreenContent(isDarkMode: Boolean) {
 
                             if (filteredStaff.isEmpty()) {
                                 item {
-                                    EmptyState(
-                                        message = "Aucun membre du personnel trouvé pour ces critères.",
-                                        colors = state.colors
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 64.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Text(
+                                                text = "👔",
+                                                style = MaterialTheme.typography.displayMedium.copy(fontSize = 48.sp)
+                                            )
+                                            Text(
+                                                text = "Aucun membre du personnel trouvé",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp
+                                                ),
+                                                color = state.colors.textPrimary
+                                            )
+                                            Text(
+                                                text = if (state.searchQuery.isNotEmpty())
+                                                    "Aucun membre du personnel ne correspond à votre recherche."
+                                                else
+                                                    "Commencez par ajouter des membres du personnel via le bouton Ajouter.",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = state.colors.textMuted,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -321,10 +403,39 @@ fun StaffScreenContent(isDarkMode: Boolean) {
 
                             if (filteredStaff.isEmpty()) {
                                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                                    EmptyState(
-                                        message = "Aucun membre du personnel trouvé pour ces critères.",
-                                        colors = state.colors
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 64.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Text(
+                                                text = "👔",
+                                                style = MaterialTheme.typography.displayMedium.copy(fontSize = 48.sp)
+                                            )
+                                            Text(
+                                                text = "Aucun membre du personnel trouvé",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp
+                                                ),
+                                                color = state.colors.textPrimary
+                                            )
+                                            Text(
+                                                text = if (state.searchQuery.isNotEmpty())
+                                                    "Aucun membre du personnel ne correspond à votre recherche."
+                                                else
+                                                    "Commencez par ajouter des membres du personnel via le bouton Ajouter.",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = state.colors.textMuted,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -349,12 +460,24 @@ fun StaffScreenContent(isDarkMode: Boolean) {
                             isCompact = isCompact,
                             onBack = { screenModel.onViewModeChange(StaffViewMode.LIST) },
                             onSave = { updatedStaff ->
-                                val newList = state.staffMembers.toMutableList()
-                                val index = newList.indexOfFirst { it.id == updatedStaff.id }
-                                if (index != -1) newList[index] = updatedStaff
-                                else newList.add(updatedStaff)
-                                screenModel.updateState(state.copy(staffMembers = newList, viewMode = StaffViewMode.LIST))
+                                screenModel.saveStaff(updatedStaff)
                             }
+                        )
+                    }
+                    StaffViewMode.MANAGEMENT -> {
+                        StaffManagementScreen(
+                            currentDepartments = state.departments,
+                            colors = state.colors,
+                            onAddDepartment = { screenModel.addDepartment(it) },
+                            onDeleteDepartment = { screenModel.deleteDepartment(it) }
+                        )
+                    }
+                    StaffViewMode.TRASH -> {
+                        StaffTrashScreen(
+                            deletedStaff = state.staffMembers, // In TRASH mode, staffMembers contains deleted items
+                            colors = state.colors,
+                            onRestore = { screenModel.restoreStaff(it) },
+                            onPermanentDelete = { screenModel.permanentDeleteStaff(it) }
                         )
                     }
                 }
@@ -371,13 +494,14 @@ fun StaffScreenContent(isDarkMode: Boolean) {
             StaffSelectionActionBar(
                 selectedCount = state.selectedStaffIds.size,
                 onClearSelection = { screenModel.onClearSelection() },
-                onDeleteSelected = { /* Logic */ },
-                onStatusChange = { /* Logic */ },
+                onDeleteSelected = { showDeleteStaffDialog = true },
+                onStatusChange = { screenModel.updateSelectedStaffStatus(it) },
                 colors = state.colors,
                 isCompact = isCompact
             )
         }
     }
+}
 }
 
 @Composable

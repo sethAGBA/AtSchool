@@ -12,6 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,10 +24,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ecolix.data.models.DashboardColors
-import com.ecolix.data.models.Staff
-import com.ecolix.data.models.StaffRole
-import com.ecolix.data.models.StaffViewMode
+import com.ecolix.atschool.models.Staff
+import com.ecolix.atschool.models.StaffRole
+import com.ecolix.data.models.*
 import com.ecolix.presentation.components.CardContainer
 import com.ecolix.presentation.components.TagPill
 
@@ -82,8 +83,9 @@ fun StaffRow(
             
             Column(horizontalAlignment = Alignment.End) {
                 TagPill(staff.status, if (staff.status == "Actif") Color(0xFF10B981) else Color(0xFFF59E0B))
-                if (staff.matricule != null) {
-                    Text(staff.matricule, style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
+                val matricule = staff.matricule
+                if (matricule != null) {
+                    Text(matricule, style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
                 }
             }
             
@@ -155,8 +157,9 @@ fun StaffCard(
             
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 StaffInfoMini(Icons.Default.Work, staff.department, colors)
-                if (staff.specialty != null) {
-                    StaffInfoMini(Icons.Default.Book, staff.specialty, colors)
+                val specialty = staff.specialty
+                if (specialty != null) {
+                    StaffInfoMini(Icons.Default.Book, specialty, colors)
                 }
                 StaffInfoMini(Icons.Default.Phone, staff.phone, colors)
             }
@@ -204,6 +207,20 @@ fun StaffViewToggle(
             onClick = { onModeChange(StaffViewMode.GRID) },
             label = "Grille",
             icon = Icons.Default.GridView,
+            colors = colors
+        )
+        ToggleItem(
+            selected = currentMode == StaffViewMode.MANAGEMENT,
+            onClick = { onModeChange(StaffViewMode.MANAGEMENT) },
+            label = "Gestion",
+            icon = Icons.Default.Tune,
+            colors = colors
+        )
+        ToggleItem(
+            selected = currentMode == StaffViewMode.TRASH,
+            onClick = { onModeChange(StaffViewMode.TRASH) },
+            label = "Corbeille",
+            icon = Icons.Default.Delete,
             colors = colors
         )
     }
@@ -271,22 +288,50 @@ fun StaffSelectionActionBar(
             }
             
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!isCompact) {
+                var showStatusMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                
+                Box {
                     Button(
-                        onClick = { onStatusChange("Actif") },
+                        onClick = { showStatusMenu = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Activer")
+                        Text("Changer Statut")
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showStatusMenu,
+                        onDismissRequest = { showStatusMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Actif") },
+                            onClick = { 
+                                onStatusChange("Actif") 
+                                showStatusMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF10B981)) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Inactif") },
+                            onClick = { 
+                                onStatusChange("Inactif") 
+                                showStatusMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.Cancel, null, tint = Color.Gray) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("En congé") },
+                            onClick = { 
+                                onStatusChange("En congé") 
+                                showStatusMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.EventBusy, null, tint = Color(0xFFF59E0B)) }
+                        )
                     }
                 }
                 
                 IconButton(onClick = onDeleteSelected) {
                     Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = Color.White)
-                }
-                
-                IconButton(onClick = { /* More actions */ }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.White)
                 }
             }
         }
