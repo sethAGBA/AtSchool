@@ -70,6 +70,7 @@ fun SubjectForm(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(colors.background)
             .padding(if (isCompact) 16.dp else 24.dp),
         verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 24.dp)
     ) {
@@ -228,7 +229,7 @@ fun SubjectForm(
                     val selectedCat = categories.find { it.id == selectedCategoryId }
                     onSave(
                         Subject(
-                            id = subject?.id ?: "SUBJ_${code.uppercase()}",
+                            id = subject?.id ?: "",
                             name = name,
                             code = code,
                             categoryId = selectedCategoryId,

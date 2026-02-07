@@ -736,6 +736,7 @@ fun StudentsScreenContent(isDarkMode: Boolean) {
                         levels = uiState.levels,
                         cycles = uiState.cycles,
                         colors = colors,
+                        staffMembers = uiState.staffMembers,
                         isCompact = isCompact,
                         currentAcademicYear = uiState.currentYear,
                         onBack = { screenModel.onViewModeChange(StudentsViewMode.CLASSES) },

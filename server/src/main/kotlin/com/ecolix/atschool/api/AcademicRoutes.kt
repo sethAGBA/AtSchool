@@ -58,6 +58,69 @@ fun Route.academicRoutes() {
                 val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
                 call.respond(subjectRepository.getAll(tenantId))
             }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val subject = call.receive<Subject>().copy(tenantId = tenantId)
+                val id = subjectRepository.create(subject)
+                call.respond(HttpStatusCode.Created, id)
+            }
+
+            put("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@put call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@put call.respond(HttpStatusCode.BadRequest)
+                val subject = call.receive<Subject>().copy(tenantId = tenantId)
+                if (subjectRepository.update(id, subject)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            delete("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                if (subjectRepository.delete(id, tenantId)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
+        route("/subject-categories") {
+            val categoryRepository by lazy { application.getKoin().get<CategoryRepository>() }
+
+            get {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                call.respond(categoryRepository.getAll(tenantId))
+            }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val category = call.receive<Category>().copy(tenantId = tenantId)
+                val id = categoryRepository.create(category)
+                call.respond(HttpStatusCode.Created, id)
+            }
+
+            put("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@put call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@put call.respond(HttpStatusCode.BadRequest)
+                val category = call.receive<Category>().copy(tenantId = tenantId)
+                if (categoryRepository.update(id, category)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            delete("/{id}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                if (categoryRepository.delete(id, tenantId)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+
+            post("/seed") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                categoryRepository.seedDefaultCategories(tenantId)
+                call.respond(HttpStatusCode.OK)
+            }
         }
 
         route("/evaluations") {
@@ -136,6 +199,35 @@ fun Route.academicRoutes() {
                 val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
                 val id = call.parameters["id"]?.toIntOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest)
                 if (holidayRepository.delete(id, tenantId)) call.respond(HttpStatusCode.OK) else call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
+        route("/class-subjects") {
+            val classSubjectRepository by lazy { application.getKoin().get<ClassSubjectRepository>() }
+
+            get("/{classId}") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                val classId = call.parameters["classId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                call.respond(classSubjectRepository.getAllByClass(tenantId, classId))
+            }
+
+            post {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val assignment = call.receive<ClassSubjectAssignment>().copy(tenantId = tenantId)
+                val id = classSubjectRepository.upsert(assignment)
+                call.respond(HttpStatusCode.OK, id)
+            }
+
+            post("/toggle") {
+                val principal = call.principal<JWTPrincipal>()
+                val tenantId = principal?.payload?.getClaim("tenantId")?.asInt() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val req = call.receive<Map<String, Int>>()
+                val classId = req["classId"] ?: return@post call.respond(HttpStatusCode.BadRequest)
+                val subjectId = req["subjectId"] ?: return@post call.respond(HttpStatusCode.BadRequest)
+                val added = classSubjectRepository.toggle(tenantId, classId, subjectId)
+                call.respond(HttpStatusCode.OK, mapOf("added" to added))
             }
         }
     }

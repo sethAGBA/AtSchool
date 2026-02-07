@@ -12,10 +12,12 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import com.ecolix.atschool.api.UploadApiService
 import com.ecolix.atschool.api.StructureApiService
+import com.ecolix.atschool.api.StaffApiService
 
 class StudentsScreenModel(
     private val studentApiService: StudentApiService,
     private val structureApiService: com.ecolix.atschool.api.StructureApiService,
+    private val staffApiService: com.ecolix.atschool.api.StaffApiService,
     private val uploadApiService: com.ecolix.atschool.api.UploadApiService
 ) : StateScreenModel<StudentsUiState>(StudentsUiState.sample(false)) {
 
@@ -25,6 +27,7 @@ class StudentsScreenModel(
             loadStudents()
             loadStructure().join()
             loadClassrooms()
+            loadStaff()
         }
     }
 
@@ -157,6 +160,14 @@ class StudentsScreenModel(
                 val mappedStudents = responses.map { it.toUiStudent() }
                 mutableState.update { it.copy(students = mappedStudents) }
                 updateClassroomCounts(state.value.classrooms)
+            }
+        }
+    }
+
+    private fun loadStaff() {
+        screenModelScope.launch {
+            staffApiService.getAllStaff().onSuccess { staff ->
+                mutableState.update { it.copy(staffMembers = staff) }
             }
         }
     }
@@ -623,6 +634,7 @@ class StudentsScreenModel(
             loadStudents()
             loadStructure().join()
             loadClassrooms()
+            loadStaff()
             mutableState.update { it.copy(successMessage = "Données actualisées") }
         }
     }

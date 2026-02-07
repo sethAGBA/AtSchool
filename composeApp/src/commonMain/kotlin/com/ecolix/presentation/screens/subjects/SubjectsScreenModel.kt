@@ -1,142 +1,227 @@
 package com.ecolix.presentation.screens.subjects
 
-import cafe.adriel.voyager.core.model.ScreenModel
-import com.ecolix.atschool.models.Staff
-import com.ecolix.atschool.models.StaffRole
+import cafe.adriel.voyager.core.model.StateScreenModel
+import cafe.adriel.voyager.core.model.screenModelScope
+import com.ecolix.atschool.api.AcademicApiService
+import com.ecolix.atschool.api.StructureApiService
+import com.ecolix.atschool.api.StaffApiService
+import com.ecolix.atschool.api.SubjectDto
+import com.ecolix.atschool.api.SubjectCategoryDto
+import com.ecolix.atschool.api.ClassSubjectAssignmentDto
+import com.ecolix.atschool.models.*
 import com.ecolix.data.models.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class SubjectsScreenModel : ScreenModel {
-
-    private val _state = MutableStateFlow(SubjectsUiState.sample(false))
-    val state: StateFlow<SubjectsUiState> = _state.asStateFlow()
+class SubjectsScreenModel(
+    private val academicApiService: AcademicApiService,
+    private val structureApiService: StructureApiService,
+    private val staffApiService: StaffApiService
+) : StateScreenModel<SubjectsUiState>(SubjectsUiState()) {
 
     init {
-        // Load initial categories
-        // In a real app, this would come from a repository
-        val initialCategories = listOf(
-            Category("1", "Scientifique", "Sciences exactes", "#3B82F6", 1),
-            Category("2", "Littéraire", "Langues et littérature", "#EC4899", 2),
-            Category("3", "Général", "Matières communes", "#6366F1", 3),
-            Category("4", "Sports", "Education physique", "#10B981", 4)
-        )
-        val initialClassrooms = listOf("6ème A", "6ème B", "5ème A", "4ème Espagnol", "3ème Rouge")
-        
-        // Sample configs: Assign MATH and FRAN to 6ème A
-        val initialConfigs = listOf(
-            ClassSubjectConfig("6ème A", "1", coefficient = 4f, weeklyHours = 5),
-            ClassSubjectConfig("6ème A", "2", coefficient = 4f, weeklyHours = 4),
-            ClassSubjectConfig("6ème B", "1", coefficient = 3f, weeklyHours = 4)
-        )
+        screenModelScope.launch {
+            loadAllData()
+        }
+    }
 
-        _state.update { it.copy(
-            categories = initialCategories, 
-            classrooms = initialClassrooms,
-            selectedClass = initialClassrooms.firstOrNull(),
-            classroomConfigs = initialConfigs
+    private suspend fun loadAllData() {
+        mutableState.update { it.copy(isLoading = true) }
+        
+        val categoriesResult = academicApiService.getAllCategories()
+        val subjectsResult = academicApiService.getAllSubjects()
+        val staffResult = staffApiService.getAllStaff()
+        
+        val categories = categoriesResult.getOrDefault(emptyList<SubjectCategoryDto>()).map { it.toCategory() }
+        val subjects = subjectsResult.getOrDefault(emptyList<SubjectDto>()).map { dto ->
+            val category = categories.find { it.id == dto.categoryId?.toString() }
+            dto.toSubject(category)
+        }
+        
+        val staff = staffResult.getOrDefault(emptyList<Staff>())
+        
+        // Fetch actual classrooms from StructureApiService
+        val classroomsResult = structureApiService.getClasses()
+        val classrooms = classroomsResult.getOrDefault(emptyList())
+        
+        val selectedClassId = state.value.selectedClassId ?: classrooms.firstOrNull()?.id
+
+        mutableState.update { it.copy(
+            subjects = subjects,
+            categories = categories,
+            classrooms = classrooms,
+            selectedClassId = selectedClassId,
+            staffMembers = staff,
+            isLoading = false
         ) }
+
+        if (selectedClassId != null) {
+            loadClassAssignments(selectedClassId)
+        }
+    }
+
+    private fun loadClassAssignments(classId: Int) {
+        screenModelScope.launch {
+            academicApiService.getClassSubjects(classId).onSuccess { assignments ->
+                val configs = assignments.map { it.toConfig() }
+                mutableState.update { it.copy(classroomConfigs = configs) }
+            }
+        }
+    }
+
+    fun refreshData() {
+        screenModelScope.launch {
+            loadAllData()
+        }
     }
 
     fun onDarkModeChange(isDark: Boolean) {
-        _state.update { it.copy(isDarkMode = isDark) }
+        mutableState.update { it.copy(isDarkMode = isDark) }
     }
 
     fun onSearchQueryChange(query: String) {
-        _state.update { it.copy(searchQuery = query) }
+        mutableState.update { it.copy(searchQuery = query) }
     }
 
     fun onCategoryChange(categoryId: String?) {
-        _state.update { it.copy(selectedCategoryId = categoryId) }
+        mutableState.update { it.copy(selectedCategoryId = categoryId) }
     }
 
     fun toggleCategoriesDialog() {
-        _state.update { it.copy(showCategoriesDialog = !it.showCategoriesDialog) }
+        mutableState.update { it.copy(showCategoriesDialog = !it.showCategoriesDialog) }
     }
 
     fun onViewModeChange(mode: SubjectsViewMode) {
-        _state.update { it.copy(viewMode = mode) }
+        mutableState.update { it.copy(viewMode = mode) }
+        if (mode == SubjectsViewMode.SUBJECTS) {
+            refreshData()
+        }
     }
 
     fun onLayoutModeChange(mode: SubjectsLayoutMode) {
-        _state.update { it.copy(layoutMode = mode) }
+        mutableState.update { it.copy(layoutMode = mode) }
     }
 
-    fun onSelectClass(className: String) {
-        _state.update { it.copy(selectedClass = className) }
+    fun onSelectClass(classId: Int) {
+        mutableState.update { it.copy(selectedClassId = classId) }
+        loadClassAssignments(classId)
     }
 
     fun onSelectSubject(subject: Subject?) {
-        _state.update { it.copy(selectedSubject = subject) }
+        mutableState.update { it.copy(selectedSubject = subject) }
     }
 
     fun saveSubject(subject: Subject) {
-        _state.update { state ->
-            val updatedList = state.subjects.toMutableList()
-            val index = updatedList.indexOfFirst { it.id == subject.id }
-            if (index != -1) {
-                updatedList[index] = subject
+        screenModelScope.launch {
+            val dto = subject.toDto()
+            val idInt = subject.id.toIntOrNull()
+            val result = if (idInt == null) {
+                academicApiService.createSubject(dto)
             } else {
-                updatedList.add(subject)
+                academicApiService.updateSubject(idInt, dto)
             }
-            state.copy(subjects = updatedList, viewMode = SubjectsViewMode.SUBJECTS)
+            
+            result.onSuccess {
+                refreshData()
+                onViewModeChange(SubjectsViewMode.SUBJECTS)
+            }
         }
     }
 
     fun deleteSubject(subjectId: String) {
-        _state.update { state ->
-            state.copy(subjects = state.subjects.filterNot { it.id == subjectId })
+        screenModelScope.launch {
+            val idInt = subjectId.toIntOrNull() ?: return@launch
+            academicApiService.deleteSubject(idInt).onSuccess {
+                refreshData()
+            }
         }
-    }
-
-    fun updateState(newState: SubjectsUiState) {
-        _state.update { newState }
     }
 
     // Teachers Management
     fun getAvailableTeachers(): List<Staff> {
-        // In a real app, this would come from a Repository. 
-        return emptyList()
+        return state.value.staffMembers.filter { it.role == StaffRole.TEACHER }
     }
 
-    fun updateClassSubjectProfessor(className: String, subjectId: String, professorId: String?) {
-        _state.update { state ->
-            val updatedConfigs = state.classroomConfigs.toMutableList()
-            val index = updatedConfigs.indexOfFirst { it.className == className && it.subjectId == subjectId }
-            if (index != -1) {
-                updatedConfigs[index] = updatedConfigs[index].copy(professorId = professorId)
-            } else {
-                updatedConfigs.add(ClassSubjectConfig(className, subjectId, professorId))
+    fun updateClassSubjectProfessor(classId: Int, subjectId: String, professorId: String?) {
+        val config = state.value.classroomConfigs.find { it.classId == classId && it.subjectId == subjectId }
+            ?: ClassSubjectConfig(classId, subjectId)
+        
+        val updatedConfig = config.copy(professorId = professorId)
+        
+        screenModelScope.launch {
+            academicApiService.saveClassSubject(updatedConfig.toAssignmentDto()).onSuccess {
+                loadClassAssignments(classId)
             }
-            state.copy(classroomConfigs = updatedConfigs)
         }
     }
 
-    fun updateClassSubjectConfig(className: String, subjectId: String, coefficient: Float, weeklyHours: Int) {
-        _state.update { state ->
-            val updatedConfigs = state.classroomConfigs.toMutableList()
-            val index = updatedConfigs.indexOfFirst { it.className == className && it.subjectId == subjectId }
-            if (index != -1) {
-                updatedConfigs[index] = updatedConfigs[index].copy(coefficient = coefficient, weeklyHours = weeklyHours)
-            } else {
-                updatedConfigs.add(ClassSubjectConfig(className, subjectId, coefficient = coefficient, weeklyHours = weeklyHours))
+    fun updateClassSubjectConfig(classId: Int, subjectId: String, coefficient: Float, weeklyHours: Int) {
+        val config = state.value.classroomConfigs.find { it.classId == classId && it.subjectId == subjectId }
+            ?: ClassSubjectConfig(classId, subjectId)
+        
+        val updatedConfig = config.copy(coefficient = coefficient, weeklyHours = weeklyHours)
+        
+        screenModelScope.launch {
+            academicApiService.saveClassSubject(updatedConfig.toAssignmentDto()).onSuccess {
+                loadClassAssignments(classId)
             }
-            state.copy(classroomConfigs = updatedConfigs)
         }
     }
 
-    fun toggleSubjectInClass(className: String, subjectId: String) {
-        _state.update { state ->
-            val updatedConfigs = state.classroomConfigs.toMutableList()
-            val index = updatedConfigs.indexOfFirst { it.className == className && it.subjectId == subjectId }
-            if (index != -1) {
-                updatedConfigs.removeAt(index)
-            } else {
-                updatedConfigs.add(ClassSubjectConfig(className, subjectId))
+    fun toggleSubjectInClass(classId: Int, subjectId: String) {
+        val sidInt = subjectId.toIntOrNull() ?: return
+        screenModelScope.launch {
+            academicApiService.toggleClassSubject(classId, sidInt).onSuccess {
+                loadClassAssignments(classId)
             }
-            state.copy(classroomConfigs = updatedConfigs)
         }
     }
+
+    // Mappings
+    private fun SubjectCategoryDto.toCategory() = Category(
+        id = id?.toString() ?: "",
+        name = name,
+        description = description,
+        colorHex = colorHex,
+        order = sortOrder
+    )
+
+    private fun SubjectDto.toSubject(category: Category?) = Subject(
+        id = id?.toString() ?: "",
+        name = nom,
+        code = code,
+        categoryId = categoryId?.toString(),
+        categoryName = category?.name ?: "Non classée",
+        categoryColorHex = category?.colorHex ?: "#6366F1",
+        defaultCoefficient = defaultCoefficient,
+        description = description,
+        weeklyHours = weeklyHours
+    )
+
+    private fun Subject.toDto() = SubjectDto(
+        id = id.toIntOrNull(),
+        nom = name,
+        code = code,
+        categoryId = categoryId?.toIntOrNull(),
+        defaultCoefficient = defaultCoefficient,
+        weeklyHours = weeklyHours,
+        description = description,
+        colorHex = categoryColorHex // Assuming it's the subject's color if no category or derived
+    )
+
+    private fun ClassSubjectAssignmentDto.toConfig() = ClassSubjectConfig(
+        classId = classeId,
+        subjectId = matiereId.toString(),
+        professorId = professeurId?.toString(),
+        coefficient = coefficient ?: 1f,
+        weeklyHours = weeklyHours ?: 2
+    )
+
+    private fun ClassSubjectConfig.toAssignmentDto() = ClassSubjectAssignmentDto(
+        classeId = classId,
+        matiereId = subjectId.toIntOrNull() ?: 0,
+        professeurId = professorId?.toIntOrNull(),
+        coefficient = coefficient,
+        weeklyHours = weeklyHours
+    )
 }

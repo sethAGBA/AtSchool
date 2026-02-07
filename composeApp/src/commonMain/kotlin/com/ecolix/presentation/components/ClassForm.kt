@@ -1,6 +1,7 @@
 package com.ecolix.presentation.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -8,6 +9,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +30,7 @@ fun ClassForm(
     levels: List<com.ecolix.atschool.api.SchoolLevelDto> = emptyList(),
     cycles: List<com.ecolix.atschool.api.SchoolCycleDto> = emptyList(),
     colors: DashboardColors,
+    staffMembers: List<com.ecolix.atschool.models.Staff> = emptyList(),
     isCompact: Boolean = false,
     currentAcademicYear: String,
     onBack: () -> Unit,
@@ -39,6 +43,7 @@ fun ClassForm(
     var capacity by remember { mutableStateOf(classroom?.capacity?.toString() ?: "") }
     var mainTeacher by remember { mutableStateOf(classroom?.mainTeacher ?: "") }
     var description by remember { mutableStateOf(classroom?.description ?: "") }
+    var showTeacherDropdown by remember { mutableStateOf(false) }
     var academicYear by remember { mutableStateOf(classroom?.academicYear ?: currentAcademicYear) }
 
     // Set default level if editing/creating and levels are available
@@ -244,36 +249,59 @@ fun ClassForm(
                     )
                     HorizontalDivider(color = colors.divider.copy(alpha = 0.5f))
 
-                    OutlinedTextField(
-                        value = mainTeacher,
-                        onValueChange = { mainTeacher = it },
-                        label = { Text("Professeur Principal") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = fieldColors,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-                    )
+                    val teachers = remember(staffMembers) {
+                        staffMembers.filter { it.role == com.ecolix.atschool.models.StaffRole.TEACHER }
+                    }
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = mainTeacher,
+                            onValueChange = { mainTeacher = it },
+                            label = { Text("Professeur Principal") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            readOnly = teachers.isNotEmpty(),
+                            trailingIcon = {
+                                if (teachers.isNotEmpty()) {
+                                    IconButton(onClick = { showTeacherDropdown = !showTeacherDropdown }) {
+                                        Icon(
+                                            if (showTeacherDropdown) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                            contentDescription = null,
+                                            tint = colors.textPrimary
+                                        )
+                                    }
+                                }
+                            },
+                            colors = fieldColors,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                        )
+
+                        DropdownMenu(
+                            expanded = showTeacherDropdown,
+                            onDismissRequest = { showTeacherDropdown = false },
+                            modifier = Modifier.fillMaxWidth(if (isCompact) 0.9f else 0.5f).background(colors.card)
+                        ) {
+                            teachers.forEach { staff ->
+                                DropdownMenuItem(
+                                    text = { Text("${staff.firstName} ${staff.lastName}", color = colors.textPrimary) },
+                                    onClick = {
+                                        mainTeacher = "${staff.firstName} ${staff.lastName}"
+                                        showTeacherDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
 
                     OutlinedTextField(
                         value = academicYear,
-                        onValueChange = { academicYear = it },
+                        onValueChange = {},
                         label = { Text("Année Scolaire") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         readOnly = true,
                         colors = fieldColors
                     )
-                }
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        "DESCRIPTION",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.2.sp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    HorizontalDivider(color = colors.divider.copy(alpha = 0.5f))
 
                     OutlinedTextField(
                         value = description,

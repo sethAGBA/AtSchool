@@ -36,10 +36,22 @@ import com.ecolix.presentation.components.*
 import com.ecolix.presentation.screens.categories.CategoriesDialog
 import com.ecolix.presentation.screens.categories.CategoriesScreenModel
 
+import cafe.adriel.voyager.koin.koinScreenModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+
+class SubjectsScreen : Screen {
+    @Composable
+    override fun Content() {
+        SubjectsScreenContent(isDarkMode = androidx.compose.foundation.isSystemInDarkTheme())
+    }
+}
+
 @Composable
-fun SubjectsScreenContent(isDarkMode: Boolean) {
-    val screenModel = remember { SubjectsScreenModel() }
-    val state by screenModel.state.collectAsState()
+fun Screen.SubjectsScreenContent(isDarkMode: Boolean) {
+    val screenModel = koinScreenModel<SubjectsScreenModel>()
+    val state: SubjectsUiState by screenModel.state.collectAsState()
     
     // Theme Update
     LaunchedEffect(isDarkMode) {
@@ -48,8 +60,9 @@ fun SubjectsScreenContent(isDarkMode: Boolean) {
 
     // Categories Dialog (Kept for other screens if they use it, but Subjects now has a tab)
     if (state.showCategoriesDialog) {
-        val categoriesScreenModel = remember { CategoriesScreenModel() }
+        val categoriesScreenModel = koinScreenModel<CategoriesScreenModel>()
         CategoriesDialog(
+            isDarkMode = state.isDarkMode,
             onDismiss = { screenModel.toggleCategoriesDialog() },
             screenModel = categoriesScreenModel
         )
@@ -69,6 +82,7 @@ fun SubjectsScreenContent(isDarkMode: Boolean) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(state.colors.background)
                 .padding(if (isCompact) 16.dp else 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -266,12 +280,14 @@ private fun SubjectsListView(
 
 @Composable
 private fun ClassSelector(
-    selectedClass: String,
-    classrooms: List<String>,
+    selectedClassId: Int?,
+    classrooms: List<com.ecolix.atschool.api.ClassDto>,
     colors: DashboardColors,
-    onClassSelected: (String) -> Unit
+    onClassSelected: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val selectedClass = classrooms.find { it.id == selectedClassId }
+    val displayText = selectedClass?.nom ?: "Sélectionner une classe"
     
     Box {
         OutlinedButton(
@@ -282,34 +298,33 @@ private fun ClassSelector(
         ) {
             Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(selectedClass)
+            Text(displayText)
             Spacer(modifier = Modifier.width(4.dp))
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
         
-        DropdownMenu(
+        SearchableDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(colors.card)
-        ) {
-            classrooms.forEach { classroom ->
-                DropdownMenuItem(
-                    text = { Text(classroom, color = colors.textPrimary) },
-                    onClick = {
-                        onClassSelected(classroom)
-                        expanded = false
-                    }
-                )
-            }
-        }
+            options = classrooms.map { it.nom },
+            onSelect = { name ->
+                classrooms.find { it.nom == name }?.id?.let { onClassSelected(it) }
+                expanded = false
+            },
+            colors = colors
+        )
     }
 }
 
 @Composable
-private fun CategoriesTabView(isDarkMode: Boolean, subjectsScreenModel: SubjectsScreenModel) {
-    val categoriesScreenModel = remember { com.ecolix.presentation.screens.categories.CategoriesScreenModel() }
-    val state by categoriesScreenModel.state.collectAsState()
+private fun Screen.CategoriesTabView(isDarkMode: Boolean, subjectsScreenModel: SubjectsScreenModel) {
+    val categoriesScreenModel = koinScreenModel<CategoriesScreenModel>()
+    val state: CategoriesUiState by categoriesScreenModel.state.collectAsState()
     var showForm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isDarkMode) {
+        categoriesScreenModel.onDarkModeChange(isDarkMode)
+    }
 
     // Sync categories back if needed or just use the screen model
     // For now we just display the list
@@ -343,46 +358,50 @@ private fun CategoriesTabView(isDarkMode: Boolean, subjectsScreenModel: Subjects
             onCategoryClick = { 
                 categoriesScreenModel.onSelectCategory(it)
                 showForm = true
-            }
+            },
+            onSeedClick = { categoriesScreenModel.seedDefaultCategories() }
         )
     }
 }
 
 @Composable
 private fun ProfessorsTabView(state: SubjectsUiState, screenModel: SubjectsScreenModel) {
-    var showProfessorDialog by remember { mutableStateOf<Pair<String, Subject>?>(null) }
-    var showManageSubjectsDialog by remember { mutableStateOf(false) }
-    
-    val currentClass = state.selectedClass ?: state.classrooms.firstOrNull() ?: ""
-    val classConfigs = state.classroomConfigs.filter { it.className == currentClass }
+    val selectedClassId = state.selectedClassId
+    val currentClass = state.classrooms.find { it.id == selectedClassId }
+    val className = currentClass?.nom ?: ""
+    val classConfigs = state.classroomConfigs.filter { it.classId == selectedClassId }
     val assignedSubjectIds = classConfigs.map { it.subjectId }.toSet()
     val assignedSubjects = state.subjects.filter { it.id in assignedSubjectIds }
 
+    var showProfessorDialog by remember { mutableStateOf<Pair<Int, Subject>?>(null) }
+    var showManageSubjectsDialog by remember { mutableStateOf(false) }
     if (showProfessorDialog != null) {
-        val (className, subject) = showProfessorDialog!!
-        val config = state.classroomConfigs.find { it.className == className && it.subjectId == subject.id }
+        val (classId, subject) = showProfessorDialog!!
+        
+        val config = state.classroomConfigs.find { it.classId == classId && it.subjectId == subject.id }
         
         ProfessorAssignmentDialog(
             subject = subject,
+            currentProfessorId = config?.professorId,
             allTeachers = screenModel.getAvailableTeachers(),
             colors = state.colors,
             onDismiss = { showProfessorDialog = null },
-            onSave = { professors ->
-                // For now, we take the first one since users want "SON prof"
-                screenModel.updateClassSubjectProfessor(className, subject.id, professors.firstOrNull())
+            onSave = { professorId ->
+                screenModel.updateClassSubjectProfessor(classId, subject.id, professorId)
                 showProfessorDialog = null
             }
         )
     }
 
-    if (showManageSubjectsDialog) {
+    if (showManageSubjectsDialog && selectedClassId != null) {
         ManageClassSubjectsDialog(
-            className = currentClass,
+            className = className,
+            classId = selectedClassId,
             allSubjects = state.subjects,
             assignedSubjectIds = assignedSubjectIds,
             colors = state.colors,
             onDismiss = { showManageSubjectsDialog = false },
-            onToggleSubject = { screenModel.toggleSubjectInClass(currentClass, it) }
+            onToggleSubject = { sid -> screenModel.toggleSubjectInClass(selectedClassId, sid) }
         )
     }
 
@@ -406,7 +425,7 @@ private fun ProfessorsTabView(state: SubjectsUiState, screenModel: SubjectsScree
             }
             
             ClassSelector(
-                selectedClass = currentClass,
+                selectedClassId = selectedClassId,
                 classrooms = state.classrooms,
                 colors = state.colors,
                 onClassSelected = { screenModel.onSelectClass(it) }
@@ -422,7 +441,7 @@ private fun ProfessorsTabView(state: SubjectsUiState, screenModel: SubjectsScree
         ) {
             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Modifier les matières enseignées en $currentClass")
+            Text("Modifier les matières enseignées en $className")
         }
 
         if (assignedSubjects.isEmpty()) {
@@ -444,7 +463,7 @@ private fun ProfessorsTabView(state: SubjectsUiState, screenModel: SubjectsScree
                             .clip(RoundedCornerShape(12.dp))
                             .background(state.colors.card)
                             .border(1.dp, state.colors.divider, RoundedCornerShape(12.dp))
-                            .clickable { showProfessorDialog = currentClass to subject }
+                            .clickable { if (selectedClassId != null) showProfessorDialog = selectedClassId to subject }
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -467,23 +486,27 @@ private fun ProfessorsTabView(state: SubjectsUiState, screenModel: SubjectsScree
 
 @Composable
 private fun ConfigTabView(state: SubjectsUiState, screenModel: SubjectsScreenModel) {
-    var showConfigDialog by remember { mutableStateOf<Pair<String, Subject>?>(null) }
+    var showConfigDialog by remember { mutableStateOf<Pair<Int, Subject>?>(null) }
     
-    val currentClass = state.selectedClass ?: state.classrooms.firstOrNull() ?: ""
-    val classConfigs = state.classroomConfigs.filter { it.className == currentClass }
+    val selectedClassId = state.selectedClassId
+    val currentClass = state.classrooms.find { it.id == selectedClassId }
+    val className = currentClass?.nom ?: ""
+    val classConfigs = state.classroomConfigs.filter { it.classId == selectedClassId }
     val assignedSubjectIds = classConfigs.map { it.subjectId }.toSet()
     val assignedSubjects = state.subjects.filter { it.id in assignedSubjectIds }
 
     if (showConfigDialog != null) {
-        val (className, subject) = showConfigDialog!!
+        val (classId, subject) = showConfigDialog!!
         val config = classConfigs.find { it.subjectId == subject.id }
         
         SubjectConfigDialog(
             subject = subject,
+            initialCoefficient = config?.coefficient,
+            initialWeeklyHours = config?.weeklyHours,
             colors = state.colors,
             onDismiss = { showConfigDialog = null },
             onSave = { coef, hours ->
-                screenModel.updateClassSubjectConfig(className, subject.id, coef, hours)
+                screenModel.updateClassSubjectConfig(classId, subject.id, coef, hours)
                 showConfigDialog = null
             }
         )
@@ -509,7 +532,7 @@ private fun ConfigTabView(state: SubjectsUiState, screenModel: SubjectsScreenMod
             }
             
             ClassSelector(
-                selectedClass = currentClass,
+                selectedClassId = selectedClassId,
                 classrooms = state.classrooms,
                 colors = state.colors,
                 onClassSelected = { screenModel.onSelectClass(it) }
@@ -534,7 +557,7 @@ private fun ConfigTabView(state: SubjectsUiState, screenModel: SubjectsScreenMod
                             .clip(RoundedCornerShape(12.dp))
                             .background(state.colors.card)
                             .border(1.dp, state.colors.divider, RoundedCornerShape(12.dp))
-                            .clickable { showConfigDialog = currentClass to subject }
+                            .clickable { if (selectedClassId != null) showConfigDialog = selectedClassId to subject }
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -558,6 +581,7 @@ private fun ConfigTabView(state: SubjectsUiState, screenModel: SubjectsScreenMod
 @Composable
 private fun ManageClassSubjectsDialog(
     className: String,
+    classId: Int,
     allSubjects: List<Subject>,
     assignedSubjectIds: Set<String>,
     colors: DashboardColors,

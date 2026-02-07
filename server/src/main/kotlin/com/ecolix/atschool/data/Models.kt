@@ -213,10 +213,36 @@ object Inscriptions : LongIdTable("inscriptions") {
     val statut = varchar("statut", 20).default("ACTIF")
 }
 
+object SubjectCategories : IntIdTable("subject_categories") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 100)
+    val description = text("description").nullable()
+    val colorHex = varchar("color_hex", 10).default("#6366F1")
+    val sortOrder = integer("sort_order").default(0)
+}
+
 object Matieres : IntIdTable("matieres") {
     val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
     val nom = varchar("nom", 100)
     val code = varchar("code", 50)
+    val categoryId = reference("category_id", SubjectCategories, onDelete = ReferenceOption.SET_NULL).nullable()
+    val defaultCoefficient = float("default_coefficient").default(1.0f)
+    val weeklyHours = integer("weekly_hours").default(0)
+    val description = text("description").nullable()
+    val colorHex = varchar("color_hex", 10).nullable()
+}
+
+object ClassSubjects : IntIdTable("class_subjects") {
+    val tenantId = reference("tenant_id", Tenants, onDelete = ReferenceOption.CASCADE)
+    val classeId = reference("classe_id", Classes, onDelete = ReferenceOption.CASCADE)
+    val matiereId = reference("matiere_id", Matieres, onDelete = ReferenceOption.CASCADE)
+    val professeurId = reference("professeur_id", StaffTable, onDelete = ReferenceOption.SET_NULL).nullable()
+    val coefficient = float("coefficient").nullable()
+    val weeklyHours = integer("weekly_hours").nullable()
+
+    init {
+        uniqueIndex(tenantId, classeId, matiereId)
+    }
 }
 
 object Evaluations : LongIdTable("evaluations") {

@@ -101,7 +101,8 @@ data class StudentsUiState(
     val lastSavedTimestamp: Long? = null,
     val showClassDeleteConfirmation: Boolean = false,
     val showClassInUseDialog: Boolean = false,
-    val classToDeleteId: String? = null
+    val classToDeleteId: String? = null,
+    val staffMembers: List<com.ecolix.atschool.models.Staff> = emptyList()
 ) {
     val colors: DashboardColors
         get() = if (isDarkMode) DashboardColors.dark() else DashboardColors.light()

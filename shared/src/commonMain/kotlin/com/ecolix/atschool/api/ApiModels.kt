@@ -484,3 +484,37 @@ data class TransferStudentRequest(
     val studentIds: List<String>,
     val newClassroomId: String
 )
+
+@Serializable
+data class SubjectDto(
+    val id: Int? = null,
+    val tenantId: Int? = null,
+    val nom: String,
+    val code: String,
+    val categoryId: Int? = null,
+    val defaultCoefficient: Float = 1.0f,
+    val weeklyHours: Int = 0,
+    val description: String? = null,
+    val colorHex: String? = null
+)
+
+@Serializable
+data class SubjectCategoryDto(
+    val id: Int? = null,
+    val tenantId: Int? = null,
+    val name: String,
+    val description: String? = null,
+    val colorHex: String = "#6366F1",
+    val sortOrder: Int = 0
+)
+
+@Serializable
+data class ClassSubjectAssignmentDto(
+    val id: Int? = null,
+    val tenantId: Int? = null,
+    val classeId: Int,
+    val matiereId: Int,
+    val professeurId: Int? = null,
+    val coefficient: Float? = null,
+    val weeklyHours: Int? = null
+)

@@ -30,6 +30,7 @@ object DatabaseFactory {
                 Eleves,
                 Inscriptions,
                 Matieres,
+                ClassSubjects,
                 Evaluations,
                 Notes,
                 Paiements,

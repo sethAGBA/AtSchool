@@ -6,14 +6,19 @@ import com.ecolix.presentation.screens.dashboard.DashboardScreenModel
 import com.ecolix.presentation.screens.superadmin.SuperAdminScreenModel
 import com.ecolix.presentation.screens.settings.SettingsScreenModel
 import com.ecolix.presentation.screens.academic.AcademicScreenModel
+import com.ecolix.atschool.api.AcademicApiService
+import com.ecolix.atschool.api.StructureApiService
+import com.ecolix.atschool.api.StaffApiService
 import org.koin.dsl.module
 
 val presentationModule = module {
     factory { LoginScreenModel(get()) }
-    factory { StudentsScreenModel(get(), get(), get()) }
+    factory { StudentsScreenModel(get(), get(), get(), get()) }
     factory { DashboardScreenModel(get()) }
     factory { SuperAdminScreenModel(get()) }
     single { SettingsScreenModel(get(), get()) }
     factory { AcademicScreenModel(get()) }
     factory { com.ecolix.presentation.screens.staff.StaffScreenModel(get()) }
+    factory { com.ecolix.presentation.screens.subjects.SubjectsScreenModel(get<AcademicApiService>(), get<StructureApiService>(), get<StaffApiService>()) }
+    factory { com.ecolix.presentation.screens.categories.CategoriesScreenModel(get()) }
 }

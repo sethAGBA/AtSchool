@@ -1,67 +1,102 @@
 package com.ecolix.presentation.screens.categories
 
-import cafe.adriel.voyager.core.model.ScreenModel
+import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.ecolix.atschool.api.AcademicApiService
+import com.ecolix.atschool.api.SubjectCategoryDto
 import com.ecolix.data.models.Category
 import com.ecolix.data.models.CategoriesUiState
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
-class CategoriesScreenModel : ScreenModel {
-    private val _state = MutableStateFlow(CategoriesUiState())
-    val state = _state.asStateFlow()
+class CategoriesScreenModel(
+    private val academicApiService: AcademicApiService
+) : StateScreenModel<CategoriesUiState>(CategoriesUiState()) {
 
     init {
         loadCategories()
     }
 
-    private fun loadCategories() {
-        // Mock data fetch - replace with DatabaseService call later
-        val mockCategories = listOf(
-            Category("1", "Scientifique", "Sciences exactes", "#3B82F6", 1),
-            Category("2", "Littéraire", "Langues et littérature", "#EC4899", 2),
-            Category("3", "Général", "Matières communes", "#6366F1", 3),
-            Category("4", "Sports", "Education physique", "#10B981", 4)
-        )
-        
-        _state.update { it.copy(categories = mockCategories) }
+    fun loadCategories() {
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            academicApiService.getAllCategories().onSuccess { dtos ->
+                mutableState.update { it.copy(
+                    categories = dtos.map { dto -> dto.toCategory() }.sortedBy { it.order },
+                    isLoading = false
+                ) }
+            }.onFailure {
+                mutableState.update { it.copy(isLoading = false) }
+            }
+        }
     }
 
     fun onSearchQueryChange(query: String) {
-        _state.update { it.copy(searchQuery = query) }
+        mutableState.update { it.copy(searchQuery = query) }
     }
 
     fun onSelectCategory(category: Category?) {
-        _state.update { it.copy(selectedCategory = category) }
+        mutableState.update { it.copy(selectedCategory = category) }
     }
 
     fun saveCategory(category: Category) {
-        // Mock save - replace with DatabaseService call
-        val currentCategories = _state.value.categories.toMutableList()
-        val index = currentCategories.indexOfFirst { it.id == category.id }
-        
-        if (index >= 0) {
-            currentCategories[index] = category
-        } else {
-            currentCategories.add(category.copy(id = "CAT_${Random.nextInt(1000, 9999)}"))
+        screenModelScope.launch {
+            val dto = category.toDto()
+            val result = if (category.id.isEmpty() || category.id.startsWith("CAT_")) {
+                academicApiService.createCategory(dto)
+            } else {
+                academicApiService.updateCategory(category.id.toInt(), dto)
+            }
+            
+            result.onSuccess {
+                loadCategories()
+                mutableState.update { it.copy(selectedCategory = null) }
+            }
         }
-
-        _state.update { it.copy(
-            categories = currentCategories.sortedBy { c -> c.order },
-            selectedCategory = null
-        )}
     }
 
     fun deleteCategory(categoryId: String) {
-        // Mock delete
-        val currentCategories = _state.value.categories.filterNot { it.id == categoryId }
-        _state.update { it.copy(categories = currentCategories) }
+        screenModelScope.launch {
+            val idInt = categoryId.toIntOrNull() ?: return@launch
+            academicApiService.deleteCategory(idInt).onSuccess {
+                loadCategories()
+            }
+        }
+    }
+
+    fun seedDefaultCategories() {
+        println("CategoriesScreenModel: Requesting default categories seeding...")
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            academicApiService.seedDefaultCategories().onSuccess {
+                println("CategoriesScreenModel: Seeding successful, refreshing list.")
+                loadCategories()
+            }.onFailure { e ->
+                println("CategoriesScreenModel: Seeding failed: ${e.message}")
+                e.printStackTrace()
+                mutableState.update { it.copy(isLoading = false) }
+            }
+        }
     }
 
     fun onDarkModeChange(isDark: Boolean) {
-        _state.update { it.copy(isDarkMode = isDark) }
+        mutableState.update { it.copy(isDarkMode = isDark) }
     }
+
+    // Mappings
+    private fun SubjectCategoryDto.toCategory() = Category(
+        id = id?.toString() ?: "",
+        name = name,
+        description = description,
+        colorHex = colorHex,
+        order = sortOrder
+    )
+
+    private fun Category.toDto() = SubjectCategoryDto(
+        id = id.toIntOrNull(),
+        name = name,
+        description = description,
+        colorHex = colorHex,
+        sortOrder = order
+    )
 }

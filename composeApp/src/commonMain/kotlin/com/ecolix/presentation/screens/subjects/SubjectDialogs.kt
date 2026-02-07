@@ -28,13 +28,14 @@ import com.ecolix.presentation.components.CardContainer
 @Composable
 fun ProfessorAssignmentDialog(
     subject: Subject,
-    allTeachers: List<Staff>, // Filtered for Role.TEACHER by caller
+    currentProfessorId: String?,
+    allTeachers: List<Staff>,
     colors: DashboardColors,
     onDismiss: () -> Unit,
-    onSave: (List<String>) -> Unit
+    onSave: (String?) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedIds by remember { mutableStateOf(subject.professorIds.toSet()) }
+    var selectedId by remember { mutableStateOf(currentProfessorId) }
 
     val filteredTeachers = remember(searchQuery, allTeachers) {
         allTeachers.filter {
@@ -100,27 +101,23 @@ fun ProfessorAssignmentDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filteredTeachers) { teacher ->
-                        val isSelected = selectedIds.contains(teacher.id)
+                        val isSelected = selectedId == teacher.id
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
-                                    val newSet = selectedIds.toMutableSet()
-                                    if (isSelected) newSet.remove(teacher.id) else newSet.add(teacher.id)
-                                    selectedIds = newSet
+                                    selectedId = if (isSelected) null else teacher.id
                                 }
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = { checked ->
-                                    val newSet = selectedIds.toMutableSet()
-                                    if (checked) newSet.add(teacher.id) else newSet.remove(teacher.id)
-                                    selectedIds = newSet
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedId = if (isSelected) null else teacher.id
                                 },
-                                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Box(
@@ -147,12 +144,12 @@ fun ProfessorAssignmentDialog(
                 }
                 
                 Button(
-                    onClick = { onSave(selectedIds.toList()) },
+                    onClick = { onSave(selectedId) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Enregistrer les affectations")
+                    Text("Confirmer l'affectation")
                 }
             }
         }
@@ -162,12 +159,14 @@ fun ProfessorAssignmentDialog(
 @Composable
 fun SubjectConfigDialog(
     subject: Subject,
+    initialCoefficient: Float?,
+    initialWeeklyHours: Int?,
     colors: DashboardColors,
     onDismiss: () -> Unit,
     onSave: (Float, Int) -> Unit
 ) {
-    var coefficient by remember { mutableStateOf(subject.defaultCoefficient.toString()) }
-    var weeklyHours by remember { mutableStateOf(subject.weeklyHours.toString()) }
+    var coefficient by remember { mutableStateOf((initialCoefficient ?: subject.defaultCoefficient).toString()) }
+    var weeklyHours by remember { mutableStateOf((initialWeeklyHours ?: subject.weeklyHours).toString()) }
 
     Dialog(onDismissRequest = onDismiss) {
         CardContainer(containerColor = colors.card) {

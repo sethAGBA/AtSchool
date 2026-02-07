@@ -23,6 +23,7 @@ import com.ecolix.data.models.DashboardUiState
 import com.ecolix.presentation.screens.settings.SettingsScreenContent
 import com.ecolix.presentation.screens.statistics.StatsScreenContent
 import com.ecolix.presentation.screens.academic.AcademicScreenModel
+import com.ecolix.presentation.screens.subjects.SubjectsScreenContent
 import cafe.adriel.voyager.koin.koinScreenModel
 
 class DashboardScreen : Screen {
@@ -128,7 +129,7 @@ class DashboardScreen : Screen {
                                     1 -> com.ecolix.presentation.screens.eleves.StudentsScreenContent(isDarkMode = isDarkMode)
                                     2 -> com.ecolix.presentation.screens.staff.StaffScreenContent(isDarkMode = isDarkMode)
                                     3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
-                                    4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
+                                    4 -> SubjectsScreenContent(isDarkMode = isDarkMode)
                                     5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                                     6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
                                     7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)
@@ -155,7 +156,7 @@ class DashboardScreen : Screen {
                             1 -> com.ecolix.presentation.screens.eleves.StudentsScreenContent(isDarkMode = isDarkMode)
                             2 -> com.ecolix.presentation.screens.staff.StaffScreenContent(isDarkMode = isDarkMode)
                             3 -> com.ecolix.presentation.screens.notes.GradesScreenContent(isDarkMode = isDarkMode)
-                            4 -> com.ecolix.presentation.screens.subjects.SubjectsScreenContent(isDarkMode = isDarkMode)
+                            4 -> SubjectsScreenContent(isDarkMode = isDarkMode)
                             5 -> SettingsScreenContent(isDarkMode = isDarkMode)
                             6 -> com.ecolix.presentation.screens.users.UsersScreenContent(isDarkMode = isDarkMode)
                             7 -> com.ecolix.presentation.screens.timetable.TimetableScreenContent(isDarkMode = isDarkMode)

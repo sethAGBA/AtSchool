@@ -75,6 +75,9 @@ docker compose up -d --build
 
 docker compose down -v && docker compose up -d
 
-## docker logs
+## docker logs 
 
 docker compose logs api --tail 50
+
+
+docker compose up --build api -d && docker compose logs -f api

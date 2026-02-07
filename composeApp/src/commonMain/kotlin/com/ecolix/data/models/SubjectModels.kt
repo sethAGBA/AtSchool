@@ -23,7 +23,7 @@ data class Subject(
 }
 
 data class ClassSubjectConfig(
-    val className: String,
+    val classId: Int,
     val subjectId: String,
     val professorId: String? = null,
     val coefficient: Float = 1f,
@@ -54,9 +54,10 @@ data class SubjectsUiState(
     val isDarkMode: Boolean = false,
     val selectedSubject: Subject? = null,
     val showCategoriesDialog: Boolean = false,
-    val classrooms: List<String> = emptyList(),
-    val selectedClass: String? = null,
-    val classroomConfigs: List<ClassSubjectConfig> = emptyList()
+    val classrooms: List<com.ecolix.atschool.api.ClassDto> = emptyList(),
+    val selectedClassId: Int? = null,
+    val classroomConfigs: List<ClassSubjectConfig> = emptyList(),
+    val staffMembers: List<com.ecolix.atschool.models.Staff> = emptyList()
 ) {
     val colors: DashboardColors
         get() = if (isDarkMode) {

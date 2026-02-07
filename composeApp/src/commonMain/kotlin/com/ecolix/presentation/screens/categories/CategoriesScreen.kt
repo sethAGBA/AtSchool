@@ -23,14 +23,20 @@ import androidx.compose.ui.window.Dialog
 import com.ecolix.data.models.Category
 import com.ecolix.data.models.DashboardColors
 import com.ecolix.presentation.components.CardContainer
+import com.ecolix.presentation.components.ConfirmationDialog
 
 @Composable
 fun CategoriesDialog(
+    isDarkMode: Boolean,
     onDismiss: () -> Unit,
     screenModel: CategoriesScreenModel
 ) {
     val state by screenModel.state.collectAsState()
     var showForm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isDarkMode) {
+        screenModel.onDarkModeChange(isDarkMode)
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         if (showForm) {
@@ -64,7 +70,8 @@ fun CategoriesDialog(
                 onCategoryClick = { 
                     screenModel.onSelectCategory(it)
                     showForm = true
-                }
+                },
+                onSeedClick = { screenModel.seedDefaultCategories() }
             )
         }
     }
@@ -76,7 +83,8 @@ fun CategoriesListContent(
     onDismiss: (() -> Unit)? = null,
     onQueryChange: (String) -> Unit,
     onAddClick: () -> Unit,
-    onCategoryClick: (Category) -> Unit
+    onCategoryClick: (Category) -> Unit,
+    onSeedClick: () -> Unit
 ) {
     CardContainer(containerColor = state.colors.card) {
         Column(
@@ -138,6 +146,18 @@ fun CategoriesListContent(
                     ),
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = state.colors.textMuted) }
                 )
+
+                if (state.categories.isEmpty()) {
+                    OutlinedButton(
+                        onClick = onSeedClick,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.AutoMode, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Par défaut")
+                    }
+                }
             }
 
             // List
@@ -208,6 +228,20 @@ fun CategoryForm(
     var description by remember { mutableStateOf(category?.description ?: "") }
     var order by remember { mutableStateOf(category?.order?.toString() ?: "0") }
     var colorHex by remember { mutableStateOf(category?.colorHex ?: "#6366F1") }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        ConfirmationDialog(
+            title = "Confirmer la suppression",
+            message = "Voulez-vous vraiment supprimer la catégorie \"$name\" ? Cette action peut affecter les matières associées.",
+            onConfirm = {
+                showDeleteDialog = false
+                onDelete()
+            },
+            onDismiss = { showDeleteDialog = false },
+            colors = colors
+        )
+    }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = colors.textPrimary,
@@ -259,28 +293,50 @@ fun CategoryForm(
                 colors = fieldColors
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = order,
                     onValueChange = { if (it.all { c -> c.isDigit() }) order = it },
                     label = { Text("Ordre") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.width(100.dp),
                     singleLine = true,
                     colors = fieldColors
                 )
-                
-                // Simple Color Input for now
-                OutlinedTextField(
-                    value = colorHex,
-                    onValueChange = { colorHex = it },
-                    label = { Text("Couleur (Hex)") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    colors = fieldColors,
-                    trailingIcon = {
-                        Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(parseHexColor(colorHex)))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Couleur de la catégorie", style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val colorOptions = listOf(
+                        "#6366F1", // Indigo (Default)
+                        "#4CAF50", // Green
+                        "#2196F3", // Blue
+                        "#F44336", // Red
+                        "#FF9800", // Orange
+                        "#9C27B0", // Purple
+                        "#795548", // Brown
+                        "#607D8B"  // Blue Grey
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        colorOptions.forEach { hex ->
+                            val isSelected = colorHex.uppercase() == hex.uppercase()
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(parseHexColor(hex))
+                                    .border(
+                                        width = if (isSelected) 2.dp else 0.dp,
+                                        color = if (isSelected) colors.textPrimary else Color.Transparent,
+                                        shape = CircleShape
+                                    )
+                                    .clickable { colorHex = hex }
+                            )
+                        }
                     }
-                )
+                }
             }
 
             Row(
@@ -289,7 +345,7 @@ fun CategoryForm(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (category != null) {
-                    TextButton(onClick = onDelete, colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)) {
+                    TextButton(onClick = { showDeleteDialog = true }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)) {
                         Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Supprimer")

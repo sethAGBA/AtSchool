@@ -13,4 +13,5 @@ val sharedModule = module {
     single { UploadApiService(get()) }
     single { StructureApiService(get()) }
     single { StaffApiService(get()) }
+    single { AcademicApiService(get()) }
 }
